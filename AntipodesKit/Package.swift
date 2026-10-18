@@ -14,6 +14,7 @@ let package = Package(
         .library(name: "AntipodesStats", targets: ["AntipodesStats"]),
         .library(name: "AntipodesExport", targets: ["AntipodesExport"]),
         .library(name: "AntipodesStore", targets: ["AntipodesStore"]),
+        .library(name: "AntipodesGlobe", targets: ["AntipodesGlobe"]),
     ],
     targets: [
         // Value types and maths. Depends on nothing but the standard library.
@@ -35,6 +36,10 @@ let package = Package(
         // SwiftData models and CloudKit mirroring. The only module that imports SwiftData.
         .target(name: "AntipodesStore", dependencies: ["AntipodesCore"]),
 
+        // Globe geometry: orthographic projection, limb clipping, the bundled border
+        // file and the replay timeline. Pure, and must not import SwiftUI or MapKit.
+        .target(name: "AntipodesGlobe", dependencies: ["AntipodesCore"]),
+
         // SwiftUI screens.
         .target(
             name: "AntipodesUI",
@@ -44,6 +49,7 @@ let package = Package(
                 "AntipodesStats",
                 "AntipodesExport",
                 "AntipodesStore",
+                "AntipodesGlobe",
             ]
         ),
 
@@ -59,6 +65,10 @@ let package = Package(
         .testTarget(
             name: "AntipodesExportTests",
             dependencies: ["AntipodesExport", "AntipodesCore"]
+        ),
+        .testTarget(
+            name: "AntipodesGlobeTests",
+            dependencies: ["AntipodesGlobe", "AntipodesCore"]
         ),
     ]
 )

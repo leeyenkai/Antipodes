@@ -8,7 +8,13 @@ PACKAGE_PATH="$REPO_ROOT/AntipodesKit"
 PLACEDB_OUT="$REPO_ROOT/Tools/placedb/out/places.sqlite"
 APP_RESOURCE_DIR="$REPO_ROOT/App/Antipodes/Resources"
 APP_RESOURCE_DB="$APP_RESOURCE_DIR/places.sqlite"
-# Every source the place-database pipeline downloads.
+# Natural Earth downloads and the border files built from them. Both are build
+# inputs/products rather than source, so neither is committed.
+BORDERS_VENDOR="$REPO_ROOT/Tools/placedb/vendor/naturalearth"
+BORDERS_OUT="$REPO_ROOT/Tools/placedb/out"
+# Every source the place-database pipeline downloads, Natural Earth included — the
+# borders pipeline above shares the same directory and the same pinned digest rather
+# than fetching its own copy.
 PLACEDB_VENDOR="$REPO_ROOT/Tools/placedb/vendor"
 PLACEDB_MANIFEST="$PLACEDB_VENDOR/manifest.json"
 

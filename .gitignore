@@ -62,6 +62,9 @@ Tools/placedb/out/
 # re-fetchable with scripts/fetch-placedb-sources.sh.
 Tools/placedb/vendor/
 App/Antipodes/Resources/places.sqlite
+# The globe's country outlines are a build product of Tools/placedb/build_borders.py
+# in the same way — run scripts/fetch-borders.sh then scripts/build-borders.sh.
+*.antborders
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal

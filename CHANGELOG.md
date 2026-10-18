@@ -16,6 +16,28 @@ Security, Data (place-database changes).
 
 ### Added
 
+- The v1 globe screen: a 3D globe drawn by the app rather than fetched, with visited
+  countries shaded, pins for places, great-circle arcs for journeys, filtering by year,
+  trip and mode, tap-to-open on any pin or arc, and a timeline that replays the log
+  (§9.1, R-GLOBE-1 to R-GLOBE-7). Resolves [Q-3](docs/SPECIFICATION.md#15-open-questions)
+  as decision D-5: MapKit cannot render without fetching map content, and what it
+  fetches follows wherever the user's own travel puts the camera, which R-PRIV-7 does
+  not allow. The globe renders with no network access at all.
+- `AntipodesGlobe`: a pure module holding the orthographic projection, limb clipping of
+  arcs and filled country rings, bounding-box culling, hit testing, the `.antborders`
+  decoder, scene building from the log and the replay timeline. 71 tests, no SwiftUI
+  and no MapKit.
+- `Tools/placedb/build_borders.py` plus `scripts/fetch-borders.sh` and
+  `scripts/build-borders.sh`: build the bundled country outlines from public-domain
+  Natural Earth, 96 KB at 1:110m and 821 KB at 1:50m, deterministically. Land the
+  source has no ISO code for (Northern Cyprus, Somaliland, the Siachen Glacier) is
+  drawn but never shaded, and the count is in the file header rather than silently
+  dropped — which of those counts as a country is
+  [Q-4](docs/SPECIFICATION.md#15-open-questions)'s business, not the pipeline's.
+- Wishlist pins have a seam but no feature: `GlobeSceneBuilder` takes wishlist places
+  and styles them distinctly (R-GLOBE-4, `[V1]`), so adding the wishlist later is a
+  matter of passing a non-empty array.
+
 - Repository scaffolding: `README.md`, `.gitignore`, `AGENTS.md` (working agreement for
   humans and AI agents), `CLAUDE.md` (pointer to `AGENTS.md`), and this changelog.
 - `docs/SPECIFICATION.md` — the requirements for the app, transcribed from the
@@ -103,6 +125,11 @@ Security, Data (place-database changes).
 
 ### Changed
 
+- `StatInputSummary` and `ExclusionReason` moved from `AntipodesStats` to
+  `AntipodesCore`. The globe reports what it could not draw in the same terms a
+  statistic does, and the two should not word it differently (AGENTS.md §2).
+- The globe's summary bar now reports the scene it is showing rather than whole-log
+  totals, so filtering or scrubbing the replay changes the numbers with the picture.
 - **Accented place names are now matched exactly when typed without accents.**
   `place_index` carries an ASCII-folded copy of every name, which the search compares
   the raw query against alongside the original. Before this, no accented name could

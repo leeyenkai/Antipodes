@@ -1,7 +1,6 @@
-import AntipodesCore
 import Foundation
 
-/// Why a record did not make it into a statistic.
+/// Why a record did not make it into a statistic, or onto the globe.
 public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable {
     /// Visit type does not count towards coverage under the current rules (R-CALC-1).
     case visitTypeNotCounted
@@ -32,11 +31,13 @@ public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable
     }
 }
 
-/// How much of its input a statistic could actually use.
+/// How much of its input a statistic — or the globe — could actually use.
 ///
 /// Every stat in the app carries one of these. A number that quietly dropped half the
 /// user's records is worse than no number, so this is not optional bookkeeping
-/// (R-CALC-5, R-DB-2).
+/// (R-CALC-5, R-DB-2). It lives in Core rather than in `AntipodesStats` because the
+/// globe reports the same way about the pins and arcs it could not draw, and the two
+/// should not word it differently.
 public struct StatInputSummary: Hashable, Sendable, Codable {
     public private(set) var considered: Int
     public private(set) var used: Int

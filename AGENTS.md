@@ -37,6 +37,8 @@ AntipodesKit/            Swift package — all logic and UI. This is where you w
     AntipodesStats/      Coverage and distance stats. Pure functions over Core types.
     AntipodesExport/     CSV and JSON export of the user's whole log.
     AntipodesStore/      SwiftData models, CloudKit container, mapping to/from Core.
+    AntipodesGlobe/      Globe geometry: orthographic projection, limb clipping,
+                         bundled border decoding, replay timeline. Pure.
     AntipodesUI/         SwiftUI screens.
   Tests/                 One suite per pure module. Runs with no network, no simulator.
 App/Antipodes/           Xcode app shell: @main entry, Info.plist, assets, resources.
@@ -55,12 +57,13 @@ AntipodesPlaces ← Core
 AntipodesStats  ← Core
 AntipodesExport ← Core
 AntipodesStore  ← Core            (SwiftData lives here and nowhere else)
+AntipodesGlobe  ← Core            (globe geometry; no SwiftUI, no MapKit)
 AntipodesUI     ← all of the above
 ```
 
 **Never invert an arrow.** In particular: `AntipodesStats` must not import SwiftData
-or `AntipodesStore`, and `AntipodesCore` must not import anything but the standard
-library and `Foundation`. This is what lets the whole stats engine be tested from the
+or `AntipodesStore`, `AntipodesGlobe` must not import SwiftUI or MapKit, and
+`AntipodesCore` must not import anything but the standard library and `Foundation`. This is what lets the whole stats engine be tested from the
 command line in milliseconds. If you find yourself wanting to reach backwards, add a
 value type to Core instead.
 
@@ -75,6 +78,8 @@ value type to Core instead.
 | Lint and format | `scripts/lint.sh` |
 | Fetch the place-database sources | `scripts/fetch-placedb-sources.sh` |
 | Build the place database | `scripts/build-placedb.sh` |
+| Fetch the globe's borders | `scripts/fetch-borders.sh` |
+| Build the globe's borders | `scripts/build-borders.sh` |
 | Build the iOS app | `scripts/build-app.sh` |
 | Everything CI runs | `scripts/check.sh` |
 
@@ -238,6 +243,11 @@ The place database is built from open data, and the licences differ:
 - **Don't bundle the place database into the SwiftData store.** They are separate
   stores with separate lifetimes (R-MODEL-5).
 - **Don't add a network call to the logging path.** Ever.
+- **Don't draw the globe with a map framework.** MapKit fetches its map from Apple's
+  servers, and what it fetches follows wherever the user's own travel puts the camera —
+  a request shaped by their private data, which R-PRIV-7 forbids. The globe is drawn
+  from bundled vector borders instead (decision D-5). The same goes for any map view
+  added later.
 
 ---
 

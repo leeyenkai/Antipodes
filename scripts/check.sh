@@ -6,6 +6,7 @@
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 "$REPO_ROOT/scripts/build-placedb.sh"
+"$REPO_ROOT/scripts/build-borders.sh"
 "$REPO_ROOT/scripts/build.sh"
 "$REPO_ROOT/scripts/test.sh"
 "$REPO_ROOT/scripts/lint.sh" --check || note "lint reported issues (not fatal yet)"

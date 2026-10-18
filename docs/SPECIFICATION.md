@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Draft |
-| **Spec version** | 0.2.0 |
+| **Spec version** | 0.3.0 |
 | **Last updated** | 2026-10-18 |
 | **Owner** | Lee Yen Kai |
 | **Source** | Derived from *Antipodes — Spec Sheet (Draft v0.1)* (2026-10-15) |
@@ -309,7 +309,7 @@ hand-curated landmarks and famous routes, shipped inside the app and updated in-
 
 | Entity | Key attributes | Sources in use |
 |---|---|---|
-| Country and territory | ISO code, continent, capital, population, area, languages, currency, UN status | GeoNames (facts), Natural Earth (list and sovereignty), Wikidata (UN membership). |
+| Country and territory | ISO code, continent, capital, population, area, languages, currency, UN status | GeoNames (facts), Natural Earth (list and sovereignty), Wikidata (UN membership). Borders are built separately for the globe. |
 | Region (state, province) | Name, parent country | GeoNames first-level divisions, keyed by its own admin1 code |
 | City | Coordinates, population, elevation, time zone | GeoNames. Monthly climate normals need a source that is not yet chosen, which is what blocks R-CALC-2. |
 | Landmark | Type, theme tags, year built, UNESCO status, height, parent city | Wikidata for every fact; `Tools/placedb/curation/` for which landmarks exist and their themes |
@@ -399,8 +399,23 @@ destinations sit in a sidebar.
 | **Collections** | Achievements, wishlist, curated collections with progress | Browse, add to wishlist, see what is left |
 | **Settings** | Counting rules, units, iCloud, import and export, database version | Reached from the Stats or Collections screen |
 
+### 9.1 The globe
 
-### 9.1 iPad and Mac layout
+The home screen, and most of why someone would choose this over a checklist app. It is
+drawn entirely from the log and from bundled vector borders: no map imagery, no tiles,
+no network (D-5).
+
+| ID | Requirement |
+|---|---|
+| R-GLOBE-1 | The globe MUST render with no network access of any kind, and MUST make no request that depends on the user's own data (R-PRIV-3, R-PRIV-7). `[M1]` |
+| R-GLOBE-2 | Visited countries are shaded. Only visits that count towards coverage under the current rules shade a country, so the globe and the coverage number never disagree (R-CALC-1). `[M1]` |
+| R-GLOBE-3 | Places are pinned, and journeys are drawn as arcs along the same great circle their distance was measured on (R-PATH-4). A visit that does not count towards coverage is pinned in a fainter style. `[M1]` |
+| R-GLOBE-4 | Wishlist places are pinned in a visibly different style from places visited, and never shade a country. `[V1]` |
+| R-GLOBE-5 | Filter by year, trip or mode; tapping a pin or an arc opens it. Changing a filter reframes the globe on what is left. `[V1]` |
+| R-GLOBE-6 | A timeline scrubs through the log, showing only what had happened by that date. It stops on days with something on them rather than running continuously. `[V1]` |
+| R-GLOBE-7 | The globe MUST report what it could not draw and why — places with no coordinate, journeys with no distance, records with no date that cannot be placed in the replay — in the same terms the statistics use (R-CALC-5). `[M1]` |
+
+### 9.2 iPad and Mac layout
 
 | ID | Requirement |
 |---|---|
@@ -448,7 +463,7 @@ tools.
 | UI | SwiftUI multiplatform, `NavigationSplitView` on iPad and Mac | One codebase, adaptive layouts |
 | User data | SwiftData with CloudKit sync | Private iCloud sync with no server |
 | Place database | Read-only SQLite, full-text search with FTS5 | Fast offline search over a large dataset; SwiftData is a poor fit for this |
-| Globe | **Decision needed**: MapKit globe vs a custom RealityKit or SceneKit globe | MapKit is quicker to build but needs network map tiles; a custom globe with bundled textures works offline and allows a Flighty-style look — [Q-3](#15-open-questions) |
+| Globe | Custom offline globe: an orthographic projection drawn in a SwiftUI `Canvas`, over bundled Natural Earth vector borders | MapKit cannot draw a map without fetching it, and what it fetches depends on where the user's own travel puts the camera. Vector borders are ~0.9 MB for the whole world, work in airplane mode and give the distinctive look — D-5, resolves [Q-3](#15-open-questions) |
 | Journey arcs | Great-circle paths for flights, stored geometry for surface routes | Accurate distances and good-looking arcs |
 | Offline geocoding | Point-in-polygon against bundled country and region borders | Custom pins and photo imports get a country without any network call |
 | Charts | Swift Charts | Native look, iPhone to Mac |
@@ -465,6 +480,7 @@ These deviate from, or sharpen, the table above. Each is reversible.
 | D-2 | **The stats engine is pure.** It operates on value types in `AntipodesCore`, not on SwiftData models. `AntipodesStore` maps between them. | Stats are the product's substance and the thing most likely to be wrong. Keeping them free of persistence makes them unit-testable without a `ModelContainer`. |
 | D-3 | **Logic lives in a local SwiftPM package** (`AntipodesKit/`); the Xcode project is a thin app shell. | `swift test` runs the whole suite from the command line with no simulator. |
 | D-4 | Deployment target **iOS 26 / macOS 26**, built against the iOS 27 SDK. | Latest minus one. Revisit at [Q-2](#15-open-questions). |
+| D-5 | **The globe is drawn by the app, not fetched.** An orthographic projection in a SwiftUI `Canvas` over country outlines built from Natural Earth by `Tools/placedb/build_borders.py` into a bundled `.antborders` file; no MapKit, no map imagery, no network. The geometry, limb clipping, hit testing and replay timeline live in a pure `AntipodesGlobe` module. Resolves [Q-3](#15-open-questions). | MapKit has no bundled basemap: cut its service path and even `MKMapSnapshotter` fails with `MKErrorDomain Code=2`, and a region at city zoom pulls 200–300 KB of server-rendered content, per region viewed. Since the globe is centred on the user's own visits, those requests are shaped by their private travel history — which R-PRIV-7 forbids and the App Store "Data Not Collected" label could not survive. `MKTileOverlay` with bundled tiles would fix the privacy problem but costs tens of MB for a world raster pyramid and still gives MapKit's flat Mercator camera rather than a globe. Vector borders are 96 KB at 1:110m and 821 KB at 1:50m for the whole world, render crisply at any zoom, and are pure data the renderer can be swapped under. The cost is building shading, pins, arcs and gestures by hand, which is why the maths is in a pure module with tests rather than inside a view. |
 | D-6 | **The user chooses which countries count**, from three named lists: UN member states (193), UN members and observers (195), and every place with an ISO 3166-1 code (252). The denominators are read from the place database's `meta`, not compiled into the app. Resolves [Q-4](#15-open-questions). | There is no single right answer, and picking one quietly makes the headline "% of the world" wrong for half the users. Naming each list and showing its size turns an arbitrary denominator into an informed choice. Reading the counts from the data means the number and the label can never disagree, and a change in the source shows up as a build failure rather than a silently different statistic. |
 | D-7 | **The bundled place database is budgeted at 48 MB, and bundles cities above 5,000 people** (GeoNames `cities5000`: 69,822 cities, 30 MB). Resolves [Q-5](#15-open-questions). | 5,000 keeps the small places people actually travel to — Zermatt has 6,629 residents — while the 1,000 cut-off adds a hundred thousand hamlets, 38 MB and real search noise for little gain. 15,000 would save 13 MB and lose Zermatt. The 48 MB budget leaves room for landmark and route growth inside a file that is unremarkable to download; anything larger belongs in a downloadable pack (R-DB-5) rather than the bundle. |
 | D-8 | **No OpenStreetMap-derived data ships in `places.sqlite`.** If route geometry is ever wanted it ships as a separate, self-contained ODbL-licensed pack through the R-DB-5 channel. Trainline's stations dataset is excluded on the same ground, and UNESCO status is taken from Wikidata rather than UNESCO's own list. Resolves the open half of R-DB-7. | ODbL §4.4(b) makes extraction into a new database a Derivative Database and §4.4(a) requires a publicly used one to be ODbL, so OSM geometry inside the bundled file would put share-alike on the whole of it — including material we gathered from CC BY and CC0 sources and cannot relicense. §4.5(a) exempts a *collection* of separate databases, so a separate pack keeps every option open at the cost of one file. The full reasoning is in [Tools/placedb/SOURCES.md](../Tools/placedb/SOURCES.md). |
@@ -483,6 +499,8 @@ AntipodesKit/
     AntipodesStats     Coverage and distance stats. Pure; reads Core types.
     AntipodesExport    CSV and JSON export of the user's whole log.
     AntipodesStore     SwiftData models, CloudKit container, mapping to Core.
+    AntipodesGlobe     Globe geometry: orthographic projection, limb clipping,
+                       bundled border decoding, replay timeline. Pure.
     AntipodesUI        SwiftUI screens: globe, trips, add sheet, stats, settings.
   Tests/               One suite per pure module.
 App/                   Xcode app shell: entry point, assets, Info.plist.
@@ -541,7 +559,7 @@ M1 is done when, on a device or simulator:
 |---|---|---|
 | Q-1 | Name: "Antipodes" chosen; check App Store and trademark availability. | Open |
 | Q-2 | Minimum iOS version: latest only, or latest minus one? | Working answer: latest minus one (iOS 26) — D-4 |
-| Q-3 | Globe: MapKit (faster to build, needs network) or a custom offline globe? | Open — blocks the full globe screen |
+| Q-3 | Globe: MapKit (faster to build, needs network) or a custom offline globe? | **Resolved**: custom offline globe — D-5 |
 | Q-4 | Country list: which definition counts as a "country" (UN members, plus territories such as Svalbard or Greenland, disputed places)? Offer a choice of lists? | **Resolved** — yes, offer a choice of three named lists; counts come from the database — [D-6](#121-implementation-decisions-taken-during-the-m1-build) |
 | Q-5 | Database size budget, and the population cut-off for bundled cities. | **Resolved** — 48 MB budget, cities above 5,000 people (30 MB) — [D-7](#121-implementation-decisions-taken-during-the-m1-build) |
 | Q-6 | Theme taxonomy: the final list of themes, and whether tags are curated by hand or derived from Wikidata categories. | Open — working answer: hand-curated, from the sixteen tags in `Tools/placedb/curation/theme_taxonomy.csv` ([D-10](#121-implementation-decisions-taken-during-the-m1-build)) |
@@ -564,3 +582,4 @@ M1 is done when, on a device or simulator:
 |---|---|---|
 | 2026-10-18 | 0.1.0 | First markdown spec, transcribed from the 2026-10-15 draft. Added requirement IDs, M1 acceptance criteria (§14), and the implementation decisions in §12.1. |
 | 2026-10-18 | 0.2.0 | The place database is built from real open data. Completed the licence review behind R-DB-7 and rewrote §6's source table to what is actually used. Resolved Q-4 (a choice of three country lists) and Q-5 (48 MB budget, cities above 5,000) as D-6 and D-7, and recorded D-8 to D-11: no OpenStreetMap data in the bundled database, fetching split from building, curated landmark identity with sourced facts, and a single cross-kind search prominence scale. |
+| 2026-10-18 | 0.3.0 | Resolved Q-3 as D-5: the globe is drawn by the app over bundled Natural Earth borders rather than fetched through MapKit, after measuring what MapKit actually requests when it cannot reach its service. Added §9.1 (R-GLOBE-1 to R-GLOBE-7) and the pure `AntipodesGlobe` module in §12.2. |
