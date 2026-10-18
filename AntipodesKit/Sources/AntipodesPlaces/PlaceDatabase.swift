@@ -10,9 +10,28 @@ import Foundation
 public actor PlaceDatabase {
     /// Schema version this code expects. The pipeline writes the same number into
     /// `meta`, and a mismatch is an error rather than a wrong query.
-    public static let expectedSchemaVersion = 1
+    public static let expectedSchemaVersion = 2
 
-    private let connection: SQLiteConnection
+    /// How prominent a row must be for an exact name match to promote it above more
+    /// prominent prefix matches.
+    ///
+    /// Searching "par" matches *Par*, a Cornish village of nine thousand, exactly.
+    /// Promoting it above Paris because the user happened to type a complete name is
+    /// not what anyone means, so the promotion is reserved for places someone
+    /// plausibly searched for.
+    ///
+    /// The floor is in the same units as `place_index.prominence`, so for a city it is
+    /// a population. 25,000 is low enough that a real town keeps its exact match —
+    /// Tromsø has 41,915 people and should outrank Tromsø Airport when its name is
+    /// typed in full — and high enough to leave hamlets out. Every country, region,
+    /// large airport and well-known landmark is above it by construction.
+    public static let exactMatchProminenceFloor: Int64 = 25000
+
+    /// Internal rather than private so the test suite can assert table-wide invariants
+    /// — that every landmark carries a theme, that every `source` names a registered
+    /// data source — which no public query exposes and which the app has no reason to
+    /// ask. Nothing outside the module can reach it.
+    let connection: SQLiteConnection
     public let path: String
 
     public init(path: String) throws {
@@ -47,9 +66,19 @@ public actor PlaceDatabase {
     /// Searches every place type at once, which is the single search field in the add
     /// sheet (R-LOG-1).
     ///
-    /// Ranking puts an exact name or code match first, then a prefix match, then
-    /// prominence — population for cities, curated fame for landmarks. This is why
-    /// typing "par" offers Paris before Parma.
+    /// Ranking has three keys, and each one is there because of a case that got it
+    /// wrong on real data:
+    ///
+    /// 1. **Match class.** An exact name or code match outranks a prefix match, which
+    ///    outranks a mere token hit — but only if the row clears
+    ///    ``exactMatchProminenceFloor``. Without that floor, typing "par" offered
+    ///    *Par*, a Cornish village of nine thousand, ahead of Paris, purely because it
+    ///    had been typed in full.
+    /// 2. **Kind**, among exact matches only. "Singapore" offers the country before the
+    ///    city of the same name, and "Oslo" the city before the region.
+    /// 3. **Prominence**, on one scale across kinds, so a famous city beats an obscure
+    ///    country. This is what makes "par" offer Paris before Parma — and before
+    ///    Paraguay.
     public func search(
         _ text: String,
         kinds: Set<PlaceKind>? = nil,
@@ -73,7 +102,22 @@ public actor PlaceDatabase {
                 .map { SQLiteValue.text($0.rawValue) })
         }
 
-        parameters.append(contentsOf: [.text(needle), .text(needle), .text(needle)])
+        // Bound in the order the `?` placeholders appear in the SQL below: the three
+        // exact comparisons and the floor for the match class, the two LIKEs for the
+        // prefix class, then the same four again for the kind tiebreak.
+        //
+        // The needle is compared against both `name` and `name_folded` without being
+        // folded here. That is deliberate: the folding rules — ø→o, æ→ae, ß→ss and the
+        // rest — live in the pipeline, and reimplementing them in Swift would be two
+        // copies to keep in step. Someone typing "zurich" matches the folded column and
+        // someone typing "Zürich" matches the raw one.
+        parameters.append(contentsOf: [
+            .text(needle), .text(needle), .text(needle),
+            .integer(Self.exactMatchProminenceFloor),
+            .text(needle), .text(needle),
+            .text(needle), .text(needle), .text(needle),
+            .integer(Self.exactMatchProminenceFloor),
+        ])
         parameters.append(.integer(Int64(max(1, limit))))
 
         let sql = """
@@ -87,11 +131,18 @@ public actor PlaceDatabase {
         \(kindFilter)
         ORDER BY
             CASE
-                WHEN lower(p.name) = ? THEN 0
-                WHEN lower(COALESCE(p.code, '')) = ? THEN 0
-                WHEN lower(p.name) LIKE ? || '%' THEN 1
-                ELSE 2
-            END ASC,
+                WHEN (lower(p.name) = ? OR p.name_folded = ?
+                      OR lower(COALESCE(p.code, '')) = ?)
+                     AND p.prominence >= ? THEN 2
+                WHEN lower(p.name) LIKE ? || '%' OR p.name_folded LIKE ? || '%' THEN 1
+                ELSE 0
+            END DESC,
+            CASE
+                WHEN (lower(p.name) = ? OR p.name_folded = ?
+                      OR lower(COALESCE(p.code, '')) = ?)
+                     AND p.prominence >= ? THEN p.kind_rank
+                ELSE 0
+            END DESC,
             p.prominence DESC,
             p.name ASC
         LIMIT ?
@@ -136,30 +187,52 @@ public actor PlaceDatabase {
         )
     }
 
-    /// Resolves a dropped pin to a country by bounding box, then by nearest city.
+    /// Resolves a dropped pin to a country by finding the nearest bundled city and
+    /// returning the country it is in.
     ///
-    /// A stand-in for real point-in-polygon geocoding against bundled borders
-    /// (R-LOG-5). It is good enough to prove the flow and wrong near borders; the
-    /// bundled border polygons replace it, and the signature does not change.
+    /// A stand-in for real point-in-polygon geocoding (R-LOG-5), and still wrong in the
+    /// open ocean and sometimes within a few kilometres of a border. Nearest *city*
+    /// rather than nearest country centroid because the database holds seventy thousand
+    /// cities and no country centroid at all: a centroid would have to be invented,
+    /// while a city coordinate is a fact GeoNames publishes. It is also much the better
+    /// estimate — a pin in Trondheim is hundreds of kilometres from Norway's middle but
+    /// metres from a city GeoNames knows.
+    ///
+    /// The real answer is point-in-polygon against the Natural Earth borders that
+    /// `Tools/placedb/build_borders.py` compiles for the globe (decision D-5). This
+    /// signature does not change when that lands.
+    ///
+    /// Squared degrees, not great-circle distance: it is monotonic in the same order for
+    /// nearby candidates, and SQLite can compute it without a function call.
     public func approximateCountry(for coordinate: Coordinate) throws -> PlaceSearchResult? {
-        try connection.queryOne(
+        let nearestCountryCode = try connection.queryOne(
             """
-            SELECT p.kind, p.ref_id, p.name, p.subtitle, p.code,
-                   p.country_iso2, p.country_name, p.continent,
-                   p.region_code, p.region_name, p.city_id, p.city_name,
-                   p.latitude, p.longitude, p.prominence
-            FROM place_index AS p
-            WHERE p.kind = 'country' AND p.latitude IS NOT NULL
+            SELECT country_iso2
+            FROM city
             ORDER BY (
-                (p.latitude - ?) * (p.latitude - ?)
-                + (p.longitude - ?) * (p.longitude - ?)
+                (latitude - ?) * (latitude - ?)
+                + (longitude - ?) * (longitude - ?)
             ) ASC
             LIMIT 1
             """,
             parameters: [
                 .double(coordinate.latitude), .double(coordinate.latitude),
                 .double(coordinate.longitude), .double(coordinate.longitude),
-            ],
+            ]
+        ) { try $0.requiredString(0) }
+
+        guard let nearestCountryCode else { return nil }
+
+        return try connection.queryOne(
+            """
+            SELECT p.kind, p.ref_id, p.name, p.subtitle, p.code,
+                   p.country_iso2, p.country_name, p.continent,
+                   p.region_code, p.region_name, p.city_id, p.city_name,
+                   p.latitude, p.longitude, p.prominence
+            FROM place_index AS p
+            WHERE p.kind = 'country' AND p.country_iso2 = ?
+            """,
+            parameters: [.text(nearestCountryCode)],
             row: Self.decodeResult
         )
     }
@@ -189,8 +262,52 @@ public actor PlaceDatabase {
             schemaVersion: Self.expectedSchemaVersion,
             dataVersion: metaValue("data_version"),
             builtAt: metaValue("built_at"),
-            rowCounts: rowCounts
+            rowCounts: rowCounts,
+            citiesDataset: metaValue("cities_dataset"),
+            sources: dataSources()
         )
+    }
+
+    /// Every upstream source and what it obliges (R-DB-7).
+    public func dataSources() throws -> [PlaceDataSource] {
+        try connection.query(
+            """
+            SELECT id, name, url, licence, licence_url, attribution, used_for,
+                   sha256, retrieved
+            FROM data_source
+            ORDER BY name
+            """
+        ) { row in
+            try PlaceDataSource(
+                id: row.requiredString(0),
+                name: row.requiredString(1),
+                url: row.requiredString(2),
+                licence: row.requiredString(3),
+                licenceURL: row.string(4),
+                attribution: row.string(5),
+                usedFor: row.requiredString(6),
+                sha256: row.string(7),
+                retrieved: row.string(8)
+            )
+        }
+    }
+
+    /// How many countries each of the lists the user can choose between contains.
+    ///
+    /// Read from the database rather than compiled in, because which places count as a
+    /// country is the user's choice and the denominators follow the data (Q-4,
+    /// decision D-6). A list missing from `meta` falls back to the compiled-in count,
+    /// so an older database still works.
+    public func countryListCounts() throws -> [CountryList: Int] {
+        var counts: [CountryList: Int] = [:]
+        for list in CountryList.allCases {
+            let value = try connection.queryOne(
+                "SELECT value FROM meta WHERE key = ?",
+                parameters: [.text(list.metaKey)]
+            ) { try $0.requiredString(0) }
+            counts[list] = value.flatMap(Int.init) ?? list.fallbackCount
+        }
+        return counts
     }
 
     // MARK: - Decoding

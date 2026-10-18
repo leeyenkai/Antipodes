@@ -76,6 +76,22 @@ public final class AppModel {
     public func loadDatabaseInfo() async {
         guard let places else { return }
         databaseInfo = try? await places.info()
+        countryListCounts = await (try? places.countryListCounts()) ?? [:]
+        // The denominator for "% of the world" comes from the database rather than a
+        // constant, because which places count as a country is the user's choice
+        // (Q-4). Applying it here means the number and the list name on screen agree.
+        rules.applyCountryCounts(countryListCounts)
+    }
+
+    /// How many countries each selectable list holds, read from the place database.
+    public private(set) var countryListCounts: [CountryList: Int] = [:]
+
+    /// Switches the country list and repoints the denominator in one step.
+    public func selectCountryList(_ list: CountryList) {
+        var updated = rules
+        updated.countryList = list
+        updated.worldCountryCount = countryListCounts[list] ?? list.fallbackCount
+        rules = updated
     }
 
     // MARK: - Search

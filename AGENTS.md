@@ -41,7 +41,8 @@ AntipodesKit/            Swift package — all logic and UI. This is where you w
   Tests/                 One suite per pure module. Runs with no network, no simulator.
 App/Antipodes/           Xcode app shell: @main entry, Info.plist, assets, resources.
 Antipodes.xcodeproj      Thin app project; depends on the local AntipodesKit package.
-Tools/placedb/           Python pipeline that builds the read-only places.sqlite.
+Tools/placedb/           Python pipeline that builds the read-only places.sqlite
+                         from open data. curation/ is tracked; vendor/ and out/ are not.
 docs/                    SPECIFICATION.md and any design notes.
 scripts/                 Repo-level build, test and lint helpers.
 ```
@@ -72,6 +73,7 @@ value type to Core instead.
 | Build the package | `scripts/build.sh` |
 | Run all tests | `scripts/test.sh` |
 | Lint and format | `scripts/lint.sh` |
+| Fetch the place-database sources | `scripts/fetch-placedb-sources.sh` |
 | Build the place database | `scripts/build-placedb.sh` |
 | Build the iOS app | `scripts/build-app.sh` |
 | Everything CI runs | `scripts/check.sh` |
@@ -81,7 +83,7 @@ Underneath, those are just:
 ```bash
 swift build  --package-path AntipodesKit
 swift test   --package-path AntipodesKit
-python3 Tools/placedb/build_placedb.py --seed Tools/placedb/seed --out <path>
+python3 -I Tools/placedb/build_placedb.py --out <path>      # no network; reads vendor/
 xcodebuild -project Antipodes.xcodeproj -scheme Antipodes \
            -destination 'generic/platform=iOS Simulator' build
 ```
@@ -155,25 +157,35 @@ commit.
 
 The place database is built from open data, and the licences differ:
 
-| Source | Licence | Obligation |
-|---|---|---|
-| Wikidata | CC0 | None |
-| GeoNames | CC BY | Attribution required |
-| OpenStreetMap | ODbL | Share-alike on a *derived database* |
-| OurAirports | Public domain | None |
-| Natural Earth | Public domain | None |
-| GTFS feeds | Varies per feed | Check each one individually |
+| Source | Licence | Obligation | In use |
+|---|---|---|---|
+| Natural Earth | Public domain | None | Yes — country list, ISO codes, sovereignty |
+| GeoNames | **CC BY 4.0** | **Attribution, and say it was modified** | Yes — cities, regions, elevations, time zones |
+| OurAirports | Public domain | None | Yes — airports and codes |
+| Wikidata | CC0 | None | Yes — landmark facts, UNESCO status, UN membership |
+| OpenStreetMap / OpenRailwayMap | ODbL | Share-alike on a *derived database* | **No — excluded, see below** |
+| Trainline EU stations | ODbL | Same as OSM | **No — excluded** |
+| UNESCO World Heritage List | Prior written authorisation | Permission needed | **No — excluded; status comes from Wikidata** |
+| GTFS feeds | Varies per feed | Check each one individually | Not yet reviewed |
 
 **Rules:**
 
-- Nothing enters `Tools/placedb/seed/` or the pipeline without its licence recorded in
-  `Tools/placedb/SOURCES.md`.
-- The ODbL share-alike question for a shipped derived database is **unresolved**
-  (R-DB-7). Treat OSM-derived geometry as not-yet-cleared for release, and keep it
-  behind the pipeline rather than hand-copied into source files.
-- The data currently in `Tools/placedb/seed/` is a small hand-entered development
-  seed — plain geographic facts, enough to exercise the app. It is **not** the real
-  dataset and is not a substitute for the pipeline.
+- Nothing enters the pipeline without a `Source` in `Tools/placedb/sources.py` **and** a
+  row in `Tools/placedb/SOURCES.md`. A test fails if any row names an unregistered
+  source.
+- **No OpenStreetMap-derived data goes into `places.sqlite`** (decision D-8). ODbL
+  §4.4 would put share-alike on the whole file, including the CC BY and CC0 material in
+  it. If route geometry is wanted, it ships as a separate ODbL pack — read
+  `SOURCES.md` §2 before writing any code that touches OSM. This is settled, not open.
+- Where a licence requires attribution, put the licence's own words in the source's
+  `attribution` field. It is written into the database and rendered verbatim in
+  Settings, so a new source cannot ship uncredited.
+- Fetching and building are separate: `fetch_sources.py` is the only thing that touches
+  the network, and `build_placedb.py` reads only `Tools/placedb/vendor/`. Neither
+  `vendor/` nor `out/` is committed; `curation/` is.
+- Never hand-enter a geographic fact. The old `Tools/placedb/seed/` CSVs are gone.
+  Facts come from a source; `curation/` holds only judgements — which landmarks and
+  routes exist, their theme tags, and two documented reconciliations.
 
 ---
 

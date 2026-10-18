@@ -6,7 +6,11 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PACKAGE_PATH="$REPO_ROOT/AntipodesKit"
 PLACEDB_OUT="$REPO_ROOT/Tools/placedb/out/places.sqlite"
-APP_RESOURCE_DB="$REPO_ROOT/App/Antipodes/Resources/places.sqlite"
+APP_RESOURCE_DIR="$REPO_ROOT/App/Antipodes/Resources"
+APP_RESOURCE_DB="$APP_RESOURCE_DIR/places.sqlite"
+# Every source the place-database pipeline downloads.
+PLACEDB_VENDOR="$REPO_ROOT/Tools/placedb/vendor"
+PLACEDB_MANIFEST="$PLACEDB_VENDOR/manifest.json"
 
 # Build products are kept outside the repository on purpose.
 #

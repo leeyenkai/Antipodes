@@ -52,10 +52,15 @@ venv/
 
 # ---- Generated place database ----
 # The read-only place database is a build product of Tools/placedb.
-# Seed CSVs are tracked; the compiled SQLite file is not.
+# The pipeline and the curated input are tracked; the downloaded sources and the
+# compiled SQLite file are not.
 # The database the app bundles is a copy of that build product, so it is not
 # committed either — run scripts/build-placedb.sh before the first app build.
 Tools/placedb/out/
+# Downloaded open data: GeoNames, Natural Earth, OurAirports and the cached Wikidata
+# answers, plus the manifest recording each one's digest. Tens of megabytes, and
+# re-fetchable with scripts/fetch-placedb-sources.sh.
+Tools/placedb/vendor/
 App/Antipodes/Resources/places.sqlite
 *.sqlite
 *.sqlite-journal

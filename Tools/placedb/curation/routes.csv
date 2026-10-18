@@ -1,3 +1,9 @@
+# Famous routes, curated by hand (specification §6, "Famous route").
+#
+# Scalar facts only — length, typical duration, highest point. There is deliberately no
+# path geometry here: the only practical source for rail and ferry geometry is
+# OpenStreetMap, whose ODbL share-alike terms would attach to this database, so route
+# geometry ships separately or not at all. See SOURCES.md.
 name,mode,start_name,end_name,country_codes,length_km,typical_duration_minutes,highest_point_m
 Bergen Line,rail,Oslo,Bergen,NO,496,420,1237
 Glacier Express,rail,Zermatt,St. Moritz,CH,291,480,2033

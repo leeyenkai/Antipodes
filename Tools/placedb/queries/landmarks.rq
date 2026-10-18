@@ -1,0 +1,24 @@
+# Facts for the landmarks curated in curation/landmarks.csv.
+#
+# Scoped by a VALUES list rather than a pattern over all of Wikidata on purpose: the
+# public query service returns 502/504 for anything broader (a subclass walk over
+# heritage designations times out after ~60s), and a bounded query is both reliable and
+# fast. {{VALUES}} is replaced by fetch_sources.py with one chunk of curated QIDs.
+#
+# One row per (item, class) pair; fetch_sources.py folds them into one record per item.
+SELECT ?item ?itemLabel ?iso2 ?lat ?lon ?sitelinks ?class ?classLabel
+       ?inception ?height ?unesco
+WHERE {
+  VALUES ?item { {{VALUES}} }
+  OPTIONAL { ?item wdt:P17/wdt:P297 ?iso2 }
+  OPTIONAL {
+    ?item p:P625/psv:P625 ?node .
+    ?node wikibase:geoLatitude ?lat ; wikibase:geoLongitude ?lon .
+  }
+  OPTIONAL { ?item wikibase:sitelinks ?sitelinks }
+  OPTIONAL { ?item wdt:P31 ?class }
+  OPTIONAL { ?item wdt:P571 ?inception }
+  OPTIONAL { ?item wdt:P2048 ?height }
+  BIND(EXISTS { ?item wdt:P1435 wd:Q9259 } AS ?unesco)
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+}

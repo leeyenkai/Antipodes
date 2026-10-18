@@ -118,9 +118,15 @@ public struct PlaceReference: Hashable, Sendable, Codable, Identifiable {
 
     /// A region identity namespaced by country, so `CA` in Canada and California never
     /// collide.
+    ///
+    /// A code that already carries its country is returned unchanged. Two shapes do:
+    /// ISO 3166-2's `IT-62`, and the GeoNames admin1 code the place database actually
+    /// uses, `IT.07` — so both separators count as "already qualified". Prefixing a
+    /// GeoNames code again would produce `IT-IT.07` and quietly split one region into
+    /// two for coverage stats.
     public var qualifiedRegionCode: String? {
         guard let regionCode else { return nil }
-        if regionCode.contains("-") {
+        if regionCode.contains("-") || regionCode.contains(".") {
             return regionCode
         }
         guard let countryCode else { return regionCode }

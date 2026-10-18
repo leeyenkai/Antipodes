@@ -1,5 +1,6 @@
 import AntipodesCore
 import AntipodesExport
+import AntipodesPlaces
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -18,6 +19,7 @@ struct SettingsScreen: View {
                 countingSection
                 unitsSection
                 databaseSection
+                sourcesSection
                 dataSection
                 privacySection
             }
@@ -92,29 +94,29 @@ struct SettingsScreen: View {
                 }
             }
 
-            Stepper(
-                value: Binding(
-                    get: { model.rules.worldCountryCount },
-                    set: { model.rules.worldCountryCount = $0 }
-                ),
-                in: 100 ... 300
+            Picker(
+                "Countries counted",
+                selection: Binding(
+                    get: { model.rules.countryList },
+                    set: { model.selectCountryList($0) }
+                )
             ) {
-                VStack(alignment: .leading) {
-                    Text("Countries in the world")
-                    Text("\(model.rules.worldCountryCount)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
+                ForEach(CountryList.allCases) { list in
+                    Text("\(list.displayName) (\(countryCount(for: list)))").tag(list)
                 }
             }
         } header: {
             Text("Units and denominators")
         } footer: {
             Text("""
-            "Share of the world" divides by this number. 193 is the UN member states; \
-            counting territories gives a larger figure. Which list to offer is still \
-            an open question.
+            "Share of the world" divides by the list you pick. \
+            \(model.rules.countryList.explanation)
             """)
         }
+    }
+
+    private func countryCount(for list: CountryList) -> Int {
+        model.countryListCounts[list] ?? list.fallbackCount
     }
 
     private var databaseSection: some View {
@@ -133,6 +135,43 @@ struct SettingsScreen: View {
                 Text(error).font(.caption).foregroundStyle(.red)
             } else {
                 ProgressView()
+            }
+        }
+    }
+
+    /// Credits every source the place database was built from (R-DB-7).
+    ///
+    /// Attribution is a licence condition for GeoNames (CC BY 4.0), not a courtesy, so
+    /// the required credit lines are shown first and verbatim, exactly as the pipeline
+    /// wrote them into the database. The rest of the list is there because someone
+    /// looking at a number deserves to know where it came from.
+    @ViewBuilder
+    private var sourcesSection: some View {
+        if let info = model.databaseInfo, !info.sources.isEmpty {
+            Section {
+                ForEach(info.requiredAttributions, id: \.self) { credit in
+                    Text(credit).font(.footnote)
+                }
+                ForEach(info.sources) { source in
+                    NavigationLink {
+                        SourceDetailView(source: source)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(source.name)
+                            Text("\(source.licence) · \(source.usedFor)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+            } header: {
+                Text("Where the places come from")
+            } footer: {
+                Text("""
+                Built from open data. No OpenStreetMap data is included: its licence \
+                puts share-alike terms on a database built from it, which would apply \
+                to this one.
+                """)
             }
         }
     }
@@ -179,6 +218,54 @@ struct SettingsScreen: View {
         } catch {
             message = String(describing: error)
         }
+    }
+}
+
+/// One source's licence, obligation and the snapshot this database was built from.
+struct SourceDetailView: View {
+    let source: PlaceDataSource
+
+    var body: some View {
+        Form {
+            Section("Licence") {
+                LabeledContent("Licence", value: source.licence)
+                if let licenceURL = source.licenceURL, let url = URL(string: licenceURL) {
+                    Link("Read the licence", destination: url)
+                }
+                if let url = URL(string: source.url) {
+                    Link(source.name, destination: url)
+                }
+            }
+
+            if let attribution = source.attribution {
+                Section {
+                    Text(attribution)
+                } header: {
+                    Text("Required credit")
+                } footer: {
+                    Text("This licence requires the credit above wherever the data is used.")
+                }
+            }
+
+            Section("Used for") {
+                Text(source.usedFor)
+            }
+
+            // Which snapshot this build read. GeoNames and OurAirports publish daily,
+            // so for those this is the only record of which day's data is in the app.
+            if source.sha256 != nil || source.retrieved != nil {
+                Section("This build") {
+                    if let retrieved = source.retrieved {
+                        LabeledContent("Retrieved", value: retrieved)
+                    }
+                    if let digest = source.sha256 {
+                        LabeledContent("Digest", value: String(digest.prefix(16)))
+                            .font(.caption.monospaced())
+                    }
+                }
+            }
+        }
+        .navigationTitle(source.name)
     }
 }
 

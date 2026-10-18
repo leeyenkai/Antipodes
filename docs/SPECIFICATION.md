@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Draft |
-| **Spec version** | 0.1.0 |
+| **Spec version** | 0.2.0 |
 | **Last updated** | 2026-10-18 |
 | **Owner** | Lee Yen Kai |
 | **Source** | Derived from *Antipodes — Spec Sheet (Draft v0.1)* (2026-10-15) |
@@ -307,14 +307,14 @@ v1 for a launch set of cities and grows from there.
 The database is the product's moat: a geography core built from open data, plus
 hand-curated landmarks and famous routes, shipped inside the app and updated in-app.
 
-| Entity | Key attributes | Candidate sources |
+| Entity | Key attributes | Sources in use |
 |---|---|---|
-| Country and territory | ISO code, borders (polygon), continent, capital, population, area, languages, currency | Natural Earth, Wikidata |
-| Region (state, province) | Name, borders, parent country | Natural Earth, GeoNames |
-| City | Coordinates, population, elevation, time zone, monthly climate normals, climate zone | GeoNames, Wikidata, a gridded climate-normals dataset (to be chosen) |
-| Landmark | Type, theme tags, year built or era, UNESCO status, height, parent city | Wikidata, UNESCO list, manual curation |
-| Airport | IATA and ICAO codes, coordinates, elevation | OurAirports |
-| Famous route | Mode, start, end, path geometry, length (km), typical duration, highest point, countries crossed | Manual curation, OpenStreetMap |
+| Country and territory | ISO code, continent, capital, population, area, languages, currency, UN status | GeoNames (facts), Natural Earth (list and sovereignty), Wikidata (UN membership). |
+| Region (state, province) | Name, parent country | GeoNames first-level divisions, keyed by its own admin1 code |
+| City | Coordinates, population, elevation, time zone | GeoNames. Monthly climate normals need a source that is not yet chosen, which is what blocks R-CALC-2. |
+| Landmark | Type, theme tags, year built, UNESCO status, height, parent city | Wikidata for every fact; `Tools/placedb/curation/` for which landmarks exist and their themes |
+| Airport | IATA and ICAO codes, coordinates, elevation, size class | OurAirports |
+| Famous route | Mode, start, end, length (km), typical duration, highest point, countries crossed | Manual curation. **No path geometry** — the only practical source is OpenStreetMap, which is excluded ([D-8](#121-implementation-decisions-taken-during-the-m1-build)). |
 
 ### 6.1 Curation rules
 
@@ -331,7 +331,7 @@ hand-curated landmarks and famous routes, shipped inside the app and updated in-
 | R-DB-4 | Shipped as a read-only SQLite file, kept separate from user data. `[M1]` |
 | R-DB-5 | Updates download as versioned files from a static host. Every user requests the same files, so an update reveals nothing about anyone's travels. `[V1]` |
 | R-DB-6 | New achievements and curated collections MUST ride along in these updates, without needing an app release. `[V1]` |
-| R-DB-7 | **Licensing check required** before shipping any source: Wikidata is public domain (CC0); GeoNames requires attribution; OpenStreetMap's licence has share-alike terms for derived databases. `[V1]` |
+| R-DB-7 | Every source MUST be licence-reviewed before it ships, with the obligation recorded in [Tools/placedb/SOURCES.md](../Tools/placedb/SOURCES.md) and any required attribution shown in the app. **Done for the sources in use:** Natural Earth and OurAirports are public domain, Wikidata is CC0, GeoNames is CC BY 4.0 and its credit is rendered in Settings from the database itself. OpenStreetMap and Trainline are ODbL and are excluded from the bundled database ([D-8](#121-implementation-decisions-taken-during-the-m1-build)); GTFS feeds and a climate-normals source remain unreviewed and block their own features. `[V1]` |
 
 ---
 
@@ -399,6 +399,7 @@ destinations sit in a sidebar.
 | **Collections** | Achievements, wishlist, curated collections with progress | Browse, add to wishlist, see what is left |
 | **Settings** | Counting rules, units, iCloud, import and export, database version | Reached from the Stats or Collections screen |
 
+
 ### 9.1 iPad and Mac layout
 
 | ID | Requirement |
@@ -464,6 +465,12 @@ These deviate from, or sharpen, the table above. Each is reversible.
 | D-2 | **The stats engine is pure.** It operates on value types in `AntipodesCore`, not on SwiftData models. `AntipodesStore` maps between them. | Stats are the product's substance and the thing most likely to be wrong. Keeping them free of persistence makes them unit-testable without a `ModelContainer`. |
 | D-3 | **Logic lives in a local SwiftPM package** (`AntipodesKit/`); the Xcode project is a thin app shell. | `swift test` runs the whole suite from the command line with no simulator. |
 | D-4 | Deployment target **iOS 26 / macOS 26**, built against the iOS 27 SDK. | Latest minus one. Revisit at [Q-2](#15-open-questions). |
+| D-6 | **The user chooses which countries count**, from three named lists: UN member states (193), UN members and observers (195), and every place with an ISO 3166-1 code (252). The denominators are read from the place database's `meta`, not compiled into the app. Resolves [Q-4](#15-open-questions). | There is no single right answer, and picking one quietly makes the headline "% of the world" wrong for half the users. Naming each list and showing its size turns an arbitrary denominator into an informed choice. Reading the counts from the data means the number and the label can never disagree, and a change in the source shows up as a build failure rather than a silently different statistic. |
+| D-7 | **The bundled place database is budgeted at 48 MB, and bundles cities above 5,000 people** (GeoNames `cities5000`: 69,822 cities, 30 MB). Resolves [Q-5](#15-open-questions). | 5,000 keeps the small places people actually travel to — Zermatt has 6,629 residents — while the 1,000 cut-off adds a hundred thousand hamlets, 38 MB and real search noise for little gain. 15,000 would save 13 MB and lose Zermatt. The 48 MB budget leaves room for landmark and route growth inside a file that is unremarkable to download; anything larger belongs in a downloadable pack (R-DB-5) rather than the bundle. |
+| D-8 | **No OpenStreetMap-derived data ships in `places.sqlite`.** If route geometry is ever wanted it ships as a separate, self-contained ODbL-licensed pack through the R-DB-5 channel. Trainline's stations dataset is excluded on the same ground, and UNESCO status is taken from Wikidata rather than UNESCO's own list. Resolves the open half of R-DB-7. | ODbL §4.4(b) makes extraction into a new database a Derivative Database and §4.4(a) requires a publicly used one to be ODbL, so OSM geometry inside the bundled file would put share-alike on the whole of it — including material we gathered from CC BY and CC0 sources and cannot relicense. §4.5(a) exempts a *collection* of separate databases, so a separate pack keeps every option open at the cost of one file. The full reasoning is in [Tools/placedb/SOURCES.md](../Tools/placedb/SOURCES.md). |
+| D-9 | **Fetching is a separate step from building.** `fetch_sources.py` downloads into `Tools/placedb/vendor/` and records each file's digest and retrieval date; `build_placedb.py` reads only that cache and never the network. | Keeps `scripts/check.sh` runnable offline and makes "deterministic" a claim with a stated scope: identical given its inputs, with the manifest saying exactly what those were. Natural Earth is pinned to a release tag; GeoNames, OurAirports and Wikidata are rolling, so the digest is the only honest record of which snapshot a database holds. |
+| D-10 | **Landmarks are curated by identity and themed by hand; every fact comes from Wikidata.** `curation/landmarks.csv` lists a QID, the expected label and the theme tags, and the build fails if Wikidata disagrees about the label or the country. | Automatic selection does not work: the top heritage-designated items in Italy are Verona, Catania and the Croatian *language*, because `P1435` covers intangible heritage and whole cities. Curating identity while sourcing facts keeps the data honest and the list arguable. The label check is not ceremony — it caught "Persepolis" resolving to a football club and "Grand Canyon" to a university. |
+| D-11 | **Search ranks on one prominence scale across place kinds**, with the kind used only to break ties between exact matches, and an exact match promoted only above a prominence floor. `place_index` carries an ASCII-folded copy of each name so a query typed without accents can match exactly. | A per-kind tier made every country outrank every city, so "par" offered Paraguay before Paris; promoting every exact match put *Par*, a Cornish village, above both. One scale plus a floor gives all three documented cases: a country before a city of the same name, a city before a region of the same name, and the most prominent place for a prefix. The folded name matters as much as the ranking: without it no accented name could match exactly, and "malmo" ranked a hamlet in Aruba above Malmö. |
 
 ### 12.2 Module layout
 
@@ -535,9 +542,9 @@ M1 is done when, on a device or simulator:
 | Q-1 | Name: "Antipodes" chosen; check App Store and trademark availability. | Open |
 | Q-2 | Minimum iOS version: latest only, or latest minus one? | Working answer: latest minus one (iOS 26) — D-4 |
 | Q-3 | Globe: MapKit (faster to build, needs network) or a custom offline globe? | Open — blocks the full globe screen |
-| Q-4 | Country list: which definition counts as a "country" (UN members, plus territories such as Svalbard or Greenland, disputed places)? Offer a choice of lists? | Open — blocks "% of the world" |
-| Q-5 | Database size budget, and the population cut-off for bundled cities. | Open |
-| Q-6 | Theme taxonomy: the final list of themes, and whether tags are curated by hand or derived from Wikidata categories. | Open |
+| Q-4 | Country list: which definition counts as a "country" (UN members, plus territories such as Svalbard or Greenland, disputed places)? Offer a choice of lists? | **Resolved** — yes, offer a choice of three named lists; counts come from the database — [D-6](#121-implementation-decisions-taken-during-the-m1-build) |
+| Q-5 | Database size budget, and the population cut-off for bundled cities. | **Resolved** — 48 MB budget, cities above 5,000 people (30 MB) — [D-7](#121-implementation-decisions-taken-during-the-m1-build) |
+| Q-6 | Theme taxonomy: the final list of themes, and whether tags are curated by hand or derived from Wikidata categories. | Open — working answer: hand-curated, from the sixteen tags in `Tools/placedb/curation/theme_taxonomy.csv` ([D-10](#121-implementation-decisions-taken-during-the-m1-build)) |
 | Q-7 | Personality archetypes: names and the rules that assign them. | Open |
 | Q-8 | Which import formats to support first. | Open |
 | Q-9 | Should a photo be attachable to a visit as a stored copy, or only as a reference? | Open |
@@ -556,3 +563,4 @@ M1 is done when, on a device or simulator:
 | Date | Spec version | Change |
 |---|---|---|
 | 2026-10-18 | 0.1.0 | First markdown spec, transcribed from the 2026-10-15 draft. Added requirement IDs, M1 acceptance criteria (§14), and the implementation decisions in §12.1. |
+| 2026-10-18 | 0.2.0 | The place database is built from real open data. Completed the licence review behind R-DB-7 and rewrote §6's source table to what is actually used. Resolved Q-4 (a choice of three country lists) and Q-5 (48 MB budget, cities above 5,000) as D-6 and D-7, and recorded D-8 to D-11: no OpenStreetMap data in the bundled database, fetching split from building, curated landmark identity with sourced facts, and a single cross-kind search prominence scale. |

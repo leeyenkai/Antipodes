@@ -12,6 +12,7 @@ public enum CountingRulesStorage {
         static let includeCommutes = "rules.includeCommutes"
         static let unitSystem = "rules.unitSystem"
         static let worldCountryCount = "rules.worldCountryCount"
+        static let countryList = "rules.countryList"
     }
 
     public static func load(from defaults: UserDefaults = .standard) -> CountingRules {
@@ -25,8 +26,9 @@ public enum CountingRulesStorage {
                 ?? fallback.includeCommutes,
             unitSystem: (defaults.string(forKey: Key.unitSystem)
                 .flatMap(UnitSystem.init(rawValue:))) ?? defaultUnitSystem(),
+            countryList: (defaults.string(forKey: Key.countryList)
+                .flatMap(CountryList.init(rawValue:))) ?? fallback.countryList,
             worldCountryCount: defaults.object(forKey: Key.worldCountryCount) as? Int
-                ?? fallback.worldCountryCount
         )
     }
 
@@ -36,6 +38,7 @@ public enum CountingRulesStorage {
         defaults.set(rules.includeCommutes, forKey: Key.includeCommutes)
         defaults.set(rules.unitSystem.rawValue, forKey: Key.unitSystem)
         defaults.set(rules.worldCountryCount, forKey: Key.worldCountryCount)
+        defaults.set(rules.countryList.rawValue, forKey: Key.countryList)
     }
 
     /// Units follow the device's region until the user overrides them (R-CALC-4).

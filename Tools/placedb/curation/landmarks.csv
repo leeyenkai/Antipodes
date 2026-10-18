@@ -1,0 +1,262 @@
+# Curated landmark selection (R-DB-1, specification §6).
+#
+# This file says which landmarks exist and what themes they carry. It holds no
+# geographic facts: name, coordinates, year built, height and UNESCO status all come
+# from Wikidata (CC0) at build time.
+#
+# `name` is the expected English Wikidata label and is *verified* on every build — a
+# mistyped QID fails the build instead of shipping the wrong place. Several entries in
+# this list were caught that way while it was assembled ("Persepolis" first resolved to
+# a football club, "Grand Canyon" to a university).
+#
+# `country_iso2` is likewise an expectation, checked against Wikidata's P17. Where
+# Wikidata records no country at all (the Amsterdam museums), the country is taken from
+# `city_name`'s own GeoNames country instead, so `city_name` is required in that case.
+#
+# `themes` must come from curation/theme_taxonomy.csv. Every landmark needs at least
+# one or the personality stats under-count (R-DB-1), and the build fails without one.
+#
+# Deliberately not included:
+#   - Western Wall, Dome of the Rock — Wikidata files these under PS while they sit in
+#     a city whose sovereignty is contested. Shipping either code states a political
+#     position, so they are out until there is a considered answer.
+#   - Berlin Wall — Wikidata's country is DD, a state that no longer exists.
+#   - Tulum — no reliable Wikidata item for the Maya site as distinct from the town and
+#     the municipality.
+qid,name,country_iso2,city_name,themes
+Q12495,Burj Khalifa,AE,Dubai,"modern-architecture,engineering"
+Q695604,Sheikh Zayed Mosque,AE,Abu Dhabi,"religious-sites,architecture"
+Q827401,Colón Theater,AR,Buenos Aires,"architecture,art-and-museums"
+Q36332,Iguaçu Falls,AR,,"nature,national-parks"
+Q367943,Perito Moreno Glacier,AR,,nature
+Q131633,Hallstatt,AT,,"nature,medieval-history"
+Q131330,Schönbrunn Palace,AT,Vienna,"palaces,architecture"
+Q5943,St. Stephen's Cathedral,AT,Vienna,"medieval-history,religious-sites"
+Q7343,Great Barrier Reef,AU,,"nature,wildlife"
+Q54495,Sydney Harbour Bridge,AU,Sydney,"engineering,modern-architecture"
+Q45178,Sydney Opera House,AU,Sydney,"modern-architecture,art-and-museums"
+Q475623,The Twelve Apostles,AU,,nature
+Q33910,Uluru,AU,,"nature,ancient-history"
+Q180901,Atomium,BE,Brussels,modern-architecture
+Q215429,Grand-Place,BE,Brussels,"medieval-history,architecture"
+Q76122,Salar de Uyuni,BO,,nature
+Q79961,Christ the Redeemer,BR,Rio de Janeiro,"modern-history,religious-sites"
+Q210722,Sugarloaf Mountain,BR,Rio de Janeiro,nature
+Q650872,Okavango Delta,BW,,"nature,wildlife"
+Q41858,Banff National Park,CA,,"national-parks,nature"
+Q134883,CN Tower,CA,Toronto,"modern-architecture,engineering"
+Q34221,Niagara Falls,CA,,nature
+Q2114279,Old Quebec,CA,Québec,"medieval-history,architecture"
+Q25225,Chapel Bridge,CH,Luzern,"medieval-history,architecture"
+Q1374,Matterhorn,CH,,nature
+Q14452,Easter Island,CL,,"ancient-history,archaeology"
+Q901646,Torres del Paine National Park,CL,,"national-parks,nature"
+Q80290,Forbidden City,CN,Beijing,"palaces,art-and-museums"
+Q12501,Great Wall of China,CN,,"ancient-history,military-history,engineering"
+Q513,Mount Everest,CN,,nature
+Q71229,Potala Palace,CN,Lhasa,"religious-sites,palaces"
+Q4132,Summer Palace,CN,Beijing,"palaces,national-parks"
+Q125445,Temple of Heaven,CN,Beijing,"religious-sites,architecture"
+Q47672,Terracotta Army,CN,Xi'an,"ancient-history,archaeology"
+Q125474,The Bund,CN,Shanghai,modern-architecture
+Q528079,Tian Tan Buddha,CN,,religious-sites
+Q17541,Victoria Peak,CN,,nature
+Q3895620,Zhangjiajie National Forest Park,CN,,"national-parks,nature"
+Q657461,Cartagena,CO,Cartagena,"medieval-history,architecture"
+Q15043487,Havana Cathedral,CU,Havana,"religious-sites,architecture"
+Q204871,Charles Bridge,CZ,Prague,"medieval-history,architecture"
+Q193369,Prague Castle,CZ,Prague,"medieval-history,palaces"
+Q82425,Brandenburg Gate,DE,Berlin,"modern-history,architecture"
+Q4176,Cologne Cathedral,DE,Köln,"medieval-history,religious-sites,architecture"
+Q4152,Neuschwanstein Castle,DE,,"palaces,architecture"
+Q151897,Reichstag,DE,Berlin,"modern-history,architecture"
+Q943946,Nyhavn,DK,Copenhagen,architecture
+Q110289,Tivoli Gardens,DK,Copenhagen,national-parks
+Q38095,Galapagos Islands,EC,,"nature,wildlife,national-parks"
+Q134140,Abu Simbel,EG,,"ancient-history,archaeology"
+Q12508,Giza pyramid complex,EG,,"ancient-history,archaeology"
+Q522862,Karnak Temple Complex,EG,,"ancient-history,religious-sites"
+Q130958,The Great Sphinx,EG,,"ancient-history,archaeology"
+Q133423,Valley of the Kings,EG,,"ancient-history,archaeology"
+Q47476,Alhambra,ES,Granada,"medieval-history,palaces,architecture"
+Q48435,Basilica and Expiatory Church of the Holy Family,ES,Barcelona,"religious-sites,modern-architecture"
+Q179199,Guggenheim Museum Bilbao,ES,Bilbao,"modern-architecture,art-and-museums"
+Q33200,Mosque-Cathedral of Cordoba,ES,Cordoba,"medieval-history,religious-sites,architecture"
+Q160112,Museo del Prado,ES,Madrid,art-and-museums
+Q212867,Park Güell,ES,Barcelona,"modern-architecture,national-parks"
+Q171517,Royal Palace of Madrid,ES,Madrid,palaces
+Q207590,Lalibela,ET,,"medieval-history,religious-sites"
+Q1292442,Suomenlinna,FI,Helsinki,"military-history,medieval-history"
+Q64436,Arc de Triomphe,FR,Paris,"modern-history,architecture"
+Q6582,Carcassonne,FR,Carcassonne,"medieval-history,military-history"
+Q205367,Château de Chambord,FR,,"palaces,architecture"
+Q243,Eiffel Tower,FR,Paris,"modern-architecture,engineering"
+Q1088137,Lascaux,FR,,"ancient-history,archaeology"
+Q20892,Le Mont Saint-Michel,FR,,"medieval-history,religious-sites,architecture"
+Q19675,Louvre Museum,FR,Paris,"art-and-museums,palaces"
+Q23402,Musée d'Orsay,FR,Paris,art-and-museums
+Q2981,Notre-Dame de Paris,FR,Paris,"medieval-history,religious-sites,architecture"
+Q2946,Palace of Versailles,FR,Versailles,"palaces,architecture,art-and-museums"
+Q189764,Pont du Gard,FR,,"ancient-history,engineering"
+Q28785,Sacré-Cœur,FR,Paris,"religious-sites,architecture"
+Q41225,Big Ben,GB,London,modern-architecture
+Q6373,British Museum,GB,London,art-and-museums
+Q42182,Buckingham Palace,GB,London,palaces
+Q212065,Edinburgh Castle,GB,Edinburgh,"medieval-history,military-history"
+Q106187,Giant's Causeway,GB,,nature
+Q57357,Hadrian's Wall,GB,,"ancient-history,military-history"
+Q2540426,Roman Baths,GB,Bath,"ancient-history,archaeology"
+Q173882,St Paul's Cathedral,GB,London,"religious-sites,architecture"
+Q39671,Stonehenge,GB,,"ancient-history,archaeology"
+Q83125,Tower Bridge,GB,London,"modern-architecture,engineering"
+Q62378,Tower of London,GB,London,"medieval-history,military-history"
+Q5933,Westminster Abbey,GB,London,"medieval-history,religious-sites"
+Q131013,Acropolis of Athens,GR,Athens,"ancient-history,architecture"
+Q75459,Delphi,GR,,"ancient-history,archaeology"
+Q173527,Knossos,GR,,"ancient-history,archaeology"
+Q3125051,Meteora,GR,,"religious-sites,nature"
+Q10288,Parthenon,GR,Athens,"ancient-history,religious-sites,architecture"
+Q181172,Tikal,GT,,"ancient-history,archaeology"
+Q46313,Buda Castle,HU,Budapest,"medieval-history,palaces"
+Q11819,Hungarian Parliament Building,HU,Budapest,modern-architecture
+Q42798,Borobudur Temple,ID,,"ancient-history,religious-sites,architecture"
+Q47721,Prambanan Temple,ID,,"ancient-history,religious-sites"
+Q239477,Cliffs of Moher,IE,,nature
+Q258464,"Trinity College, Dublin",IE,Dublin,"architecture,art-and-museums"
+Q23883,Dead Sea,IL,,nature
+Q184427,Ajanta Caves,IN,,"ancient-history,religious-sites,art-and-museums"
+Q456817,Amber Fort,IN,Jaipur,"medieval-history,palaces"
+Q189616,Ellora Caves,IN,,"ancient-history,religious-sites"
+Q864862,Gateway of India,IN,Mumbai,"modern-history,architecture"
+Q26732,Hampi,IN,,"medieval-history,archaeology"
+Q180422,Harmandir Sahib,IN,Amritsar,"religious-sites,architecture"
+Q836531,Hawa Mahal,IN,Jaipur,"medieval-history,palaces"
+Q167298,Khajuraho Group of Monuments,IN,,"medieval-history,religious-sites"
+Q45957,Red Fort,IN,New Delhi,"medieval-history,military-history"
+Q9141,Taj Mahal,IN,Agra,"medieval-history,palaces,architecture"
+Q4519,Naqsh-e Jahan Square,IR,Isfahan,"medieval-history,architecture"
+Q129072,Persepolis,IR,,"ancient-history,archaeology"
+Q886946,Blue Lagoon,IS,,nature
+Q38519,Gullfoss,IS,,nature
+Q212214,Amalfi Coast,IT,,nature
+Q10285,Colosseum,IT,Rome,"ancient-history,architecture"
+Q189883,Doge's Palace,IT,Venice,"medieval-history,palaces,art-and-museums"
+Q191739,Florence Cathedral,IT,Florence,"medieval-history,religious-sites,architecture"
+Q39054,Leaning Tower of Pisa,IT,Pisa,"medieval-history,architecture"
+Q18068,Milan Cathedral,IT,Milan,"medieval-history,religious-sites,architecture"
+Q524,Mount Vesuvius,IT,,nature
+Q99309,Pantheon,IT,Rome,"ancient-history,religious-sites,architecture"
+Q43332,Pompeii,IT,,"ancient-history,archaeology"
+Q208633,Ponte Vecchio,IT,Florence,"medieval-history,architecture"
+Q180212,Roman Forum,IT,Rome,ancient-history
+Q172988,St Mark's Basilica,IT,Venice,"medieval-history,religious-sites,architecture"
+Q185382,Trevi Fountain,IT,Rome,"architecture,art-and-museums"
+Q51252,Uffizi Gallery,IT,Florence,art-and-museums
+Q636774,Valle dei Templi,IT,,"ancient-history,archaeology"
+Q5788,Petra,JO,,"ancient-history,archaeology"
+Q714828,Fushimi Inari-taisha,JP,Kyoto,religious-sites
+Q188754,Himeji Castle,JP,Himeji,"medieval-history,military-history"
+Q231140,Hiroshima Peace Memorial,JP,Hiroshima,modern-history
+Q191763,Itsukushima Shrine,JP,,"religious-sites,architecture"
+Q270983,Kinkaku-ji Temple,JP,Kyoto,"religious-sites,architecture"
+Q221716,Kiyomizu-dera,JP,Kyoto,"religious-sites,architecture"
+Q287165,Meiji Jingū,JP,Tokyo,religious-sites
+Q39231,Mount Fuji,JP,,nature
+Q615183,Sensō-ji Temple,JP,Tokyo,religious-sites
+Q57965,Tokyo Skytree,JP,Tokyo,"modern-architecture,engineering"
+Q859471,Tsukiji fish market,JP,Tokyo,"markets,food"
+Q207724,Masai Mara,KE,,"national-parks,wildlife"
+Q43473,Angkor Wat,KH,,"medieval-history,religious-sites,architecture"
+Q408318,Bulguksa,KR,,religious-sites
+Q482485,Gyeongbokgung,KR,Seoul,"palaces,medieval-history"
+Q69134,Namsan Seoul Tower,KR,Seoul,modern-architecture
+Q178835,Baalbek,LB,,"ancient-history,archaeology"
+Q272153,Sigiriya,LK,,"ancient-history,archaeology"
+Q289175,Temple of the Tooth,LK,Kandy,religious-sites
+Q309436,Aït Benhaddou,MA,,"medieval-history,architecture"
+Q41346,Hassan II Mosque,MA,Casablanca,"religious-sites,architecture"
+Q258348,Jemaa el-Fnaa,MA,Marrakesh,"markets,food"
+Q683632,Great Mosque of Djenné,ML,,"religious-sites,architecture"
+Q29317,Bagan,MM,,"medieval-history,religious-sites,archaeology"
+Q464535,Shwedagon Pagoda,MM,Yangon,"religious-sites,architecture"
+Q5859,Chichen Itza,MX,,"ancient-history,archaeology"
+Q2663377,Frida Kahlo Museum,MX,Mexico City,art-and-museums
+Q524249,National Museum of Anthropology,MX,Mexico City,art-and-museums
+Q172613,Teotihuacan,MX,,"ancient-history,archaeology"
+Q687629,Batu Caves,MY,Kuala Lumpur,"religious-sites,nature"
+Q83063,Petronas Towers,MY,Kuala Lumpur,"modern-architecture,engineering"
+Q165366,Anne Frank House,NL,Amsterdam,"modern-history,art-and-museums"
+Q190804,Rijksmuseum,NL,Amsterdam,art-and-museums
+Q224124,Van Gogh Museum,NL,Amsterdam,art-and-museums
+Q153430,Bryggen,NO,Bergen,"medieval-history,architecture"
+Q1126911,Frogner Park,NO,Oslo,"art-and-museums,national-parks"
+Q193989,Geirangerfjord,NO,,nature
+Q215023,Nidaros Cathedral,NO,Trondheim,"medieval-history,religious-sites"
+Q889902,Boudhanath,NP,Kathmandu,"religious-sites,architecture"
+Q18924400,Hobbiton Movie Set,NZ,,modern-history
+Q187197,Milford Sound / Piopiotahi,NZ,,nature
+Q722125,Sky Tower,NZ,Auckland,modern-architecture
+Q202845,Tongariro National Park,NZ,,"national-parks,nature"
+Q7350,Panama Canal,PA,,"engineering,modern-history"
+Q2942242,Cusco Cathedral,PE,Cusco,"religious-sites,architecture"
+Q676203,Machu Picchu,PE,,"ancient-history,archaeology"
+Q2620036,Nazca Lines,PE,,"ancient-history,archaeology"
+Q7341,Auschwitz,PL,,modern-history
+Q18820,Wawel Castle,PL,Krakow,"medieval-history,palaces"
+Q215003,Belém Tower,PT,Lisbon,"medieval-history,military-history"
+Q272781,Jerónimos Monastery,PT,Lisbon,"religious-sites,architecture"
+Q69513,Pena Palace,PT,Sintra,"palaces,architecture"
+Q1148353,Museum of Islamic Art,QA,Doha,"art-and-museums,modern-architecture"
+Q215208,Church of the Savior on Blood,RU,Saint Petersburg,"religious-sites,architecture"
+Q132783,Hermitage Museum,RU,Saint Petersburg,"art-and-museums,palaces"
+Q133274,Kremlin,RU,Moscow,"medieval-history,palaces"
+Q5513,Lake Baikal,RU,,nature
+Q41116,Red Square,RU,Moscow,"modern-history,architecture"
+Q129846,St. Basil's Cathedral,RU,Moscow,"religious-sites,architecture"
+Q901371,Vasa Museum,SE,Stockholm,"art-and-museums,modern-history"
+Q630135,Gardens by the Bay,SG,Singapore,"modern-architecture,national-parks"
+Q548679,Marina Bay Sands,SG,Singapore,modern-architecture
+Q873769,Grand Palace,TH,Bangkok,"palaces,religious-sites"
+Q476222,Phra Nakhon Si Ayutthaya,TH,,"medieval-history,archaeology"
+Q724970,Wat Arun,TH,Bangkok,"religious-sites,architecture"
+Q1045876,Wat Phra Kaew,TH,Bangkok,religious-sites
+Q217265,Cappadocia,TR,,"nature,ancient-history"
+Q47611,Ephesus,TR,,"ancient-history,archaeology"
+Q12506,Hagia Sophia,TR,Istanbul,"medieval-history,religious-sites,architecture"
+Q105893254,Pamukkale,TR,,"nature,ancient-history"
+Q80541,Sultan Ahmed Mosque,TR,Istanbul,"religious-sites,architecture"
+Q170495,Topkapı Palace,TR,Istanbul,"palaces,art-and-museums"
+Q83101,Taipei 101,TW,Taipei,"modern-architecture,engineering"
+Q7296,Mount Kilimanjaro,TZ,,nature
+Q1217726,Ngorongoro Conservation Area,TZ,,"national-parks,wildlife"
+Q11812902,Serengeti National Park,TZ,,"national-parks,wildlife"
+Q131354,Alcatraz Island,US,San Francisco,modern-history
+Q125006,Brooklyn Bridge,US,New York City,"engineering,modern-history"
+Q160409,Central Park,US,New York City,national-parks
+Q9188,Empire State Building,US,New York City,"modern-architecture,engineering"
+Q602939,French Quarter,US,New Orleans,"architecture,food"
+Q44440,Golden Gate Bridge,US,San Francisco,"engineering,modern-architecture"
+Q118841,Grand Canyon,US,,"nature,national-parks"
+Q180376,Hollywood Sign,US,Los Angeles,modern-history
+Q213559,Lincoln Memorial,US,Washington,"modern-history,architecture"
+Q160236,Metropolitan Museum of Art,US,New York City,art-and-museums
+Q1130516,Millennium Park,US,Chicago,"modern-architecture,national-parks"
+Q83497,Mount Rushmore,US,,modern-history
+Q131626,Smithsonian Institution,US,Washington,art-and-museums
+Q5317,Space Needle,US,Seattle,modern-architecture
+Q9202,Statue of Liberty,US,New York City,"modern-history,engineering"
+Q11259,Times Square,US,New York City,modern-architecture
+Q35525,White House,US,Washington,"modern-history,palaces"
+Q351,Yellowstone National Park,US,,"national-parks,nature,wildlife"
+Q180402,Yosemite National Park,US,,"national-parks,nature"
+Q1373583,Registan,UZ,Samarkand,"medieval-history,architecture"
+Q2943,Sistine Chapel,VA,,"religious-sites,art-and-museums"
+Q12512,St. Peter's Basilica,VA,,"religious-sites,architecture,art-and-museums"
+Q80299,Angel Falls,VE,,nature
+Q190128,Ha Long Bay,VN,,nature
+Q36160,Hội An,VN,Hoi An,"medieval-history,architecture"
+Q24451,Kruger National Park,ZA,,"national-parks,wildlife"
+Q192493,Robben Island,ZA,Cape Town,modern-history
+Q213360,Table Mountain,ZA,Cape Town,"nature,national-parks"
+Q43278,Victoria Falls,ZM,,nature
+Q209217,Great Zimbabwe,ZW,,"medieval-history,archaeology"

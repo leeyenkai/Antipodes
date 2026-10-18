@@ -1,0 +1,14 @@
+# Current United Nations member states, keyed by ISO 3166-1 alpha-2.
+#
+# The end-date filter is what makes this a list of *current* members: without it
+# Wikidata also returns Taiwan (membership ended 1971), East Germany and Yugoslavia.
+#
+# This yields 192 codes rather than 193, because Wikidata records the membership of one
+# state on an entity that carries no ISO code. curation/un_membership.csv reconciles
+# that, and the build asserts the final total (Q-4).
+SELECT DISTINCT ?iso2 WHERE {
+  ?state p:P463 ?statement .
+  ?statement ps:P463 wd:Q1065 .
+  FILTER NOT EXISTS { ?statement pq:P582 ?ended }
+  ?state wdt:P297 ?iso2 .
+}

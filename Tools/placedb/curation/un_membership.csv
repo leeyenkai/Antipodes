@@ -1,0 +1,17 @@
+# Reconciliations the upstream data cannot express, with the reason for each.
+#
+# UN membership is read from Wikidata (P463 "member of" -> Q1065 United Nations,
+# ignoring statements with an end date, which is what keeps Taiwan, East Germany and
+# Yugoslavia out). That yields 192 ISO 3166-1 alpha-2 codes rather than 193, because
+# Wikidata puts the membership on an entity that carries no ISO code.
+#
+# The build applies these rows and then asserts the UN member total is exactly 193,
+# failing if it is not, so a change upstream cannot move the "% of the world"
+# denominator without someone noticing (Q-4, decision D-6).
+#
+# `role` is `member` or `observer`. `wikidata_qid` records which entity actually holds
+# the statement, so the claim stays checkable.
+iso2,role,wikidata_qid,reason
+DK,member,Q756617,"Wikidata records the UN membership on Kingdom of Denmark (Q756617), which has no ISO 3166-1 code; ISO assigns DK to Denmark (Q35)."
+VA,observer,Q237,"Permanent observer State, not a member. The Holy See (Q302) holds the observer status; VA is the code ISO assigns to Vatican City (Q237)."
+PS,observer,Q219060,"Permanent observer State since 2012 (General Assembly resolution 67/19), not a member."

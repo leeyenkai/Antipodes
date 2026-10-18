@@ -70,8 +70,64 @@ public struct PlaceDatabaseInfo: Hashable, Sendable {
     public let dataVersion: String
     public let builtAt: String
     public let rowCounts: [PlaceKind: Int]
+    /// Which GeoNames populated-place extract the database was built from (Q-5).
+    public let citiesDataset: String
+    /// Every upstream source, for the attribution list in Settings (R-DB-7).
+    public let sources: [PlaceDataSource]
 
     public var totalRows: Int {
         rowCounts.values.reduce(0, +)
+    }
+
+    /// The credit lines a licence actually requires, in source order.
+    ///
+    /// Only GeoNames obliges one today; Natural Earth, OurAirports and Wikidata are
+    /// public domain or CC0. Showing the required ones separately keeps the obligation
+    /// visible rather than buried in a list of everything.
+    public var requiredAttributions: [String] {
+        sources.compactMap(\.attribution)
+    }
+}
+
+/// One upstream source and what it obliges, read straight out of the database.
+///
+/// This travels inside the artefact rather than being compiled into the app, so a
+/// source cannot be added to the pipeline without its credit appearing in Settings
+/// (R-DB-7). See `Tools/placedb/SOURCES.md` for the licence review behind each row.
+public struct PlaceDataSource: Hashable, Sendable, Identifiable {
+    public let id: String
+    public let name: String
+    public let url: String
+    public let licence: String
+    public let licenceURL: String?
+    /// The credit the licence requires, verbatim, or `nil` where none is required.
+    public let attribution: String?
+    /// What the pipeline used this source for, in one phrase.
+    public let usedFor: String
+    /// Digest of the files this build read, and the date they were retrieved. Both are
+    /// `nil` for the curation, which is part of the repository rather than a download.
+    public let sha256: String?
+    public let retrieved: String?
+
+    public init(
+        id: String,
+        name: String,
+        url: String,
+        licence: String,
+        licenceURL: String?,
+        attribution: String?,
+        usedFor: String,
+        sha256: String?,
+        retrieved: String?
+    ) {
+        self.id = id
+        self.name = name
+        self.url = url
+        self.licence = licence
+        self.licenceURL = licenceURL
+        self.attribution = attribution
+        self.usedFor = usedFor
+        self.sha256 = sha256
+        self.retrieved = retrieved
     }
 }

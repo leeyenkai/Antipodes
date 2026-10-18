@@ -1,0 +1,26 @@
+# The fixed theme taxonomy every landmark draws from (R-DB-1).
+#
+# The final list is still an open question (Q-6): these sixteen are what the curated
+# set in landmarks.csv actually needs, and the build rejects any theme not listed here
+# so a typo cannot quietly create a seventeenth. Renaming a tag is a data migration —
+# the personality stats (R-PERS-1) will key off these strings.
+#
+# `label` is what the app shows. `description` is for whoever is tagging the next
+# hundred landmarks and needs to know where the line between two tags falls.
+theme,label,description
+ancient-history,Ancient history,"Built or in use before roughly 500 AD."
+archaeology,Archaeology,"Excavated or ruined sites visited for what was dug up there."
+architecture,Architecture,"Visited chiefly for how the building looks, pre-20th century."
+art-and-museums,Art and museums,"Galleries, museums and collections."
+engineering,Engineering,"Bridges, canals, towers and works visited for how they were built."
+food,Food and drink,"Places whose draw is eating and drinking."
+markets,Markets,"Trading places, bazaars and market halls."
+medieval-history,Medieval history,"Roughly 500 to 1500 AD."
+military-history,Military history,"Fortifications, battlefields and war memorials."
+modern-architecture,Modern architecture,"20th and 21st century buildings and skylines."
+modern-history,Modern history,"Roughly 1800 onwards: industrial, political and 20th-century sites."
+national-parks,Parks,"National parks, urban parks and protected landscapes."
+nature,Nature,"Landforms and natural features: mountains, falls, coasts, caves."
+palaces,Palaces and castles,"Royal, noble and governing residences."
+religious-sites,Religious sites,"Temples, churches, mosques, shrines and places of pilgrimage."
+wildlife,Wildlife,"Visited to see animals in the wild."
