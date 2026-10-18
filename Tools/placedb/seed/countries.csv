@@ -1,0 +1,61 @@
+iso2,iso3,name,continent,capital,population,area_km2,latitude,longitude,currency_code,languages,is_un_member
+AE,ARE,United Arab Emirates,asia,Abu Dhabi,9400000,83600,24.0,54.0,AED,ar,1
+AR,ARG,Argentina,southAmerica,Buenos Aires,46000000,2780400,-34.0,-64.0,ARS,es,1
+AT,AUT,Austria,europe,Vienna,9000000,83879,47.5,14.5,EUR,de,1
+AU,AUS,Australia,oceania,Canberra,26000000,7692024,-25.0,133.0,AUD,en,1
+BE,BEL,Belgium,europe,Brussels,11600000,30528,50.5,4.5,EUR,"nl,fr,de",1
+BR,BRA,Brazil,southAmerica,Brasília,215000000,8515767,-10.0,-55.0,BRL,pt,1
+CA,CAN,Canada,northAmerica,Ottawa,39000000,9984670,60.0,-95.0,CAD,"en,fr",1
+CH,CHE,Switzerland,europe,Bern,8800000,41285,46.8,8.2,CHF,"de,fr,it,rm",1
+CL,CHL,Chile,southAmerica,Santiago,19500000,756102,-30.0,-71.0,CLP,es,1
+CN,CHN,China,asia,Beijing,1412000000,9596961,35.0,105.0,CNY,zh,1
+CO,COL,Colombia,southAmerica,Bogotá,52000000,1141748,4.0,-73.0,COP,es,1
+CZ,CZE,Czechia,europe,Prague,10500000,78867,49.8,15.5,CZK,cs,1
+DE,DEU,Germany,europe,Berlin,84000000,357022,51.0,10.0,EUR,de,1
+DK,DNK,Denmark,europe,Copenhagen,5900000,42933,56.0,10.0,DKK,da,1
+EE,EST,Estonia,europe,Tallinn,1370000,45227,58.6,25.0,EUR,et,1
+EG,EGY,Egypt,africa,Cairo,105000000,1002450,27.0,30.0,EGP,ar,1
+ES,ESP,Spain,europe,Madrid,48000000,505992,40.0,-4.0,EUR,es,1
+ET,ETH,Ethiopia,africa,Addis Ababa,120000000,1104300,9.0,39.0,ETB,am,1
+FI,FIN,Finland,europe,Helsinki,5560000,338455,64.0,26.0,EUR,"fi,sv",1
+FR,FRA,France,europe,Paris,68000000,551695,46.5,2.5,EUR,fr,1
+GB,GBR,United Kingdom,europe,London,67000000,242495,54.0,-2.0,GBP,en,1
+GR,GRC,Greece,europe,Athens,10400000,131957,39.0,22.0,EUR,el,1
+HR,HRV,Croatia,europe,Zagreb,3850000,56594,45.2,15.5,EUR,hr,1
+HU,HUN,Hungary,europe,Budapest,9600000,93028,47.2,19.5,HUF,hu,1
+ID,IDN,Indonesia,asia,Jakarta,277000000,1904569,-2.0,118.0,IDR,id,1
+IE,IRL,Ireland,europe,Dublin,5200000,70273,53.2,-8.0,EUR,"en,ga",1
+IL,ISR,Israel,asia,Jerusalem,9700000,22072,31.5,34.9,ILS,he,1
+IN,IND,India,asia,New Delhi,1420000000,3287263,21.0,78.0,INR,"hi,en",1
+IS,ISL,Iceland,europe,Reykjavík,380000,103000,65.0,-18.0,ISK,is,1
+IT,ITA,Italy,europe,Rome,59000000,301340,42.8,12.8,EUR,it,1
+JP,JPN,Japan,asia,Tokyo,124000000,377975,36.0,138.0,JPY,ja,1
+KE,KEN,Kenya,africa,Nairobi,54000000,580367,0.0,38.0,KES,"sw,en",1
+KR,KOR,South Korea,asia,Seoul,51700000,100210,36.5,127.8,KRW,ko,1
+MA,MAR,Morocco,africa,Rabat,37000000,446550,32.0,-6.0,MAD,"ar,zgh",1
+MX,MEX,Mexico,northAmerica,Mexico City,128000000,1964375,23.0,-102.0,MXN,es,1
+MY,MYS,Malaysia,asia,Kuala Lumpur,33500000,330803,4.0,102.0,MYR,ms,1
+NG,NGA,Nigeria,africa,Abuja,218000000,923768,10.0,8.0,NGN,en,1
+NL,NLD,Netherlands,europe,Amsterdam,17800000,41850,52.2,5.5,EUR,nl,1
+NO,NOR,Norway,europe,Oslo,5500000,385207,62.0,10.0,NOK,no,1
+NP,NPL,Nepal,asia,Kathmandu,30000000,147181,28.3,84.0,NPR,ne,1
+NZ,NZL,New Zealand,oceania,Wellington,5200000,268021,-41.0,174.0,NZD,"en,mi",1
+PE,PER,Peru,southAmerica,Lima,34000000,1285216,-10.0,-76.0,PEN,es,1
+PH,PHL,Philippines,asia,Manila,114000000,300000,13.0,122.0,PHP,"fil,en",1
+PL,POL,Poland,europe,Warsaw,37700000,312696,52.0,19.5,PLN,pl,1
+PT,PRT,Portugal,europe,Lisbon,10400000,92212,39.5,-8.0,EUR,pt,1
+QA,QAT,Qatar,asia,Doha,2700000,11586,25.3,51.2,QAR,ar,1
+RO,ROU,Romania,europe,Bucharest,19000000,238397,46.0,25.0,RON,ro,1
+SE,SWE,Sweden,europe,Stockholm,10500000,450295,62.0,15.0,SEK,sv,1
+SG,SGP,Singapore,asia,Singapore,5900000,728,1.35,103.8,SGD,"en,ms,zh,ta",1
+SI,SVN,Slovenia,europe,Ljubljana,2100000,20273,46.1,14.8,EUR,sl,1
+TH,THA,Thailand,asia,Bangkok,71000000,513120,15.0,101.0,THB,th,1
+TR,TUR,Türkiye,asia,Ankara,85000000,783562,39.0,35.0,TRY,tr,1
+TZ,TZA,Tanzania,africa,Dodoma,65000000,947303,-6.0,35.0,TZS,"sw,en",1
+UA,UKR,Ukraine,europe,Kyiv,38000000,603500,49.0,32.0,UAH,uk,1
+US,USA,United States,northAmerica,Washington,335000000,9833520,39.8,-98.6,USD,en,1
+VN,VNM,Vietnam,asia,Hanoi,99000000,331212,16.0,106.0,VND,vi,1
+ZA,ZAF,South Africa,africa,Pretoria,60000000,1221037,-29.0,24.0,ZAR,"af,en,zu,xh",1
+AQ,ATA,Antarctica,antarctica,,0,14000000,-82.0,0.0,,,0
+GL,GRL,Greenland,northAmerica,Nuuk,56000,2166086,72.0,-40.0,DKK,kl,0
+SJ,SJM,Svalbard and Jan Mayen,europe,Longyearbyen,2900,62045,78.0,18.0,NOK,no,0

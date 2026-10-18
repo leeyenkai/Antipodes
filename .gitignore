@@ -1,0 +1,68 @@
+# ---- macOS ----
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+
+# ---- Xcode ----
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+timeline.xctimeline
+playground.xcworkspace
+
+# Keep shared schemes, ignore per-user ones
+!*.xcodeproj/xcshareddata/
+!*.xcworkspace/xcshareddata/
+
+# ---- Swift Package Manager ----
+.build/
+.swiftpm/
+Package.resolved.local
+*.resolved.backup
+
+# ---- Signing / secrets ----
+*.p12
+*.mobileprovision
+*.cer
+*.certSigningRequest
+Secrets.xcconfig
+.env
+.env.*
+!.env.example
+
+# ---- Python (place database pipeline) ----
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# ---- Generated place database ----
+# The read-only place database is a build product of Tools/placedb.
+# Seed CSVs are tracked; the compiled SQLite file is not.
+# The database the app bundles is a copy of that build product, so it is not
+# committed either — run scripts/build-placedb.sh before the first app build.
+Tools/placedb/out/
+App/Antipodes/Resources/places.sqlite
+*.sqlite
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
+
+# ---- Tooling / editors ----
+.vscode/
+.idea/
+*.log

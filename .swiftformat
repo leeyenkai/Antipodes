@@ -1,0 +1,26 @@
+# SwiftFormat configuration for Antipodes.
+
+--swiftversion 6.0
+
+--exclude .build,DerivedData,Tools,docs
+
+# Layout
+--maxwidth 100
+--indent 4
+--wraparguments before-first
+--wrapparameters before-first
+--wrapcollections preserve
+--closingparen balanced
+
+# Style
+--self remove
+--importgrouping alpha
+--commas always
+--trimwhitespace always
+--stripunusedargs closure-only
+--funcattributes prev-line
+--typeattributes prev-line
+
+# Documentation comments are hand-wrapped to read well; leave them alone.
+--enable blankLinesBetweenScopes,blankLineAfterImports
+--disable wrapMultilineStatementBraces,organizeDeclarations,redundantType

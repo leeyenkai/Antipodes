@@ -1,0 +1,9 @@
+name,mode,start_name,end_name,country_codes,length_km,typical_duration_minutes,highest_point_m
+Bergen Line,rail,Oslo,Bergen,NO,496,420,1237
+Glacier Express,rail,Zermatt,St. Moritz,CH,291,480,2033
+Flåm Railway,rail,Bergen,Bergen,NO,20,60,866
+Trans-Siberian Railway,rail,Moscow,Vladivostok,RU,9289,10080,1040
+Rocky Mountaineer,rail,Vancouver,Toronto,CA,4466,5760,1627
+Shinkansen Tokaido,rail,Tokyo,Osaka,JP,515,145,
+Camino Frances,humanPowered,Saint-Jean-Pied-de-Port,Santiago de Compostela,"FR,ES",780,43200,1505
+Milford Track,humanPowered,Queenstown,Queenstown,NZ,53,5760,1154

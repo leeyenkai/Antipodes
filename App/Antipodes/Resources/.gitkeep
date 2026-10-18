@@ -1,0 +1,2 @@
+The read-only place database is copied here by scripts/build-placedb.sh and bundled
+into the app. It is a build product, so it is not committed (see .gitignore).

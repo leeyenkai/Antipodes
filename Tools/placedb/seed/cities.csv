@@ -1,0 +1,87 @@
+name,country_iso2,region_code,latitude,longitude,population,elevation_m,timezone,is_capital
+Oslo,NO,NO-03,59.9139,10.7522,709000,23,Europe/Oslo,1
+Bergen,NO,NO-46,60.3913,5.3221,286000,20,Europe/Oslo,0
+Tromsø,NO,NO-55,69.6492,18.9553,77000,10,Europe/Oslo,0
+Longyearbyen,SJ,,78.2232,15.6267,2400,10,Arctic/Longyearbyen,0
+Stockholm,SE,,59.3293,18.0686,980000,28,Europe/Stockholm,1
+Copenhagen,DK,,55.6761,12.5683,660000,14,Europe/Copenhagen,1
+Helsinki,FI,,60.1699,24.9384,660000,25,Europe/Helsinki,1
+Reykjavík,IS,,64.1466,-21.9426,140000,61,Atlantic/Reykjavik,1
+Tallinn,EE,,59.4370,24.7536,460000,9,Europe/Tallinn,1
+London,GB,GB-ENG,51.5072,-0.1276,8900000,11,Europe/London,1
+Edinburgh,GB,GB-SCT,55.9533,-3.1883,540000,47,Europe/London,0
+Dublin,IE,,53.3498,-6.2603,590000,20,Europe/Dublin,1
+Paris,FR,FR-IDF,48.8566,2.3522,2100000,35,Europe/Paris,1
+Amsterdam,NL,,52.3676,4.9041,920000,-2,Europe/Amsterdam,1
+Brussels,BE,,50.8476,4.3572,190000,13,Europe/Brussels,1
+Berlin,DE,,52.5200,13.4050,3700000,34,Europe/Berlin,1
+Munich,DE,DE-BY,48.1351,11.5820,1500000,520,Europe/Berlin,0
+Vienna,AT,,48.2082,16.3738,1900000,170,Europe/Vienna,1
+Zurich,CH,,47.3769,8.5417,430000,408,Europe/Zurich,0
+Zermatt,CH,CH-VS,46.0207,7.7491,5800,1608,Europe/Zurich,0
+St. Moritz,CH,CH-GR,46.4908,9.8355,5000,1822,Europe/Zurich,0
+Prague,CZ,,50.0755,14.4378,1300000,200,Europe/Prague,1
+Budapest,HU,,47.4979,19.0402,1700000,100,Europe/Budapest,1
+Warsaw,PL,,52.2297,21.0122,1800000,100,Europe/Warsaw,1
+Kyiv,UA,,50.4501,30.5234,2900000,179,Europe/Kyiv,1
+Bucharest,RO,,44.4268,26.1025,1800000,85,Europe/Bucharest,1
+Zagreb,HR,,45.8150,15.9819,770000,122,Europe/Zagreb,1
+Ljubljana,SI,,46.0569,14.5058,290000,295,Europe/Ljubljana,1
+Athens,GR,,37.9838,23.7275,660000,70,Europe/Athens,1
+Rome,IT,IT-62,41.9028,12.4964,2800000,21,Europe/Rome,1
+Milan,IT,IT-25,45.4642,9.1900,1400000,120,Europe/Rome,0
+Venice,IT,,45.4408,12.3155,260000,1,Europe/Rome,0
+Barcelona,ES,ES-CT,41.3874,2.1686,1600000,12,Europe/Madrid,0
+Madrid,ES,,40.4168,-3.7038,3300000,650,Europe/Madrid,1
+Lisbon,PT,,38.7223,-9.1393,540000,2,Europe/Lisbon,1
+Istanbul,TR,,41.0082,28.9784,15500000,39,Europe/Istanbul,0
+Marrakesh,MA,,31.6295,-7.9811,930000,466,Africa/Casablanca,0
+Cairo,EG,,30.0444,31.2357,9500000,23,Africa/Cairo,1
+Nairobi,KE,,-1.2921,36.8219,4400000,1795,Africa/Nairobi,1
+Addis Ababa,ET,,9.0300,38.7400,3400000,2355,Africa/Addis_Ababa,1
+Cape Town,ZA,,-33.9249,18.4241,4600000,25,Africa/Johannesburg,0
+Johannesburg,ZA,,-26.2041,28.0473,5600000,1753,Africa/Johannesburg,0
+Lagos,NG,,6.5244,3.3792,15000000,41,Africa/Lagos,0
+Dar es Salaam,TZ,,-6.7924,39.2083,5400000,24,Africa/Dar_es_Salaam,0
+New York,US,US-NY,40.7128,-74.0060,8300000,10,America/New_York,0
+Washington,US,,38.9072,-77.0369,670000,125,America/New_York,1
+San Francisco,US,US-CA,37.7749,-122.4194,810000,16,America/Los_Angeles,0
+Los Angeles,US,US-CA,34.0522,-118.2437,3800000,93,America/Los_Angeles,0
+Seattle,US,US-WA,47.6062,-122.3321,750000,53,America/Los_Angeles,0
+Anchorage,US,US-AK,61.2181,-149.9003,290000,31,America/Anchorage,0
+Honolulu,US,US-HI,21.3069,-157.8583,350000,6,Pacific/Honolulu,0
+Toronto,CA,,43.6532,-79.3832,2800000,76,America/Toronto,0
+Vancouver,CA,,49.2827,-123.1207,660000,2,America/Vancouver,0
+Mexico City,MX,,19.4326,-99.1332,9200000,2240,America/Mexico_City,1
+Nuuk,GL,,64.1836,-51.7214,19000,20,America/Nuuk,1
+Buenos Aires,AR,,-34.6037,-58.3816,3100000,25,America/Argentina/Buenos_Aires,1
+Santiago,CL,,-33.4489,-70.6693,6200000,570,America/Santiago,1
+Lima,PE,,-12.0464,-77.0428,9700000,154,America/Lima,1
+Cusco,PE,PE-CUS,-13.5319,-71.9675,430000,3399,America/Lima,0
+Rio de Janeiro,BR,,-22.9068,-43.1729,6700000,2,America/Sao_Paulo,0
+São Paulo,BR,,-23.5505,-46.6333,12300000,760,America/Sao_Paulo,0
+Bogotá,CO,,4.7110,-74.0721,7900000,2640,America/Bogota,1
+Tokyo,JP,JP-13,35.6762,139.6503,13900000,40,Asia/Tokyo,1
+Kyoto,JP,JP-26,35.0116,135.7681,1460000,56,Asia/Tokyo,0
+Osaka,JP,,34.6937,135.5023,2700000,10,Asia/Tokyo,0
+Seoul,KR,,37.5665,126.9780,9400000,38,Asia/Seoul,1
+Beijing,CN,,39.9042,116.4074,21500000,44,Asia/Shanghai,1
+Shanghai,CN,,31.2304,121.4737,24900000,4,Asia/Shanghai,0
+Hong Kong,CN,,22.3193,114.1694,7400000,20,Asia/Hong_Kong,0
+Singapore,SG,,1.3521,103.8198,5900000,15,Asia/Singapore,1
+Kuala Lumpur,MY,,3.1390,101.6869,1800000,66,Asia/Kuala_Lumpur,1
+Bangkok,TH,,13.7563,100.5018,10500000,2,Asia/Bangkok,1
+Hanoi,VN,,21.0278,105.8342,8400000,16,Asia/Ho_Chi_Minh,1
+Jakarta,ID,,-6.2088,106.8456,10600000,8,Asia/Jakarta,1
+Manila,PH,,14.5995,120.9842,1800000,16,Asia/Manila,1
+Kathmandu,NP,,27.7172,85.3240,1500000,1400,Asia/Kathmandu,1
+New Delhi,IN,,28.6139,77.2090,32900000,216,Asia/Kolkata,1
+Mumbai,IN,,19.0760,72.8777,20700000,14,Asia/Kolkata,0
+Dubai,AE,,25.2048,55.2708,3600000,5,Asia/Dubai,0
+Doha,QA,,25.2854,51.5310,1200000,10,Asia/Qatar,1
+Jerusalem,IL,,31.7683,35.2137,970000,754,Asia/Jerusalem,1
+Sydney,AU,AU-NSW,-33.8688,151.2093,5300000,58,Australia/Sydney,0
+Canberra,AU,,-35.2809,149.1300,460000,578,Australia/Sydney,1
+Auckland,NZ,,-36.8485,174.7633,1700000,196,Pacific/Auckland,0
+Wellington,NZ,,-41.2866,174.7756,215000,31,Pacific/Auckland,1
+Queenstown,NZ,NZ-OTA,-45.0312,168.6626,16000,310,Pacific/Auckland,0

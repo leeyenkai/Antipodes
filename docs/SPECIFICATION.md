@@ -1,0 +1,558 @@
+# Antipodes — Specification
+
+| | |
+|---|---|
+| **Status** | Draft |
+| **Spec version** | 0.1.0 |
+| **Last updated** | 2026-10-18 |
+| **Owner** | Lee Yen Kai |
+| **Source** | Derived from *Antipodes — Spec Sheet (Draft v0.1)* (2026-10-15) |
+
+This is the living requirements document for Antipodes. It will change as the app is
+built. Requirements carry stable IDs (`R-<AREA>-<n>`) so commits, issues and
+[CHANGELOG.md](../CHANGELOG.md) entries can point at them. Open questions live in
+[§15](#15-open-questions) and are resolved into requirements as decisions are made.
+
+**Conventions used below**
+
+- **MUST** — required for the release it is scoped to.
+- **SHOULD** — intended, but may be dropped under time pressure without changing the product's identity.
+- **MAY** — optional.
+- *Milestone tags*: `[M1]` first internal milestone · `[V1]` public v1 release · `[LATER]` post-v1.
+
+---
+
+## 1. Overview
+
+A free, privacy-first iPhone app (with iPad and Mac versions) for logging every place
+and journey you have travelled, then turning that log into unusually deep statistics.
+Think Flighty's polish and data depth, applied to all travel rather than flights alone.
+
+### 1.1 Goals
+
+| ID | Goal |
+|---|---|
+| G-1 | **Fast logging.** Search a bundled database and tap, instead of typing details by hand. |
+| G-2 | **Stats nobody else offers.** Place attributes (landmark age, climate in the month you visited) and a "travel personality" built from what you choose to see. |
+| G-3 | **Private by design.** No account, no server; data stays on device and in the user's iCloud. |
+| G-4 | **Beautiful to look at and share.** A 3D globe as the home screen, and shareable stat cards. |
+
+### 1.2 Non-goals for v1
+
+- Social feed, friends or following.
+- Live flight tracking (Flighty's core feature). This app logs journeys; it does not track them in real time.
+- Booking, recommendations or itinerary planning.
+- Android or web versions.
+
+### 1.3 Positioning
+
+Flight loggers cover one mode deeply; country-checklist apps cover everywhere
+shallowly. Antipodes covers **every mode** (places, flights, rail, road, sea, trails)
+with **flight-logger depth**, and keeps it all **private**.
+
+### 1.4 Name
+
+Working title **Antipodes** — points on exactly opposite sides of the globe.
+Globe-centric, and doubles as a stat ("your antipode").
+
+| ID | Requirement |
+|---|---|
+| R-NAME-1 | Before public release, "Antipodes" MUST be checked against the App Store and the relevant trademark registers. `[V1]` |
+
+Candidates kept for reference: Hither, Gazetteer, Kilometre Zero, Postmark, Footnote,
+Farther. See [§15](#15-open-questions).
+
+---
+
+## 2. Platforms and users
+
+iPhone is the primary platform; iPad and Mac ship as the same multiplatform app with
+adapted layouts.
+
+| ID | Requirement |
+|---|---|
+| R-PLAT-1 | iPhone is primary. Every flow MUST be usable one-handed. `[M1]` |
+| R-PLAT-2 | iPad MUST use sidebar navigation with a large globe and an inspector panel side by side. `[V1]` |
+| R-PLAT-3 | Mac MUST support bulk work: file import, editing dates across many visits, browsing stats on a large screen. `[V1]` |
+| R-PLAT-4 | Distribution is the App Store, free, with no monetisation at launch. `[V1]` |
+| R-PLAT-5 | One multiplatform codebase; no per-platform forks. `[M1]` |
+
+**Minimum OS.** Current working decision: **iOS/iPadOS 26.0 and macOS 26.0**
+(latest minus one, against the iOS 27 SDK). Tracked as [Q-2](#15-open-questions).
+
+### 2.1 Target users
+
+- Frequent travellers who enjoy data about themselves (the Flighty, Strava and Spotify Wrapped crowd).
+- Rail, aviation and road-trip enthusiasts who want to log specific journeys.
+- Students on exchange, expats and digital nomads building up a long travel history.
+- Privacy-conscious users who will not hand their movement history to an account-based service.
+
+---
+
+## 3. Core concepts and data model
+
+A **trip** holds **visits** and **journeys**; each one points at an entry in the
+read-only **place database**, which is what lets the app compute stats without asking
+the user for details.
+
+User data syncs through iCloud. The place database ships with the app and is identical
+for every user.
+
+```
+Trip ──┬── Visit  ───────> Place (country | region | city | landmark | airport | custom pin)
+       └── Journey ──┬── Leg ──> From place, To place, mode, service detail
+                     └── Leg ──> …
+```
+
+| ID | Requirement |
+|---|---|
+| R-MODEL-1 | A trip MUST group zero or more visits and zero or more journeys, and MAY be unnamed. `[M1]` |
+| R-MODEL-2 | A visit MUST reference exactly one place and carry a visit type and a flexible date. `[M1]` |
+| R-MODEL-3 | A visit MAY exist without a trip and be assigned to one later. `[M1]` |
+| R-MODEL-4 | A journey MUST consist of one or more ordered legs. `[M1]` |
+| R-MODEL-5 | User data and the place database MUST be stored separately; the place database is read-only. `[M1]` |
+| R-MODEL-6 | Logging a landmark MUST imply its city, region and country. Logging a city MUST imply its region and country. `[M1]` |
+
+### 3.1 Visit types
+
+| Visit type | Meaning | Counts towards coverage by default |
+|---|---|---|
+| Stayed | At least one night there | Yes |
+| Day trip | Visited without staying overnight | Yes |
+| Passed through | Crossed it by road, rail or sea without stopping to visit | No |
+| Layover | Changed planes or trains without leaving the station or airport | No |
+
+| ID | Requirement |
+|---|---|
+| R-MODEL-7 | A global setting MUST let the user include "Passed through" and "Layover" in coverage, and every stat MUST respect it. `[M1]` |
+
+### 3.2 Flexible dates
+
+| ID | Requirement |
+|---|---|
+| R-DATE-1 | A date MUST be expressible as an exact day, a date range, a month, a year, or unknown. `[M1]` |
+| R-DATE-2 | Stats that need a date MUST skip undated visits and MUST say that they did so. `[M1]` |
+| R-DATE-3 | Where only a year is known, a stat MAY fall back to an annual figure, and MUST flag that it did. `[V1]` |
+
+---
+
+## 4. Logging and input
+
+Searching the bundled database and picking a result is the main way in. Every other
+route is optional and runs entirely on the device.
+
+| ID | Requirement | Milestone |
+|---|---|---|
+| R-LOG-1 | One search field across countries, cities, landmarks, airports and routes, with type filters. MUST work offline. Results ranked by population and fame. | `[M1]` |
+| R-LOG-2 | The user MUST be able to create a trip and add visits and journeys to it. | `[M1]` |
+| R-LOG-3 | A visit MUST be quick-loggable on its own and assignable to a trip later. | `[M1]` |
+| R-LOG-4 | Every visit MUST carry a visit type (§3.1). | `[M1]` |
+| R-LOG-5 | Custom places: the user MUST be able to drop a pin for anything not in the database. It MUST be assigned a country and region automatically from bundled border data, so it still counts in coverage. | `[M1]` |
+| R-LOG-6 | Journeys for all eight modes (§5.1), each made of one or more legs. | `[V1]` |
+| R-LOG-7 | Photo library import, opt-in: read location and date from on-device photos, cluster into suggested trips and visits, confirm each. Nothing is uploaded; only references are stored. | `[V1]` |
+| R-LOG-8 | Import from other apps: CSV or JSON from flight loggers and similar trackers, matched against the database, with a review screen for anything ambiguous. | `[V1]` |
+| R-LOG-9 | Export everything as CSV or JSON at any time. | `[M1]` |
+
+---
+
+## 5. Journeys
+
+Every journey is a chain of one or more legs, and every ground leg follows real tracks
+or roads. Distances, network completion and carbon estimates all come from that same
+path, so the numbers agree with what the globe shows.
+
+### 5.1 Modes
+
+| Mode | Examples | Picked from the database | Path drawn from |
+|---|---|---|---|
+| Flight | Scheduled, charter, private | Airports, airlines, aircraft types | Great-circle arc between airports |
+| Long-distance and regional rail | Intercity, high-speed, regional, sleeper and night trains | Stations, operators, named services, famous routes | Railway lines from OpenStreetMap |
+| City transit | Metro, tram, light rail, suburban rail, local bus, city ferry | Transit systems, lines, stops | Line shapes from transit feeds, OpenStreetMap as fallback |
+| Intercity bus and coach | Scheduled coaches, airport buses, rural buses | Bus stations and stops, operators | Roads, snapped with a road router |
+| Ferry and cruise | Car ferries, coastal voyages, river cruises, ocean cruises | Ports, operators, ships, ferry routes | OpenStreetMap ferry routes; cruises as port-to-port legs |
+| Self-drive road trip | Car, campervan, motorbike | Famous roads and passes, towns as waypoints | Roads, snapped with a road router |
+| Human-powered | Hikes, long-distance trails, cycle tours | Named trails (e.g. Camino de Santiago) | Trail geometry from OpenStreetMap |
+| Cable and mountain | Cable cars, gondolas, funiculars, cog railways | Named lines | OpenStreetMap aerialway and railway lines |
+
+### 5.2 What a leg records
+
+Only mode, origin and destination are required. Every other field is optional and
+appears when the user expands the leg.
+
+| Field | Modes | Notes |
+|---|---|---|
+| From, to, intermediate stops | All | Station, stop, port, airport or custom pin. Stops passed through are derived from the path. |
+| Date | All | Same flexibility as visits (§3.2) |
+| Scheduled and actual times | All public modes | Delay = actual − scheduled. Time zones come from the stations, so overnight and cross-border legs are correct. |
+| Operator | All public modes | e.g. Vy, SJ, a coach company, a ferry line |
+| Service or line number | Rail, coach, transit, flight | Train number, line number, flight number |
+| Named service or route | Rail, ferry, road, trail | Links to a catalogue route such as the Bergen Line or the Glacier Express |
+| Class or fare type | Rail, coach, ferry, flight | Standard, first, business, sleeper berth, couchette, cabin, deck passage |
+| Vehicle | Rail, coach, ferry, flight, road | Train class or type, bus model, ship name, aircraft type and registration, own car |
+| Seat, carriage, cabin | All public modes | Structured fields plus free text |
+| Purpose | All | Leisure, work or commute. Commute legs can be kept out of stats. |
+| Rating and notes | All | 1 to 5 stars, notes, references to photos |
+| Distance and duration | All | Computed from the path and times; the user can override either |
+
+| ID | Requirement |
+|---|---|
+| R-LEG-1 | Mode, origin and destination MUST be the only required fields on a leg. `[M1]` |
+| R-LEG-2 | Detail fields MUST be collapsed by default and revealed on expand. `[V1]` |
+
+### 5.3 Logging journeys
+
+A quick leg SHOULD take about four taps after search; detail is added only when the
+user wants it.
+
+| ID | Requirement | Milestone |
+|---|---|---|
+| R-JLOG-1 | **Quick leg**: pick a mode, search origin, search destination, set the date. Path and distance fill in automatically. | `[M1]` (flights) |
+| R-JLOG-2 | **Detailed leg**: expand the same leg to add service number, times, class, vehicle, seat and rating. | `[V1]` |
+| R-JLOG-3 | **Catalogue route**: pick a named route (e.g. the Glacier Express). Stations are pre-filled; the user rides the whole route or picks a section by choosing where they got on and off. | `[V1]` |
+| R-JLOG-4 | **Multi-leg journey**: add legs one after another. Each new leg starts where the last ended, the connection time shows between them, and a connection can be marked as missed. | `[V1]` |
+| R-JLOG-5 | **City transit ride**: pick the city, the system, the line, then boarding and alighting stops. Times optional. | `[V1]` |
+| R-JLOG-6 | **Repeat rides**: a "ride again" button duplicates a leg with today's date. A regular commute MAY be logged as a *pass* (e.g. "line 1, weekdays, Sep to Dec") that counts the line once for coverage without creating hundreds of records. | `[V1]` |
+| R-JLOG-7 | **Import**: flight histories and rail logs from other apps, matched to stations and airports with a review screen. | `[V1]` |
+| R-JLOG-8 | Timetables are NOT bundled and nothing is looked up online in v1; times are entered by hand. | `[V1]` |
+
+### 5.4 City transit
+
+Transit is modelled as systems, lines and stops; each ride is stored as the
+stop-to-stop segments it covered.
+
+| ID | Requirement |
+|---|---|
+| R-TRAN-1 | A system (e.g. Oslo Metro) has lines; each line has an ordered list of stops and a drawn shape. Branches and loops are separate stop sequences on the same line. `[V1]` |
+| R-TRAN-2 | The unit of coverage is the **segment**: the stretch between two adjacent stops on a line. Coverage and completion MUST be measured in unique segments ridden, so riding the same stretch twice adds rides but not coverage. `[V1]` |
+| R-TRAN-3 | Stations MUST be tracked three ways — boarded, alighted, passed through — and stats MUST be able to count any of these. `[V1]` |
+| R-TRAN-4 | Rides MUST be stored against stop identities and a dated network version, so a 2019 ride on a line that no longer exists still shows correctly. `[V1]` |
+| R-TRAN-5 | Transit data ships as **city packs**: a launch set of major systems in the app, other cities downloadable. Every user downloading a city receives the same file. `[V1]` |
+| R-TRAN-6 | Rail-based systems (metro, tram, light rail, suburban rail) come first. City bus lines follow per city as data allows. `[LATER]` |
+
+### 5.5 Paths and distances
+
+Ground legs follow real tracks, roads and sea lanes; a straight line is used only as a
+labelled fallback.
+
+| ID | Requirement |
+|---|---|
+| R-PATH-1 | Catalogue routes and transit lines: paths are built in the offline data pipeline by routing along the OpenStreetMap rail, road or ferry network, then simplified and stored in the database. `[V1]` |
+| R-PATH-2 | User-built ground legs are snapped **on the device** using a regional network pack (rail lines and main roads). No request leaves the phone. `[V1]` |
+| R-PATH-3 | If no pack is installed or no route is found, the leg MUST be drawn as a straight line and marked "approximate" in stats until it can be snapped. `[V1]` |
+| R-PATH-4 | Flights use great-circle distance between airports; the arc on the globe follows the same curve. `[M1]` |
+| R-PATH-5 | Distance and every distance-based stat MUST come from the stored path, never from a straight-line estimate when a real path exists. `[V1]` |
+| R-PATH-6 | Derived from the path: stations and stops passed through, borders crossed, tunnels and bridges passed (from OpenStreetMap tags), and an elevation profile with the highest point. `[V1]` |
+| R-PATH-7 | Elevation for catalogue routes is computed in the pipeline; for user-built legs it comes with the regional pack or is skipped. `[V1]` |
+
+### 5.6 Journey data sources
+
+> These are candidates recorded from memory. **None has been verified, and each needs a
+> licence review before use.**
+
+| Data | Candidate sources | Notes |
+|---|---|---|
+| Railway lines, ferry routes, trails, cable cars, tunnels, bridges | OpenStreetMap, including OpenRailwayMap tagging | ODbL share-alike terms apply to a derived database |
+| Rail stations and bus stops | OpenStreetMap, Wikidata, Trainline's open European stations dataset | The same station appears in several sources; needs matching and de-duplication |
+| Transit systems, lines, stops, shapes | GTFS feeds found through the Mobility Database and Transitland catalogues | Licence differs per feed; some cities publish none |
+| Operators, train classes, bus models, ships | Wikidata, manual curation | Coverage varies; rolling stock is well covered for major operators, patchy elsewhere |
+| Airports, airlines, aircraft types | OurAirports, Wikidata | Airlines change often; needs regular refresh |
+| Famous routes | Manual curation | Each route carries its path, stations, highlights and typical duration |
+| Emission factors | Government greenhouse-gas conversion factors (e.g. UK DESNZ), European Environment Agency | Updated yearly; results always shown as estimates |
+
+### 5.7 Journey stats
+
+These extend the *Distance and routes* family (§7). Each one MUST be filterable by
+mode, year, trip and purpose.
+
+| Group | Stats |
+|---|---|
+| Totals | Km and hours by mode, times round the Earth, longest leg, longest multi-leg journey, most legs in one day, most modes in one journey |
+| Rail | Operators ridden, train classes and types, named services, stations visited and passed through, sleeper nights, countries and borders crossed by rail, highest point reached by rail, longest tunnel |
+| Punctuality | Average delay by operator and mode, most and least punctual operator, connections missed |
+| City transit | Systems ridden worldwide, lines ridden, stations visited, % of each network ridden |
+| Network completion | % of a country's rail network ridden by km, % of a route collection completed, a globe overlay showing ridden and unridden lines |
+| Road and sea | Km driven, mountain passes crossed, ferries taken, longest sea crossing, ships sailed on |
+| Carbon | Estimated CO₂ per leg, per trip and per year; CO₂ saved by each ground leg compared with flying the same origin and destination |
+
+#### Carbon rules
+
+| ID | Requirement |
+|---|---|
+| R-CO2-1 | Each leg's estimate is its distance × a per-passenger-km factor for its mode (and class, where the source distinguishes it). `[V1]` |
+| R-CO2-2 | The comparison flight uses the great-circle distance between the same two places and the flight factor from the same source. `[V1]` |
+| R-CO2-3 | Every carbon figure MUST be labelled an estimate, with the source and year of the factors shown. `[V1]` |
+
+### 5.8 Journey phasing
+
+Flights and intercity rail come first. City transit, the largest data effort, ships in
+v1 for a launch set of cities and grows from there.
+
+| Capability | M1 | V1 | Later |
+|---|---|---|---|
+| Flights, intercity rail, catalogue routes | Yes | Yes | |
+| Coach, ferry, road, trails, cable and mountain | | Yes | |
+| Full leg detail fields | Basic | Yes | |
+| Multi-leg journeys | | Yes | |
+| Snapping to real tracks and roads | Catalogue routes only | Yes | |
+| City transit (rail-based systems) | | Launch set of cities | More city packs |
+| City bus lines | | | Yes |
+| Rail, punctuality and network completion stats | | Yes | |
+| Carbon comparison | | Yes | |
+| Opt-in online timetable lookup | | | Maybe |
+
+---
+
+## 6. Place and route database
+
+The database is the product's moat: a geography core built from open data, plus
+hand-curated landmarks and famous routes, shipped inside the app and updated in-app.
+
+| Entity | Key attributes | Candidate sources |
+|---|---|---|
+| Country and territory | ISO code, borders (polygon), continent, capital, population, area, languages, currency | Natural Earth, Wikidata |
+| Region (state, province) | Name, borders, parent country | Natural Earth, GeoNames |
+| City | Coordinates, population, elevation, time zone, monthly climate normals, climate zone | GeoNames, Wikidata, a gridded climate-normals dataset (to be chosen) |
+| Landmark | Type, theme tags, year built or era, UNESCO status, height, parent city | Wikidata, UNESCO list, manual curation |
+| Airport | IATA and ICAO codes, coordinates, elevation | OurAirports |
+| Famous route | Mode, start, end, path geometry, length (km), typical duration, highest point, countries crossed | Manual curation, OpenStreetMap |
+
+### 6.1 Curation rules
+
+| ID | Requirement |
+|---|---|
+| R-DB-1 | Every landmark MUST carry one or more theme tags from a fixed taxonomy (§7), so the personality stats work. `[V1]` |
+| R-DB-2 | Missing attributes MUST stay empty rather than be guessed. Stats MUST show their coverage (e.g. "based on 42 of 50 landmarks"). `[V1]` |
+| R-DB-3 | Ages MUST be stored as a year where known and an era where not (e.g. "2nd century BC"). `[V1]` |
+
+### 6.2 Delivery
+
+| ID | Requirement |
+|---|---|
+| R-DB-4 | Shipped as a read-only SQLite file, kept separate from user data. `[M1]` |
+| R-DB-5 | Updates download as versioned files from a static host. Every user requests the same files, so an update reveals nothing about anyone's travels. `[V1]` |
+| R-DB-6 | New achievements and curated collections MUST ride along in these updates, without needing an app release. `[V1]` |
+| R-DB-7 | **Licensing check required** before shipping any source: Wikidata is public domain (CC0); GeoNames requires attribution; OpenStreetMap's licence has share-alike terms for derived databases. `[V1]` |
+
+---
+
+## 7. Statistics
+
+All five stat families ship in v1. Every number MUST be tappable to show the visits
+behind it.
+
+| Family | Example stats |
+|---|---|
+| Coverage | Countries visited and % of the world, continents, regions (e.g. US states, Norwegian counties), cities, capitals, UNESCO sites, extreme points (northernmost, highest, lowest) |
+| Distance and routes | Total km by mode, times round the Earth, longest single journey, flight hours, airports, airlines, aircraft types, rail km, countries crossed overland |
+| Place attributes | Average and median landmark age, oldest and newest, average temperature in the month visited, hottest and coldest visit, average elevation, average city population, climate zones, languages, currencies, time zones |
+| Time and patterns | Days away per year, trips per year, average trip length, busiest month, seasonality, repeat visits, longest gap since a country, "on this day" |
+| Culture and themes | Share of visits by theme (ancient history, religious sites, nature and national parks, nightlife, art and museums, modern architecture, food), spread across historical eras, travel personality |
+
+### 7.1 Travel personality
+
+| ID | Requirement |
+|---|---|
+| R-PERS-1 | Built from the theme mix of everything a user has visited — e.g. heavy on Roman ruins and light on nightlife reads as a "Historian"; many US national parks reads as a "Trailblazer". `[V1]` |
+| R-PERS-2 | MUST be rule-based, not machine learning, so it is explainable. The personality screen MUST always show the theme breakdown behind it. `[V1]` |
+| R-PERS-3 | Archetype names and thresholds are undecided — [Q-7](#15-open-questions). `[V1]` |
+
+### 7.2 Calculation rules
+
+| ID | Requirement |
+|---|---|
+| R-CALC-1 | By default, *Stayed* and *Day trip* count towards coverage; *Passed through* and *Layover* do not. A global setting overrides this, and every stat MUST respect it. `[M1]` |
+| R-CALC-2 | Temperature uses the 30-year climate normal for the city in the month of the visit. If only the year is known, the annual mean is used **and flagged**. Undated visits are excluded. `[V1]` |
+| R-CALC-3 | Averages over *places* count each unique place once (visiting the Colosseum twice does not double its weight in average landmark age). Time-based stats count each **visit**. `[M1]` |
+| R-CALC-4 | Units follow the device's region settings (km or miles, °C or °F), and MUST be switchable in Settings. `[M1]` |
+| R-CALC-5 | Every stat MUST be able to state how much of its input was usable (coverage and exclusions). `[M1]` |
+
+---
+
+## 8. Achievements and wishlist
+
+Both ship in v1 and share one idea: curated collections of places and routes that users
+make progress through.
+
+| ID | Requirement |
+|---|---|
+| R-ACH-1 | Rule-based badges computed on the device, **defined in the database** so new ones arrive with database updates. `[V1]` |
+| R-ACH-2 | Examples: every Nordic capital, crossed the Equator, crossed the Arctic Circle, all seven continents, five UNESCO sites in one trip, first overnight train. `[V1]` |
+| R-ACH-3 | Tiered where it makes sense (bronze, silver, gold for 10, 25, 50 countries). `[V1]` |
+| R-WISH-1 | Any place or route MUST be saveable as a wishlist item, shown on the globe in a distinct pin style. `[V1]` |
+| R-WISH-2 | Curated collections to work through: US national parks, New 7 Wonders, European capitals, famous rail journeys. `[V1]` |
+| R-WISH-3 | Progress MUST be shown per collection (e.g. "US national parks: 12 visited"). `[V1]` |
+| R-WISH-4 | Logging a visit MUST tick off any matching wishlist item automatically. `[V1]` |
+
+---
+
+## 9. Screens and navigation
+
+On iPhone, four tabs plus a persistent add button. On iPad and Mac the same
+destinations sit in a sidebar.
+
+| Screen | What it shows | Key interactions |
+|---|---|---|
+| **Globe** (home) | 3D globe with visited countries shaded, pins for places, arcs for journeys, wishlist pins in a separate style | Filter by year, trip or mode; tap a pin or arc to open it; scrub a timeline to replay your travel history |
+| **Trips** | Trips newest first, each with a mini-map and headline numbers | Open a trip for its map, visits, journeys and per-trip stats |
+| **Add** (button) | Search-first sheet over any screen | Search, pick, set date and visit type, assign to a trip |
+| **Stats** | Dashboard grouped by the five stat families, personality at the top | Tap any number to see the visits behind it; share any card |
+| **Collections** | Achievements, wishlist, curated collections with progress | Browse, add to wishlist, see what is left |
+| **Settings** | Counting rules, units, iCloud, import and export, database version | Reached from the Stats or Collections screen |
+
+### 9.1 iPad and Mac layout
+
+| ID | Requirement |
+|---|---|
+| R-NAV-1 | Sidebar with the same destinations; the globe stays visible beside lists and detail views where space allows. `[V1]` |
+| R-NAV-2 | Mac adds drag-and-drop file import, a table view for editing many visits at once, and keyboard shortcuts. `[V1]` |
+
+---
+
+## 10. Sharing, widgets and Year in Review
+
+All sharing produces images or video rendered on the device. There are no links,
+profiles or hosted pages.
+
+| ID | Requirement |
+|---|---|
+| R-SHARE-1 | Share cards for a stat, a globe snapshot, a trip summary or a single journey, in square and story sizes, sent through the standard share sheet. `[V1]` |
+| R-SHARE-2 | Home and Lock Screen widgets: countries count and % of the world; a globe snapshot; "on this day" from a past trip; progress on a chosen collection. `[V1]` |
+| R-SHARE-3 | Year in Review: animated cards generated in December from that year's log (countries, km, longest journey, personality shift, top themes), exportable as images or a short video. Built entirely from local data. `[V1]` |
+
+---
+
+## 11. Privacy and storage
+
+**The target App Store privacy label is "Data Not Collected".**
+
+| ID | Requirement |
+|---|---|
+| R-PRIV-1 | No account, no sign-in, no ads, no third-party analytics. `[M1]` |
+| R-PRIV-2 | User data lives on the device and syncs through the user's own private iCloud database. The developer never sees it. `[M1]` |
+| R-PRIV-3 | The place database is read-only and identical for everyone; searches never leave the device. `[M1]` |
+| R-PRIV-4 | Photo access is opt-in and limitable to selected photos. Photos are processed on the device; only references are stored. `[V1]` |
+| R-PRIV-5 | No background location tracking in v1. `[V1]` |
+| R-PRIV-6 | Full export (CSV and JSON) and a one-tap "delete everything", including the iCloud copy. `[M1]` |
+| R-PRIV-7 | Any network request the app makes MUST be identical for every user (database and pack downloads only). `[V1]` |
+
+---
+
+## 12. Technical approach
+
+Built solo, natively in Swift and SwiftUI as one multiplatform app, with AI coding
+tools.
+
+| Area | Choice | Why |
+|---|---|---|
+| UI | SwiftUI multiplatform, `NavigationSplitView` on iPad and Mac | One codebase, adaptive layouts |
+| User data | SwiftData with CloudKit sync | Private iCloud sync with no server |
+| Place database | Read-only SQLite, full-text search with FTS5 | Fast offline search over a large dataset; SwiftData is a poor fit for this |
+| Globe | **Decision needed**: MapKit globe vs a custom RealityKit or SceneKit globe | MapKit is quicker to build but needs network map tiles; a custom globe with bundled textures works offline and allows a Flighty-style look — [Q-3](#15-open-questions) |
+| Journey arcs | Great-circle paths for flights, stored geometry for surface routes | Accurate distances and good-looking arcs |
+| Offline geocoding | Point-in-polygon against bundled country and region borders | Custom pins and photo imports get a country without any network call |
+| Charts | Swift Charts | Native look, iPhone to Mac |
+| Widgets and share cards | WidgetKit; SwiftUI `ImageRenderer` for card images | Standard, on-device |
+| Data pipeline | Offline Python scripts that build the SQLite file from open data plus curation sheets, versioned per release | Repeatable builds; plays to existing Python and SQL skills |
+
+### 12.1 Implementation decisions taken during the M1 build
+
+These deviate from, or sharpen, the table above. Each is reversible.
+
+| ID | Decision | Rationale |
+|---|---|---|
+| D-1 | **No third-party Swift dependencies.** The place database is read through a thin wrapper over the system `SQLite3` C API rather than GRDB. | The MVP needs prepared statements and FTS5 and nothing else. Zero dependencies keeps the build hermetic and offline. GRDB can be swapped in behind `PlaceDatabase` if the query surface grows. |
+| D-2 | **The stats engine is pure.** It operates on value types in `AntipodesCore`, not on SwiftData models. `AntipodesStore` maps between them. | Stats are the product's substance and the thing most likely to be wrong. Keeping them free of persistence makes them unit-testable without a `ModelContainer`. |
+| D-3 | **Logic lives in a local SwiftPM package** (`AntipodesKit/`); the Xcode project is a thin app shell. | `swift test` runs the whole suite from the command line with no simulator. |
+| D-4 | Deployment target **iOS 26 / macOS 26**, built against the iOS 27 SDK. | Latest minus one. Revisit at [Q-2](#15-open-questions). |
+
+### 12.2 Module layout
+
+```
+AntipodesKit/
+  Sources/
+    AntipodesCore      Value types, flexible dates, visit types, modes,
+                       great-circle maths, counting rules. No dependencies.
+    AntipodesPlaces    Read-only place database: SQLite wrapper, FTS5 search.
+    AntipodesStats     Coverage and distance stats. Pure; reads Core types.
+    AntipodesExport    CSV and JSON export of the user's whole log.
+    AntipodesStore     SwiftData models, CloudKit container, mapping to Core.
+    AntipodesUI        SwiftUI screens: globe, trips, add sheet, stats, settings.
+  Tests/               One suite per pure module.
+App/                   Xcode app shell: entry point, assets, Info.plist.
+Tools/placedb/         Python pipeline that builds places.sqlite.
+```
+
+---
+
+## 13. Scope
+
+The v1 feature list is large for a solo build, so it is split into an internal first
+milestone and the public v1 release.
+
+| Feature | M1 (internal) | V1 release | Later |
+|---|---|---|---|
+| Search and log places, trips, visit types | Yes | Yes | |
+| Journeys: flights | Yes | Yes | |
+| Journeys: rail, coach, city transit, ferry, road, trails | | Yes | |
+| Custom pins | Yes | Yes | |
+| Globe home screen | Basic | Full, with replay | |
+| Stats: coverage, distance | Yes | Yes | |
+| Stats: place attributes, time, culture and themes | | Yes | |
+| Achievements and wishlist | | Yes | |
+| Photo library import | | Yes | |
+| Import from other apps | | One or two formats | More formats |
+| Widgets, Year in Review, share cards | | Yes | |
+| iCloud sync, export, delete | Yes | Yes | |
+| Apple Watch, Shortcuts | | | Yes |
+| Live Activities during journeys | | | Yes |
+| Opt-in location suggestions | | | Yes |
+| Localisation beyond English | | | Yes |
+
+---
+
+## 14. Acceptance criteria for M1
+
+M1 is done when, on a device or simulator:
+
+1. Searching "oslo" offline returns Oslo (city) and OSL (airport), ranked sensibly, in under 100 ms.
+2. A visit can be logged in four taps from the add button, with a visit type and a flexible date.
+3. A custom pin dropped anywhere resolves to a country without a network call.
+4. A flight leg between two airports shows a great-circle distance matching a known reference value within 0.5%.
+5. The coverage stat reports countries visited, % of the world, and continents, and excludes *Passed through* and *Layover* unless the setting says otherwise.
+6. The distance stat reports total km by mode and "times round the Earth".
+7. Every stat states how many records it could not use and why.
+8. The globe shades visited countries and draws flight arcs.
+9. Export produces CSV and JSON containing every trip, visit and journey.
+10. "Delete everything" leaves no user data on device or in iCloud.
+11. `swift test` passes with no network access.
+
+---
+
+## 15. Open questions
+
+| ID | Question | Status |
+|---|---|---|
+| Q-1 | Name: "Antipodes" chosen; check App Store and trademark availability. | Open |
+| Q-2 | Minimum iOS version: latest only, or latest minus one? | Working answer: latest minus one (iOS 26) — D-4 |
+| Q-3 | Globe: MapKit (faster to build, needs network) or a custom offline globe? | Open — blocks the full globe screen |
+| Q-4 | Country list: which definition counts as a "country" (UN members, plus territories such as Svalbard or Greenland, disputed places)? Offer a choice of lists? | Open — blocks "% of the world" |
+| Q-5 | Database size budget, and the population cut-off for bundled cities. | Open |
+| Q-6 | Theme taxonomy: the final list of themes, and whether tags are curated by hand or derived from Wikidata categories. | Open |
+| Q-7 | Personality archetypes: names and the rules that assign them. | Open |
+| Q-8 | Which import formats to support first. | Open |
+| Q-9 | Should a photo be attachable to a visit as a stored copy, or only as a reference? | Open |
+| Q-10 | Journeys with no catalogue route: draw the path by hand, or straight lines between waypoints? | Open |
+| Q-11 | Any future monetisation (tip jar, optional supporter tier), or free for good? | Open |
+| Q-12 | Which cities make the launch set for city transit? | Open |
+| Q-13 | Size budget for regional network packs and city packs. | Open |
+| Q-14 | Offer an opt-in online timetable lookup, or stay fully offline? | Open |
+| Q-15 | Should commute legs be in stats by default, or out? | Open |
+| Q-16 | Which carbon factor source, and does class (e.g. first vs standard) change the estimate? | Open |
+
+---
+
+## 16. Spec changelog
+
+| Date | Spec version | Change |
+|---|---|---|
+| 2026-10-18 | 0.1.0 | First markdown spec, transcribed from the 2026-10-15 draft. Added requirement IDs, M1 acceptance criteria (§14), and the implementation decisions in §12.1. |
