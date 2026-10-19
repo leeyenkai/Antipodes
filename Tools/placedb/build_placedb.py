@@ -8,7 +8,9 @@ in ``curation/``, and writes a SQLite file with FTS5 search indexes (R-DB-4).
 * Country facts, regions, cities, elevations, time zones — GeoNames (CC BY 4.0)
 * Airports and their codes — OurAirports (public domain)
 * Landmark facts, UNESCO status, UN membership — Wikidata (CC0)
-* Which landmarks and routes exist, and their theme tags — ``curation/``
+* Carbon factors per passenger-km — UK Government GHG conversion factors (OGL v3)
+* Which landmarks and routes exist, their theme tags, the curated collections and the
+  achievement definitions — ``curation/``
 
 No network access: everything comes from the cache, so a rebuild is offline and
 reproducible from a known set of inputs. Run ``fetch_sources.py`` first.
@@ -53,7 +55,13 @@ sys.path.insert(0, str(HERE))
 
 import sources as registry  # noqa: E402 - must follow the sys.path line above
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
+
+#: How far round an airport or landmark the build looks for bundled cities when it has
+#: no linked city to take a time zone from. The zone is written only when every city
+#: inside this radius agrees, so a place near a zone boundary stays NULL rather than
+#: being assigned the nearer side's zone by a guess.
+TIMEZONE_NEIGHBOURHOOD_KM = 75.0
 
 #: The UN has 193 member states. Wikidata's own modelling yields 192 ISO 3166-1 codes
 #: and `curation/un_membership.csv` reconciles the difference, so asserting the total
@@ -154,6 +162,8 @@ NO_ISO = {None, "", "-99"}
 AIRPORT_KINDS = {"large_airport", "medium_airport"}
 
 FEET_TO_METRES = 0.3048
+#: GeoNames' "no data" value in its `dem` column (srtm3 / gtopo30).
+GEONAMES_NO_DATA = -9999
 
 
 class BuildError(Exception):
@@ -169,12 +179,22 @@ class Counts:
     airports: int = 0
     routes: int = 0
     indexed: int = 0
+    collections: int = 0
+    collection_members: int = 0
+    achievements: int = 0
+    emission_factors: int = 0
 
     def summary(self) -> str:
         return (
             f"{self.countries} countries, {self.regions} regions, {self.cities} cities, "
             f"{self.landmarks} landmarks, {self.airports} airports, "
             f"{self.routes} routes, {self.indexed} searchable rows"
+        )
+
+    def extras(self) -> str:
+        return (
+            f"{self.collections} collections ({self.collection_members} members), "
+            f"{self.achievements} achievements, {self.emission_factors} carbon factors"
         )
 
 
@@ -367,6 +387,101 @@ def wikidata_year(timestamp: str | None) -> int | None:
     return sign * year if year else None
 
 
+def country_id(iso2: str) -> int:
+    """A country's permanent row id, read straight off its ISO letters.
+
+    `NO` is 1415 (N is the 14th letter, O the 15th). Countries have no upstream numeric
+    id that covers every row — ISO numeric codes skip Kosovo — but the alpha-2 code is
+    unique and stable, so the id is too, and it never depends on which other countries
+    happen to be in the build.
+    """
+    if len(iso2) != 2 or not iso2.isascii() or not iso2.isalpha() or not iso2.isupper():
+        raise BuildError(f"country code {iso2!r} is not two uppercase letters")
+    return (ord(iso2[0]) - 64) * 100 + (ord(iso2[1]) - 64)
+
+
+def qid_number(qid: str, *, row: str) -> int:
+    """The numeric part of a Wikidata QID, which is what a landmark's row id is."""
+    if not qid.startswith("Q") or not qid[1:].isdigit():
+        raise BuildError(f"{row}: {qid!r} is not a Wikidata QID")
+    return int(qid[1:])
+
+
+class CityGrid:
+    """Bundled cities bucketed by whole degree, for "every city near here" lookups.
+
+    Scanning seventy thousand cities for each of ten thousand airports would take
+    minutes; a one-degree grid makes it a handful of buckets per lookup.
+    """
+
+    def __init__(self, connection: sqlite3.Connection) -> None:
+        self.cells: dict[tuple[int, int], list[tuple[float, float, str, str | None]]] = {}
+        for latitude, longitude, country, timezone in connection.execute(
+            "SELECT latitude, longitude, country_iso2, timezone FROM city ORDER BY id"
+        ):
+            key = (math.floor(latitude), math.floor(longitude))
+            self.cells.setdefault(key, []).append((latitude, longitude, country, timezone))
+
+    def timezones_near(
+        self, latitude: float, longitude: float, country: str, radius_km: float
+    ) -> set[str | None]:
+        """Every time zone among the same country's cities within `radius_km`."""
+        found: set[str | None] = set()
+        # One degree of latitude is ~111 km; longitude degrees shrink towards the
+        # poles, so the search widens to keep covering the same distance.
+        span_lat = math.ceil(radius_km / 111.0)
+        cos_lat = max(0.05, math.cos(math.radians(latitude)))
+        span_lon = min(180, math.ceil(radius_km / (111.0 * cos_lat)))
+        base_lat, base_lon = math.floor(latitude), math.floor(longitude)
+        for d_lat in range(-span_lat, span_lat + 1):
+            for d_lon in range(-span_lon, span_lon + 1):
+                lon_cell = ((base_lon + d_lon + 180) % 360) - 180
+                for city_lat, city_lon, city_country, timezone in self.cells.get(
+                    (base_lat + d_lat, lon_cell), []
+                ):
+                    if city_country != country:
+                        continue
+                    if haversine_km(latitude, longitude, city_lat, city_lon) <= radius_km:
+                        found.add(timezone)
+        return found
+
+
+def single_zone_countries(connection: sqlite3.Connection) -> dict[str, str]:
+    """Countries whose bundled cities all share one time zone, and that zone."""
+    zones: dict[str, set[str | None]] = {}
+    for country, timezone in connection.execute(
+        "SELECT country_iso2, timezone FROM city ORDER BY id"
+    ):
+        zones.setdefault(country, set()).add(timezone)
+    return {
+        country: next(iter(found))  # type: ignore[misc]
+        for country, found in zones.items()
+        if len(found) == 1 and None not in found
+    }
+
+
+def derived_timezone(
+    grid: CityGrid,
+    single_zone: dict[str, str],
+    country: str,
+    latitude: float,
+    longitude: float,
+) -> str | None:
+    """The time zone of a place that has no linked city, where the evidence settles it.
+
+    First, a country whose every bundled city shares one zone. Then, the zone every city
+    of the same country within ``TIMEZONE_NEIGHBOURHOOD_KM`` agrees on. Anything else is
+    NULL: near a zone boundary the cities disagree, and picking the nearer one would be
+    a guess the leg's duration would then rest on.
+    """
+    if country in single_zone:
+        return single_zone[country]
+    nearby = grid.timezones_near(latitude, longitude, country, TIMEZONE_NEIGHBOURHOOD_KM)
+    if len(nearby) == 1 and None not in nearby:
+        return next(iter(nearby))  # type: ignore[return-value]
+    return None
+
+
 def haversine_km(a_lat: float, a_lon: float, b_lat: float, b_lon: float) -> float:
     """Great-circle distance, used only to disambiguate same-named cities."""
     radius = 6371.0088
@@ -401,11 +516,17 @@ def build(out_path: Path, cities_dataset: str, data_version: str, built_at: str)
         by_name = insert_cities(
             connection, cities_dataset, countries, regions, counts, coverage
         )
+        grid = CityGrid(connection)
+        single_zone = single_zone_countries(connection)
         insert_landmarks(connection, countries, by_name, counts, coverage)
-        insert_airports(connection, countries, by_name, counts, coverage)
+        insert_airports(connection, countries, by_name, grid, single_zone, counts, coverage)
         insert_routes(connection, counts)
+        insert_themes(connection)
+        insert_collections(connection, counts)
+        insert_achievements(connection, counts)
+        insert_emission_factors(connection, counts)
 
-        counts.indexed = build_search_index(connection)
+        counts.indexed = build_search_index(connection, grid, single_zone, coverage)
         write_meta(connection, data_version, built_at, counts, coverage, manifest, cities_dataset)
 
         connection.commit()
@@ -561,7 +682,7 @@ def insert_countries(
     countries: dict[str, dict[str, object]] = {}
 
     with_status = 0
-    for index, fields in enumerate(sorted(rows, key=lambda r: r[0]), start=1):
+    for fields in sorted(rows, key=lambda r: r[0]):
         iso2 = text(fields[0])
         label = f"countryInfo.txt {iso2 or '?'}"
         if not iso2 or len(iso2) != 2:
@@ -583,7 +704,7 @@ def insert_countries(
             with_status += 1
 
         record = {
-            "id": index,
+            "id": country_id(iso2),
             "iso2": iso2,
             "iso3": text(fields[1]),
             "iso_numeric": text(fields[2]),
@@ -644,7 +765,8 @@ def insert_regions(
     rows = read_vendor_tsv("geonames", "admin1CodesASCII.txt", columns=4)
     regions: dict[str, dict[str, object]] = {}
 
-    for index, fields in enumerate(sorted(rows, key=lambda r: r[0]), start=1):
+    seen_ids: set[int] = set()
+    for fields in sorted(rows, key=lambda r: r[0]):
         code = text(fields[0])
         label = f"admin1CodesASCII.txt {code or '?'}"
         if not code or "." not in code:
@@ -663,8 +785,16 @@ def insert_regions(
         if not name:
             raise BuildError(f"{label}: name is required")
 
+        geonames_id = integer(fields[3], field="geonames_id", row=label)
+        if geonames_id is None:
+            raise BuildError(f"{label}: a GeoNames id is required, it is the row's identity")
+        if geonames_id in seen_ids:
+            raise BuildError(f"{label}: duplicate GeoNames id {geonames_id}")
+        seen_ids.add(geonames_id)
+
         record = {
-            "id": index,
+            # GeoNames' own id, so the row keeps its identity across rebuilds.
+            "id": geonames_id,
             "code": code,
             "name": name,
             "country_iso2": country_iso2,
@@ -672,7 +802,7 @@ def insert_regions(
             # globe's border file, not here.
             "latitude": None,
             "longitude": None,
-            "geonames_id": integer(fields[3], field="geonames_id", row=label),
+            "geonames_id": geonames_id,
             "source": "geonames",
         }
         regions[code] = record
@@ -714,10 +844,10 @@ def insert_cities(
     with_region = 0
     with_population = 0
 
-    # Sorted by GeoNames id, which is stable upstream, so row ids do not shuffle when a
-    # place is renamed or its population revised.
+    # The row id *is* the GeoNames id, which is stable upstream, so a city keeps its
+    # identity when another is added or removed, renamed or re-counted.
     ordered = sorted(rows, key=lambda r: int(r[0]))
-    for index, fields in enumerate(ordered, start=1):
+    for fields in ordered:
         geonames_id = integer(fields[0], field="geonames_id", row="cities")
         name = text(fields[1])
         country_iso2 = text(fields[8])
@@ -746,13 +876,18 @@ def insert_cities(
         elevation = integer(fields[15], field="elevation_m", row=label)
         if elevation is None:
             elevation = integer(fields[16], field="dem", row=label)
+        if elevation == GEONAMES_NO_DATA:
+            # GeoNames' digital elevation model writes -9999 where it has no reading
+            # (mostly coastal cells over water). It is "unknown", not a depth: left as
+            # an elevation it put Tromsø ten kilometres below sea level.
+            elevation = None
 
         population = integer(fields[14], field="population", row=label)
         timezone = text(fields[17])
         feature_code = text(fields[7])
 
         record = {
-            "id": index,
+            "id": geonames_id,
             "name": name,
             "ascii_name": text(fields[2]),
             "country_iso2": country_iso2,
@@ -885,13 +1020,17 @@ def insert_landmarks(
     unesco_count = 0
 
     ordered = sorted(curated, key=lambda r: (r["country_iso2"], r["name"], r["qid"]))
-    for index, row in enumerate(ordered, start=1):
+    seen_qids: set[str] = set()
+    for row in ordered:
         qid = text(row["qid"])
         expected_name = text(row["name"])
         expected_country = text(row["country_iso2"])
         label = f"landmarks.csv {qid or '?'} {expected_name or '?'}"
         if not qid or not expected_name or not expected_country:
             raise BuildError(f"{label}: qid, name and country_iso2 are all required")
+        if qid in seen_qids:
+            raise BuildError(f"{label}: listed twice")
+        seen_qids.add(qid)
 
         record = facts.get(qid)
         if record is None:
@@ -993,7 +1132,8 @@ def insert_landmarks(
                     :unesco, :themes, :wikidata_qid, :sitelinks, :source)
             """,
             {
-                "id": index,
+                # The QID's number: permanent, and the same in every build.
+                "id": qid_number(qid, row=label),
                 "name": record["label"],
                 "kind": kind,
                 "city_id": city["id"] if city else None,
@@ -1033,6 +1173,8 @@ def insert_airports(
     connection: sqlite3.Connection,
     countries: dict[str, dict[str, object]],
     by_name: dict[tuple[str, str], list[dict[str, object]]],
+    grid: CityGrid,
+    single_zone: dict[str, str],
     counts: Counts,
     coverage: Coverage,
 ) -> None:
@@ -1054,14 +1196,16 @@ def insert_airports(
     ]
 
     seen_iata: set[str] = set()
+    seen_ids: set[int] = set()
     with_iata = 0
     with_icao = 0
     with_city = 0
     with_elevation = 0
+    with_timezone = 0
 
     # Sorted by OurAirports' own `ident`, which is unique and stable.
     ordered = sorted(kept, key=lambda r: r["ident"])
-    for index, row in enumerate(ordered, start=1):
+    for row in ordered:
         name = text(row["name"])
         country_iso2 = text(row["iso_country"])
         iata = text(row.get("iata_code"))
@@ -1078,6 +1222,13 @@ def insert_airports(
             if iata in seen_iata:
                 raise BuildError(f"{label}: duplicate IATA code")
             seen_iata.add(iata)
+
+        airport_id = integer(row.get("id"), field="id", row=label)
+        if airport_id is None:
+            raise BuildError(f"{label}: OurAirports' id is required, it is the row's identity")
+        if airport_id in seen_ids:
+            raise BuildError(f"{label}: duplicate OurAirports id {airport_id}")
+        seen_ids.add(airport_id)
 
         latitude = required_real(row["latitude_deg"], field="latitude", row=label)
         longitude = required_real(row["longitude_deg"], field="longitude", row=label)
@@ -1098,22 +1249,32 @@ def insert_airports(
         icao = text(row.get("icao_code"))
         scheduled = 1 if text(row.get("scheduled_service")) == "yes" else 0
 
+        # A leg's departure and arrival times are local to the airport, so the zone is
+        # what turns them into a duration (§5.2). The linked city's zone is a fact;
+        # without one, the zone the surrounding cities all agree on.
+        timezone = (
+            city["timezone"] if city and city.get("timezone")
+            else derived_timezone(grid, single_zone, country_iso2, latitude, longitude)
+        )
+
         with_iata += 1 if iata else 0
         with_icao += 1 if icao else 0
         with_city += 1 if city else 0
         with_elevation += 1 if elevation is not None else 0
+        with_timezone += 1 if timezone else 0
 
         connection.execute(
             """
             INSERT INTO airport (id, iata, icao, name, city_id, city_name, country_iso2,
-                                 region_code, latitude, longitude, elevation_m, kind,
-                                 scheduled_service, source)
+                                 region_code, latitude, longitude, elevation_m, timezone,
+                                 kind, scheduled_service, source)
             VALUES (:id, :iata, :icao, :name, :city_id, :city_name, :country_iso2,
-                    :region_code, :latitude, :longitude, :elevation_m, :kind,
-                    :scheduled_service, :source)
+                    :region_code, :latitude, :longitude, :elevation_m, :timezone,
+                    :kind, :scheduled_service, :source)
             """,
             {
-                "id": index,
+                # OurAirports' own numeric id, stable across its daily exports.
+                "id": airport_id,
                 "iata": iata,
                 "icao": icao,
                 "name": name,
@@ -1127,6 +1288,7 @@ def insert_airports(
                 "latitude": latitude,
                 "longitude": longitude,
                 "elevation_m": elevation,
+                "timezone": timezone,
                 "kind": text(row.get("type")),
                 "scheduled_service": scheduled,
                 "source": "ourairports",
@@ -1138,29 +1300,97 @@ def insert_airports(
     coverage.record("airport ICAO code", with_icao, counts.airports)
     coverage.record("airport city link", with_city, counts.airports)
     coverage.record("airport elevation", with_elevation, counts.airports)
+    coverage.record("airport time zone", with_timezone, counts.airports)
+
+
+ROUTE_MODES = {
+    "flight", "rail", "cityTransit", "coach", "ferry", "roadTrip", "humanPowered",
+    "cableAndMountain",
+}
+
+
+def resolve_place_reference(
+    connection: sqlite3.Connection, reference: str, *, row: str
+) -> tuple[str, int]:
+    """Turns a curated `kind:key` reference into a bundled place's (kind, row id).
+
+    Used by routes.csv and collection_members.csv. Fails on anything that does not
+    resolve: a reference to nothing is a curation bug, and shipping it would put an
+    empty slot in the app.
+    """
+    kind, _, key = reference.partition(":")
+    key = key.strip()
+    if not key:
+        raise BuildError(f"{row}: {reference!r} is not of the form kind:key")
+
+    def one(sql: str, *parameters: object) -> int:
+        found = connection.execute(sql, parameters).fetchall()
+        if len(found) != 1:
+            raise BuildError(
+                f"{row}: {reference!r} matched {len(found)} places, expected exactly one"
+            )
+        return int(found[0][0])
+
+    if kind == "landmark":
+        return "landmark", one("SELECT id FROM landmark WHERE wikidata_qid = ?", key)
+    if kind == "city":
+        return "city", one("SELECT id FROM city WHERE geonames_id = ?", int(key))
+    if kind == "capital":
+        return "city", one(
+            "SELECT id FROM city WHERE country_iso2 = ? AND is_capital = 1", key
+        )
+    if kind == "country":
+        return "country", one("SELECT id FROM country WHERE iso2 = ?", key)
+    if kind == "airport":
+        return "airport", one("SELECT id FROM airport WHERE iata = ?", key)
+    if kind == "route":
+        return "route", one("SELECT id FROM route WHERE id = ?", int(key))
+    raise BuildError(f"{row}: unknown place kind {kind!r} in {reference!r}")
 
 
 def insert_routes(connection: sqlite3.Connection, counts: Counts) -> None:
     rows = read_curation("routes.csv")
-    for index, row in enumerate(sorted(rows, key=lambda r: r["name"]), start=1):
+    seen: set[int] = set()
+    for row in sorted(rows, key=lambda r: int(r["id"])):
         name = text(row["name"])
-        label = f"routes.csv {name or '?'}"
+        label = f"routes.csv {row.get('id')} {name or '?'}"
         if not name:
             raise BuildError(f"{label}: name is required")
+        route_id = integer(row.get("id"), field="id", row=label)
+        if route_id is None or route_id in seen:
+            raise BuildError(f"{label}: a unique, permanent id is required")
+        seen.add(route_id)
+        mode = text(row["mode"])
+        if mode not in ROUTE_MODES:
+            raise BuildError(f"{label}: unknown mode {mode!r}")
+
+        ends: dict[str, tuple[str | None, int | None]] = {}
+        for end in ("start", "end"):
+            reference = text(row.get(f"{end}_place"))
+            ends[end] = (
+                resolve_place_reference(connection, reference, row=label)
+                if reference else (None, None)
+            )
 
         connection.execute(
             """
-            INSERT INTO route (id, name, mode, start_name, end_name, country_codes,
+            INSERT INTO route (id, name, mode, start_name, end_name, start_kind,
+                               start_ref_id, end_kind, end_ref_id, country_codes,
                                length_km, typical_duration_minutes, highest_point_m, source)
-            VALUES (:id, :name, :mode, :start_name, :end_name, :country_codes,
+            VALUES (:id, :name, :mode, :start_name, :end_name, :start_kind,
+                    :start_ref_id, :end_kind, :end_ref_id, :country_codes,
                     :length_km, :typical_duration_minutes, :highest_point_m, :source)
             """,
             {
-                "id": index,
+                "id": route_id,
                 "name": name,
-                "mode": text(row["mode"]),
+                "mode": mode,
                 "start_name": text(row.get("start_name")),
                 "end_name": text(row.get("end_name")),
+                "start_kind": ends["start"][0],
+                "start_ref_id": ends["start"][1],
+                "end_kind": ends["end"][0],
+                "end_ref_id": ends["end"][1],
                 "country_codes": text(row.get("country_codes")),
                 "length_km": real(row.get("length_km"), field="length_km", row=label),
                 "typical_duration_minutes": integer(
@@ -1177,7 +1407,233 @@ def insert_routes(connection: sqlite3.Connection, counts: Counts) -> None:
         counts.routes += 1
 
 
-def build_search_index(connection: sqlite3.Connection) -> int:
+def insert_themes(connection: sqlite3.Connection) -> None:
+    """The theme taxonomy, with its labels, so the app never hardcodes a theme name."""
+    for order, row in enumerate(read_curation("theme_taxonomy.csv"), start=1):
+        theme = text(row["theme"])
+        label = text(row.get("label"))
+        if not theme or not label:
+            raise BuildError(f"theme_taxonomy.csv: {row} needs a theme and a label")
+        connection.execute(
+            "INSERT INTO theme (id, label, description, sort_order) VALUES (?, ?, ?, ?)",
+            (theme, label, text(row.get("description")), order),
+        )
+
+
+def insert_collections(connection: sqlite3.Connection, counts: Counts) -> None:
+    """Curated collections and their members, each member resolved to a bundled place."""
+    known: set[str] = set()
+    for row in read_curation("collections.csv"):
+        collection_id = text(row["id"])
+        name = text(row["name"])
+        label = f"collections.csv {collection_id or '?'}"
+        if not collection_id or not name:
+            raise BuildError(f"{label}: id and name are required")
+        if collection_id in known:
+            raise BuildError(f"{label}: duplicate id")
+        known.add(collection_id)
+        connection.execute(
+            """
+            INSERT INTO collection (id, name, description, symbol, sort_order)
+            VALUES (?, ?, ?, ?, ?)
+            """,
+            (
+                collection_id,
+                name,
+                text(row.get("description")),
+                text(row.get("symbol")),
+                integer(row.get("sort_order"), field="sort_order", row=label) or 0,
+            ),
+        )
+        counts.collections += 1
+
+    order: dict[str, int] = {}
+    seen: set[tuple[str, str, int]] = set()
+    for row in read_curation("collection_members.csv"):
+        collection_id = text(row["collection"]) or ""
+        reference = text(row["member"]) or ""
+        label = f"collection_members.csv {collection_id} {reference}"
+        if collection_id not in known:
+            raise BuildError(f"{label}: no such collection in collections.csv")
+        kind, ref_id = resolve_place_reference(connection, reference, row=label)
+        key = (collection_id, kind, ref_id)
+        if key in seen:
+            raise BuildError(f"{label}: listed twice")
+        seen.add(key)
+        order[collection_id] = order.get(collection_id, 0) + 1
+        connection.execute(
+            """
+            INSERT INTO collection_member (collection_id, place_kind, ref_id, sort_order)
+            VALUES (?, ?, ?, ?)
+            """,
+            (collection_id, kind, ref_id, order[collection_id]),
+        )
+        counts.collection_members += 1
+
+    empty = sorted(known - set(order))
+    if empty:
+        raise BuildError(f"collections with no members: {', '.join(empty)}")
+
+
+ACHIEVEMENT_RULES = {
+    "countries", "continents", "regions", "cities", "capitals", "landmarks", "unesco",
+    "airports", "flights", "trips", "distance", "modes", "collection-complete",
+    "collection-count", "unesco-in-one-trip", "overnight-train", "crossed-equator",
+    "arctic-circle", "antarctic-circle", "antipodes",
+}
+ACHIEVEMENT_TIERS = {None, "bronze", "silver", "gold", "platinum"}
+
+
+def insert_achievements(connection: sqlite3.Connection, counts: Counts) -> None:
+    collections = {row[0] for row in connection.execute("SELECT id FROM collection")}
+    seen: set[str] = set()
+    for row in read_curation("achievements.csv"):
+        achievement_id = text(row["id"])
+        label = f"achievements.csv {achievement_id or '?'}"
+        if not achievement_id or achievement_id in seen:
+            raise BuildError(f"{label}: a unique id is required")
+        seen.add(achievement_id)
+        rule = text(row["rule"])
+        if rule not in ACHIEVEMENT_RULES:
+            raise BuildError(f"{label}: unknown rule {rule!r}")
+        tier = text(row.get("tier"))
+        if tier not in ACHIEVEMENT_TIERS:
+            raise BuildError(f"{label}: unknown tier {tier!r}")
+        parameter = text(row.get("parameter"))
+        threshold = real(row.get("threshold"), field="threshold", row=label)
+        if rule.startswith("collection-") and parameter not in collections:
+            raise BuildError(f"{label}: {parameter!r} is not a collection")
+        needs_threshold = rule not in {
+            "collection-complete", "crossed-equator", "arctic-circle", "antarctic-circle",
+        }
+        if needs_threshold and (threshold is None or threshold <= 0):
+            raise BuildError(f"{label}: rule {rule} needs a positive threshold")
+        name = text(row["name"])
+        description = text(row["description"])
+        if not name or not description:
+            raise BuildError(f"{label}: name and description are required")
+        connection.execute(
+            """
+            INSERT INTO achievement (id, name, description, symbol, rule, threshold,
+                                     parameter, tier, sort_order)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                achievement_id, name, description, text(row.get("symbol")), rule,
+                threshold, parameter, tier,
+                integer(row.get("sort_order"), field="sort_order", row=label) or 0,
+            ),
+        )
+        counts.achievements += 1
+
+
+def desnz_factors() -> dict[str, tuple[str, float]]:
+    """Factor ID -> (description, kg CO2e per unit) from the cached DESNZ flat file.
+
+    The file is an .xlsx, read with the standard library: an .xlsx is a zip of XML,
+    and pulling in a spreadsheet package for one sheet would break the pipeline's
+    "python3 and nothing else" rule.
+    """
+    path = (
+        HERE / "vendor" / "desnz" / "ghg-conversion-factors-2025-flat-format.xlsx"
+    )
+    if not path.exists():
+        raise BuildError(f"Missing cached source file: {path}. Run fetch_sources.py.")
+    namespace = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+    import xml.etree.ElementTree as ElementTree
+
+    def column(reference: str) -> int:
+        number = 0
+        for char in reference:
+            if not char.isalpha():
+                break
+            number = number * 26 + (ord(char) - 64)
+        return number - 1
+
+    with zipfile.ZipFile(path) as workbook:
+        shared = [
+            "".join(node.text or "" for node in item.iter(f"{namespace}t"))
+            for item in ElementTree.fromstring(
+                workbook.read("xl/sharedStrings.xml")
+            ).findall(f"{namespace}si")
+        ]
+        sheet = ElementTree.fromstring(workbook.read("xl/worksheets/sheet2.xml"))
+
+    header: list[str] | None = None
+    factors: dict[str, tuple[str, float]] = {}
+    for row in sheet.iter(f"{namespace}row"):
+        cells: dict[int, str] = {}
+        for cell in row.findall(f"{namespace}c"):
+            value = cell.find(f"{namespace}v")
+            if value is None or value.text is None:
+                continue
+            cells[column(cell.get("r", ""))] = (
+                shared[int(value.text)] if cell.get("t") == "s" else value.text
+            )
+        values = [cells.get(index, "") for index in range(max(cells, default=-1) + 1)]
+        if header is None:
+            if values[:1] == ["ID"] and "GHG/Unit" in values:
+                header = values
+            continue
+        record = dict(zip(header, values))
+        if record.get("GHG/Unit") != "kg CO2e":
+            continue
+        factor_column = next(
+            (name for name in header if name.startswith("GHG Conversion Factor")), None
+        )
+        raw = record.get(factor_column or "", "")
+        if not raw:
+            continue
+        description = " / ".join(
+            part for part in (
+                record.get("Level 1"), record.get("Level 2"), record.get("Level 3"),
+                record.get("Level 4"), record.get("Column Text"), record.get("UOM"),
+            ) if part
+        )
+        factors[record["ID"]] = (description, float(raw))
+    if header is None or not factors:
+        raise BuildError(f"{path}: no factor table found — has the DESNZ layout changed?")
+    return factors
+
+
+def insert_emission_factors(connection: sqlite3.Connection, counts: Counts) -> None:
+    published = desnz_factors()
+    for row in read_curation("emission_factors.csv"):
+        mode = text(row["mode"])
+        travel_class = text(row.get("travel_class")) or ""
+        factor_id = text(row["desnz_id"])
+        basis = text(row["basis"])
+        label = f"emission_factors.csv {mode} {travel_class or '(default)'}"
+        if mode not in ROUTE_MODES:
+            raise BuildError(f"{label}: unknown mode {mode!r}")
+        if basis not in {"passenger", "vehicle"}:
+            raise BuildError(f"{label}: basis must be passenger or vehicle")
+        if factor_id not in published:
+            raise BuildError(f"{label}: DESNZ has no factor {factor_id!r}")
+        description, value = published[factor_id]
+        expected_unit = "passenger.km" if basis == "passenger" else "km"
+        if not description.endswith(f" / {expected_unit}"):
+            raise BuildError(
+                f"{label}: {factor_id} is measured per {description.rsplit(' / ', 1)[-1]}, "
+                f"not per {expected_unit}"
+            )
+        connection.execute(
+            """
+            INSERT INTO emission_factor (mode, travel_class, kg_co2e_per_km, basis, label,
+                                         year, source)
+            VALUES (?, ?, ?, ?, ?, ?, 'desnz')
+            """,
+            (mode, travel_class, value, basis, description, registry.DESNZ_FACTORS_YEAR),
+        )
+        counts.emission_factors += 1
+
+
+def build_search_index(
+    connection: sqlite3.Connection,
+    grid: CityGrid,
+    single_zone: dict[str, str],
+    coverage: Coverage,
+) -> int:
     """Fills ``place_index`` and the FTS5 index over it.
 
     ``prominence`` decides ties in search, which is what makes "par" offer Paris before
@@ -1185,6 +1641,20 @@ def build_search_index(connection: sqlite3.Connection) -> int:
     the same name, and a famous landmark outranks an obscure one.
     """
     rows: list[tuple] = []
+
+    # A region's zone is the one its cities all share, where they do (Texas does not).
+    region_zones: dict[str, set[str | None]] = {}
+    for code, timezone in connection.execute(
+        "SELECT region_code, timezone FROM city WHERE region_code IS NOT NULL ORDER BY id"
+    ):
+        region_zones.setdefault(code, set()).add(timezone)
+
+    def region_zone(code: str) -> str | None:
+        found = region_zones.get(code, set())
+        return next(iter(found)) if len(found) == 1 and None not in found else None
+
+    landmarks_with_zone = 0
+    landmark_total = 0
 
     for row in connection.execute(
         """
@@ -1201,6 +1671,7 @@ def build_search_index(connection: sqlite3.Connection) -> int:
                 # should offer Paris, not France.
                 search_terms(name, iso2, iso3),
                 iso2, name, continent, None, None, None, None, None, None,
+                single_zone.get(iso2),
                 KIND_RANK["country"],
                 COUNTRY_BASE_PROMINENCE + (population or 0) // 1000,
             )
@@ -1222,6 +1693,7 @@ def build_search_index(connection: sqlite3.Connection) -> int:
                 "region", rid, name, strip_accents(name), country_name, code,
                 search_terms(name, code, country_name),
                 iso2, country_name, continent, code, name, None, None, lat, lon,
+                region_zone(code),
                 KIND_RANK["region"],
                 (city_population or 0) // REGION_PROMINENCE_DAMPING,
             )
@@ -1230,7 +1702,8 @@ def build_search_index(connection: sqlite3.Connection) -> int:
     for row in connection.execute(
         """
         SELECT ci.id, ci.name, ci.ascii_name, ci.latitude, ci.longitude, ci.population,
-               ci.is_capital, ci.region_code, r.name, co.iso2, co.name, co.continent
+               ci.is_capital, ci.region_code, r.name, co.iso2, co.name, co.continent,
+               ci.timezone
         FROM city AS ci
         JOIN country AS co ON co.iso2 = ci.country_iso2
         LEFT JOIN region AS r ON r.code = ci.region_code
@@ -1238,7 +1711,7 @@ def build_search_index(connection: sqlite3.Connection) -> int:
         """
     ):
         (cid, name, ascii_name, lat, lon, population, is_capital, region_code,
-         region_name, iso2, country_name, continent) = row
+         region_name, iso2, country_name, continent, timezone) = row
         subtitle = ", ".join(part for part in (region_name, country_name) if part)
         rows.append(
             (
@@ -1247,7 +1720,7 @@ def build_search_index(connection: sqlite3.Connection) -> int:
                 # "springfield illinois" narrow the way a user expects.
                 search_terms(name, ascii_name, country_name, region_name, iso2),
                 iso2, country_name, continent, region_code, region_name, cid, name,
-                lat, lon,
+                lat, lon, timezone,
                 KIND_RANK["city"],
                 # Capitals get a nudge, so a capital outranks a larger non-capital
                 # whose name merely starts the same way.
@@ -1258,7 +1731,8 @@ def build_search_index(connection: sqlite3.Connection) -> int:
     for row in connection.execute(
         """
         SELECT l.id, l.name, l.kind, l.latitude, l.longitude, l.unesco, l.sitelinks,
-               l.city_id, ci.name, l.region_code, r.name, co.iso2, co.name, co.continent
+               l.city_id, ci.name, l.region_code, r.name, co.iso2, co.name, co.continent,
+               ci.timezone
         FROM landmark AS l
         JOIN country AS co ON co.iso2 = l.country_iso2
         LEFT JOIN city AS ci ON ci.id = l.city_id
@@ -1267,7 +1741,10 @@ def build_search_index(connection: sqlite3.Connection) -> int:
         """
     ):
         (lid, name, kind, lat, lon, unesco, sitelinks, city_id, city_name,
-         region_code, region_name, iso2, country_name, continent) = row
+         region_code, region_name, iso2, country_name, continent, city_zone) = row
+        timezone = city_zone or derived_timezone(grid, single_zone, iso2, lat, lon)
+        landmark_total += 1
+        landmarks_with_zone += 1 if timezone else 0
         subtitle = ", ".join(part for part in (city_name, country_name) if part)
         rows.append(
             (
@@ -1276,7 +1753,7 @@ def build_search_index(connection: sqlite3.Connection) -> int:
                 # match every national park while the user is typing "Parma".
                 search_terms(name, kind, city_name, country_name),
                 iso2, country_name, continent, region_code, region_name,
-                city_id, city_name, lat, lon,
+                city_id, city_name, lat, lon, timezone,
                 KIND_RANK["landmark"],
                 # Wikipedia language editions, a measured fame signal, with a nudge for
                 # a UNESCO listing.
@@ -1290,7 +1767,7 @@ def build_search_index(connection: sqlite3.Connection) -> int:
         """
         SELECT a.id, a.iata, a.icao, a.name, a.latitude, a.longitude, a.city_id,
                a.city_name, a.region_code, r.name, co.iso2, co.name, co.continent,
-               a.kind, a.scheduled_service
+               a.kind, a.scheduled_service, a.timezone
         FROM airport AS a
         JOIN country AS co ON co.iso2 = a.country_iso2
         LEFT JOIN region AS r ON r.code = a.region_code
@@ -1298,14 +1775,14 @@ def build_search_index(connection: sqlite3.Connection) -> int:
         """
     ):
         (aid, iata, icao, name, lat, lon, city_id, city_name, region_code,
-         region_name, iso2, country_name, continent, kind, scheduled) = row
+         region_name, iso2, country_name, continent, kind, scheduled, timezone) = row
         subtitle = ", ".join(part for part in (city_name, country_name) if part)
         rows.append(
             (
                 "airport", aid, name, strip_accents(name), subtitle, iata,
                 search_terms(name, iata, icao, city_name, country_name),
                 iso2, country_name, continent, region_code, region_name,
-                city_id, city_name, lat, lon,
+                city_id, city_name, lat, lon, timezone,
                 KIND_RANK["airport"],
                 AIRPORT_PROMINENCE.get(kind or "", 0)
                 + (AIRPORT_SCHEDULED_BONUS if scheduled else 0),
@@ -1324,7 +1801,7 @@ def build_search_index(connection: sqlite3.Connection) -> int:
                 "route", rid, name, strip_accents(name),
                 " – ".join(part for part in (start_name, end_name) if part), None,
                 search_terms(name, mode, start_name, end_name, country_codes),
-                None, None, None, None, None, None, None, None, None,
+                None, None, None, None, None, None, None, None, None, None,
                 KIND_RANK["route"], ROUTE_PROMINENCE,
             )
         )
@@ -1334,11 +1811,12 @@ def build_search_index(connection: sqlite3.Connection) -> int:
         INSERT INTO place_index (kind, ref_id, name, name_folded, subtitle, code,
                                  search_text, country_iso2, country_name, continent,
                                  region_code, region_name, city_id, city_name,
-                                 latitude, longitude, kind_rank, prominence)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                 latitude, longitude, timezone, kind_rank, prominence)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         rows,
     )
+    coverage.record("landmark time zone", landmarks_with_zone, landmark_total)
 
     # Rebuilding from the content table is how an external-content FTS5 index is
     # populated; inserting into it directly would double-store every row.
@@ -1391,6 +1869,7 @@ def write_meta(
         "data_version": data_version,
         "built_at": built_at,
         "row_summary": counts.summary(),
+        "extras_summary": counts.extras(),
         "coverage": "; ".join(coverage.notes),
         "cities_dataset": cities_dataset,
         # Shown in Settings so a user can see what the data rests on (R-DB-7). The
@@ -1422,7 +1901,7 @@ def main(argv: list[str]) -> int:
     )
     parser.add_argument(
         "--data-version",
-        default="0.2.0",
+        default="0.3.0",
         help="Written into meta.data_version and shown in the app's Settings screen.",
     )
     parser.add_argument(
@@ -1447,6 +1926,7 @@ def main(argv: list[str]) -> int:
     size_mb = arguments.out.stat().st_size / (1024 * 1024)
     print(f"Built {arguments.out}")
     print(f"  {counts.summary()}")
+    print(f"  {counts.extras()}")
     print(f"  {size_mb:.1f} MB, sha256:{digest}")
     if size_mb > registry.SIZE_BUDGET_MB:
         # Not a failure: a byte count is a judgement, not a correctness property.

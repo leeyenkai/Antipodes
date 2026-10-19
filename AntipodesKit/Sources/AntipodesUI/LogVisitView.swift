@@ -2,45 +2,85 @@ import AntipodesCore
 import AntipodesPlaces
 import SwiftUI
 
-/// Confirms a visit: type, date, trip. Everything here has a default, so the user can
-/// tap Save straight away (R-JLOG-1).
-struct LogVisitView: View {
+/// Logs or edits one visit: type, date, trip, rating, notes. Everything has a default,
+/// so a new visit can be saved straight away — search, tap the place, tap Save
+/// (R-LOG-3, M1 acceptance criterion 2).
+struct VisitForm: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
 
-    let result: PlaceSearchResult
-    let onSaved: () -> Void
+    let place: PlaceReference
+    /// The visit being edited, or `nil` for a new one.
+    let existing: Visit?
+    let onDone: () -> Void
 
-    @State private var visitType: VisitType = .stayed
-    @State private var date: FlexibleDate = .unknown
+    @State private var name: String
+    @State private var visitType: VisitType
+    @State private var date: FlexibleDate
     @State private var tripID: UUID?
-    @State private var errorMessage: String?
+    @State private var rating: Int?
+    @State private var notes: String
+    @State private var isConfirmingDelete = false
+    @State private var saved = false
+
+    init(
+        place: PlaceReference,
+        existing: Visit? = nil,
+        tripID: UUID? = nil,
+        onDone: @escaping () -> Void
+    ) {
+        self.place = place
+        self.existing = existing
+        self.onDone = onDone
+        _name = State(initialValue: existing?.place.name ?? place.name)
+        _visitType = State(initialValue: existing?.visitType ?? .stayed)
+        _date = State(initialValue: existing?.date ?? .day(.today()))
+        _tripID = State(initialValue: existing?.tripID ?? tripID)
+        _rating = State(initialValue: existing?.rating)
+        _notes = State(initialValue: existing?.notes ?? "")
+    }
 
     var body: some View {
         Form {
             Section {
-                PlaceResultRow(result: result)
+                PlaceHeader(place: place)
+                if place.kind == .custom {
+                    TextField("Name", text: $name)
+                        .capitalizingWords()
+                }
             }
 
-            Section("How did you visit?") {
+            Section {
                 Picker("Visit type", selection: $visitType) {
                     ForEach(VisitType.allCases) { type in
-                        Text(type.displayName).tag(type)
+                        Label {
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(type.displayName)
+                                Text(type.explanation)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                        } icon: {
+                            Image(systemName: type.symbolName)
+                        }
+                        .tag(type)
                     }
                 }
                 .pickerStyle(.inline)
                 .labelsHidden()
-
+            } header: {
+                Text("How did you visit?")
+            } footer: {
                 if !model.rules.countsTowardsCoverage(visitType) {
-                    CaveatLabel(
-                        text: """
-                        \(visitType.displayName) does not count towards coverage under \
-                        your current rules. You can change that in Settings.
-                        """
-                    )
+                    Text("""
+                    \(visitType.displayName) doesn't count towards coverage under your \
+                    current rules, so it won't shade the globe. You can change that in \
+                    Settings.
+                    """)
                 }
             }
 
-            Section("When?") {
+            Section("When") {
                 FlexibleDateField(date: $date)
             }
 
@@ -48,146 +88,120 @@ struct LogVisitView: View {
                 TripPicker(selection: $tripID)
             }
 
-            if let errorMessage {
+            Section("Notes") {
+                RatingPicker(rating: $rating)
+                TextField("What do you want to remember?", text: $notes, axis: .vertical)
+                    .lineLimit(2 ... 8)
+            }
+
+            if let existing {
                 Section {
-                    Text(errorMessage).foregroundStyle(.red)
+                    Button("Log Another Visit Here", systemImage: "arrow.clockwise") {
+                        model.addRequest = AddRequest(
+                            start: .place(existing.place),
+                            tripID: existing.tripID
+                        )
+                    }
+                    Button("Delete Visit", systemImage: "trash", role: .destructive) {
+                        isConfirmingDelete = true
+                    }
                 }
             }
         }
-        .navigationTitle(result.name)
+        .navigationTitle(existing == nil ? "Log Visit" : "Edit Visit")
+        .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("Save", action: save)
+                Button(existing == nil ? "Save" : "Done", systemImage: "checkmark", action: save)
+                    .buttonStyle(.glassProminent)
+                    .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
+        }
+        .sensoryFeedback(.success, trigger: saved)
+        .confirmationDialog(
+            "Delete this visit?",
+            isPresented: $isConfirmingDelete,
+            titleVisibility: .visible
+        ) {
+            Button("Delete Visit", role: .destructive) {
+                if let existing {
+                    model.deleteVisits([existing.id])
+                }
+                onDone()
+            }
+        } message: {
+            Text("It is removed from your log and every statistic. This can't be undone.")
         }
     }
 
     private func save() {
+        var finalPlace = existing?.place ?? place
+        if finalPlace.kind == .custom {
+            finalPlace.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if var visit = existing {
+            visit.place = finalPlace
+            visit.visitType = visitType
+            visit.date = date
+            visit.tripID = tripID
+            visit.rating = rating
+            visit.notes = notes.trimmedOrNil
+            model.updateVisit(visit)
+            saved = true
+            onDone()
+            return
+        }
         do {
             try model.logVisit(
-                place: result.placeReference,
+                place: finalPlace,
                 visitType: visitType,
                 date: date,
-                tripID: tripID
+                tripID: tripID,
+                rating: rating,
+                notes: notes
             )
-            onSaved()
+            saved = true
+            onDone()
         } catch {
-            errorMessage = String(describing: error)
+            model.errorMessage = error.localizedDescription
         }
     }
 }
 
-/// Confirms a flight leg. Distance is shown before saving, computed from the same
-/// great circle the globe draws (R-PATH-4).
-struct LogFlightView: View {
-    @Environment(AppModel.self) private var model
-
-    let origin: PlaceSearchResult
-    let destination: PlaceSearchResult
-    let onSaved: () -> Void
-
-    @State private var date: FlexibleDate = .unknown
-    @State private var airline = ""
-    @State private var flightNumber = ""
-    @State private var tripID: UUID?
-    @State private var errorMessage: String?
-
-    private var distanceKm: Double? {
-        guard let from = origin.coordinate, let to = destination.coordinate else { return nil }
-        return GreatCircle.distanceKm(from: from, to: to)
-    }
+/// A place's identity at the top of a form: icon, name, where it is, and its flag.
+struct PlaceHeader: View {
+    let place: PlaceReference
 
     var body: some View {
-        Form {
-            Section {
-                LabeledContent("From", value: "\(origin.code ?? "—") · \(origin.name)")
-                LabeledContent("To", value: "\(destination.code ?? "—") · \(destination.name)")
-                if let distanceKm {
-                    LabeledContent("Distance") {
-                        Text(formatted(distanceKm))
-                    }
-                } else {
-                    CaveatLabel(
-                        text: """
-                        One of these airports has no coordinate, so this leg has no \
-                        distance.
-                        """
-                    )
+        HStack(spacing: 14) {
+            SymbolTile(systemName: place.kind.symbolName, tint: place.kind.tint, size: 46)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(place.name)
+                    .font(.title3.weight(.semibold))
+                Text(place.contextLine)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                if let coordinate = place.coordinate {
+                    Text(coordinate.displayText)
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.tertiary)
                 }
             }
-
-            Section("When?") {
-                FlexibleDateField(date: $date)
-            }
-
-            Section("Detail (optional)") {
-                TextField("Airline", text: $airline)
-                TextField("Flight number", text: $flightNumber)
-            }
-
-            Section("Trip") {
-                TripPicker(selection: $tripID)
-            }
-
-            if let errorMessage {
-                Section {
-                    Text(errorMessage).foregroundStyle(.red)
-                }
-            }
+            Spacer(minLength: 0)
+            Text(place.flag)
+                .font(.largeTitle)
+                .accessibilityHidden(true)
         }
-        .navigationTitle("Flight")
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Save", action: save)
-            }
-        }
-    }
-
-    private func formatted(_ kilometres: Double) -> String {
-        let value = model.rules.unitSystem.distance(fromKilometres: kilometres)
-        return "\(Int(value.rounded())) \(model.rules.unitSystem.distanceUnitAbbreviation)"
-    }
-
-    private func save() {
-        do {
-            try model.logFlight(
-                from: origin.placeReference,
-                to: destination.placeReference,
-                date: date,
-                airline: airline,
-                flightNumber: flightNumber,
-                tripID: tripID
-            )
-            onSaved()
-        } catch {
-            errorMessage = String(describing: error)
-        }
+        .padding(.vertical, 4)
+        .accessibilityElement(children: .combine)
     }
 }
 
-/// Assigning a trip is optional — a visit can stand alone and be filed later
-/// (R-MODEL-3).
-struct TripPicker: View {
-    @Environment(AppModel.self) private var model
-    @Binding var selection: UUID?
-    @State private var newTripName = ""
-
-    var body: some View {
-        Picker("Trip", selection: $selection) {
-            Text("No trip").tag(UUID?.none)
-            ForEach(model.log.trips, id: \.id) { trip in
-                Text(trip.name ?? "Untitled trip").tag(UUID?.some(trip.id))
-            }
-        }
-
-        HStack {
-            TextField("New trip name", text: $newTripName)
-            Button("Add") {
-                guard !newTripName.trimmingCharacters(in: .whitespaces).isEmpty else { return }
-                selection = try? model.createTrip(name: newTripName).id
-                newTripName = ""
-            }
-            .disabled(newTripName.trimmingCharacters(in: .whitespaces).isEmpty)
-        }
+extension Coordinate {
+    /// "59.914° N, 10.752° E".
+    var displayText: String {
+        let lat = abs(latitude).formatted(.number.precision(.fractionLength(3)))
+        let lon = abs(longitude).formatted(.number.precision(.fractionLength(3)))
+        return "\(lat)° \(latitude >= 0 ? "N" : "S"), \(lon)° \(longitude >= 0 ? "E" : "W")"
     }
 }

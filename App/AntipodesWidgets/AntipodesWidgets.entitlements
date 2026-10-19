@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The widget reads the snapshot the app writes into this shared container. Like the
+  app's (App/Antipodes/Antipodes-iOS.entitlements), it works in the simulator as is
+  and needs a team set in Signing & Capabilities for a device build.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.leeyenkai.antipodes</string>
+	</array>
+</dict>
+</plist>

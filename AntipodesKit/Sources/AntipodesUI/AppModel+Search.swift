@@ -1,0 +1,79 @@
+import AntipodesCore
+import AntipodesGlobe
+import AntipodesPlaces
+import AntipodesStats
+import Foundation
+import SwiftUI
+
+public extension AppModel {
+    // MARK: - Search
+
+    func search(_ text: String, kinds: Set<PlaceKind>?) async -> [PlaceSearchResult] {
+        guard let places, !text.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        return await (try? places.search(text, kinds: kinds, limit: 40)) ?? []
+    }
+
+    func airport(code: String) async -> PlaceReference? {
+        await (try? places?.airport(code: code))?.placeReference
+    }
+
+    func nearestCity(
+        to coordinate: Coordinate,
+        withinKm radius: Double = 40
+    ) async -> PlaceReference? {
+        await (try? places?.nearestCity(to: coordinate, withinKm: radius))?.placeReference
+    }
+
+    func route(id: Int64) -> RouteInfo? {
+        catalogue.routes.first { $0.id == id }
+    }
+
+    /// Turns a dropped pin into a place that counts (R-LOG-5).
+    ///
+    /// The country comes from point-in-polygon against the bundled borders — the same
+    /// outlines the globe shades — and its name and continent from the database. The
+    /// region and time zone are taken from the nearest bundled city in that country, if
+    /// one is within 30 km; further out the pin keeps only its country rather than
+    /// borrowing a region it may not be in. Nothing leaves the device.
+    func resolvePin(at coordinate: Coordinate, name: String) async -> PlaceReference {
+        let borders = loadBorders()
+        let code = borders?.countryCode(near: coordinate, toleranceKm: 25)
+        let country = code.flatMap { catalogue.countries[$0] }
+        var region: (code: String?, name: String?, zone: String?) = (nil, nil, nil)
+        if let city = await nearestCity(to: coordinate, withinKm: 30), city.countryCode == code {
+            region = (city.regionCode, city.regionName, city.timeZoneIdentifier)
+        }
+        return PlaceReference(
+            id: .custom(UUID()),
+            kind: .custom,
+            name: name,
+            coordinate: coordinate,
+            countryCode: code,
+            countryName: country?.name,
+            continent: country?.continent,
+            regionCode: region.code,
+            regionName: region.name,
+            timeZoneIdentifier: region.zone ?? (code.flatMap { singleZone(for: $0) })
+        )
+    }
+
+    private func singleZone(for code: String) -> String? {
+        let zones = Set(log.visits.filter { $0.place.countryCode == code }
+            .compactMap(\.place.timeZoneIdentifier))
+        return zones.count == 1 ? zones.first : nil
+    }
+
+    /// The 1:50m outlines, for pin lookup and share cards. Loaded once, on first use.
+    var globeBorders: CountryBorders? {
+        loadBorders()
+    }
+
+    private func loadBorders() -> CountryBorders? {
+        if let borders {
+            return borders
+        }
+        guard let bordersURL else { return nil }
+        borders = try? CountryBorders.load(from: bordersURL)
+        return borders
+    }
+}

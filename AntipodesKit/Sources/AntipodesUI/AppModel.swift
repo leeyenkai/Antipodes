@@ -1,43 +1,118 @@
 import AntipodesCore
 import AntipodesExport
+import AntipodesGlobe
+import AntipodesImport
 import AntipodesPlaces
 import AntipodesStats
 import AntipodesStore
 import Foundation
 import Observation
+import SwiftUI
+
+/// Everything the place database contributes besides search, read once at launch.
+public struct Catalogue: Sendable {
+    public var collections: [CollectionDefinition] = []
+    public var achievements: [AchievementDefinition] = []
+    public var routes: [RouteInfo] = []
+    public var emissionFactors: EmissionFactorTable = .empty
+    public var themes: [ThemeDefinition] = []
+    public var countries: [String: CountryFacts] = [:]
+}
+
+/// What the add sheet should open on, when something other than the plain sheet is
+/// wanted: logging into a particular trip, riding a catalogue route, a dropped pin.
+public struct AddRequest: Identifiable, Equatable {
+    public enum Start: Equatable {
+        case search
+        case journey(TravelMode?)
+        case route(RouteInfo)
+        case pin(Coordinate?)
+        case place(PlaceReference)
+    }
+
+    public let id = UUID()
+    public var start: Start = .search
+    public var tripID: UUID?
+
+    public init(start: Start = .search, tripID: UUID? = nil) {
+        self.start = start
+        self.tripID = tripID
+    }
+}
 
 /// The app's single piece of shared state.
 ///
-/// Holds the store, the place database and the counting rules, and caches the computed
-/// statistics. Views read it from the environment; there are no per-screen view models
-/// (AGENTS.md §4).
+/// Holds the store, the place database, the counting rules and preferences, and caches
+/// the computed statistics. Views read it from the environment; there are no per-screen
+/// view models (AGENTS.md §4). Statistics are computed off the main actor from value
+/// types, so a large log never stalls scrolling.
 @MainActor
 @Observable
 public final class AppModel {
-    public private(set) var store: TravelLogStore
+    public let store: TravelLogStore
     public private(set) var places: PlaceDatabase?
     public private(set) var databaseInfo: PlaceDatabaseInfo?
-
     /// Why the place database could not be opened, shown in the UI instead of an empty
     /// search field that silently never matches.
     public private(set) var placesError: String?
 
     public private(set) var log: TravelLog = .empty
     public private(set) var statistics: TravelStatistics
+    public private(set) var catalogue = Catalogue()
+    public private(set) var countryListCounts: [CountryList: Int] = [:]
+    /// Facts fetched for the places in the log, so attribute stats can run.
+    @ObservationIgnored private var placeFacts: [PlaceID: PlaceFacts] = [:]
+    @ObservationIgnored private var computeGeneration = 0
+    @ObservationIgnored var borders: CountryBorders?
+    #if os(iOS)
+        @ObservationIgnored var widgetGlobeSignature: Int?
+    #endif
+    @ObservationIgnored let bordersURL: URL?
+    @ObservationIgnored private let preferences = PreferencesStorage()
 
     public var rules: CountingRules {
         didSet {
             guard rules != oldValue else { return }
             CountingRulesStorage.save(rules)
-            recomputeStatistics()
+            recompute()
         }
     }
 
-    public init(store: TravelLogStore, placeDatabaseURL: URL?) {
+    public var appearance: AppearancePreference {
+        didSet { preferences.appearance = appearance }
+    }
+
+    /// Where the user lives: left out of "days away" and photo suggestions, and the
+    /// point the antipode is measured from.
+    public var home: PlaceReference? {
+        didSet {
+            preferences.home = home
+            recompute()
+        }
+    }
+
+    public var hasCompletedOnboarding: Bool {
+        didSet { preferences.hasCompletedOnboarding = hasCompletedOnboarding }
+    }
+
+    /// Set to open the add sheet from anywhere — a toolbar, a keyboard shortcut, a
+    /// tapped empty state.
+    public var addRequest: AddRequest?
+    /// The last failed operation, for the one app-wide alert.
+    public var errorMessage: String?
+
+    public init(store: TravelLogStore, placeDatabaseURL: URL?, bordersURL: URL? = nil) {
         self.store = store
+        self.bordersURL = bordersURL
         let loadedRules = CountingRulesStorage.load()
         rules = loadedRules
-        statistics = StatisticsEngine.compute(for: .empty, rules: loadedRules)
+        appearance = preferences.appearance
+        home = preferences.home
+        hasCompletedOnboarding = preferences.hasCompletedOnboarding
+        statistics = StatisticsEngine.compute(
+            for: .empty,
+            context: StatisticsContext(rules: loadedRules)
+        )
 
         if let placeDatabaseURL {
             do {
@@ -55,36 +130,109 @@ public final class AppModel {
         reload()
     }
 
+    // MARK: - Loading
+
+    /// Reads everything the database offers besides search. Called once at launch.
+    public func start() async {
+        guard let places else { return }
+        do {
+            databaseInfo = try await places.info()
+            countryListCounts = try await places.countryListCounts()
+            catalogue = try await Catalogue(
+                collections: places.collections(),
+                achievements: places.achievements(),
+                routes: places.routes(),
+                emissionFactors: places.emissionFactors(),
+                themes: places.themes(),
+                countries: places.countryFacts()
+            )
+        } catch {
+            placesError = String(describing: error)
+        }
+        // The denominator for "% of the world" comes from the database rather than a
+        // constant, because which places count as a country is the user's choice
+        // (Q-4). Applying it here means the number and the list name agree.
+        rules.applyCountryCounts(countryListCounts)
+        // The facts for the log may already have arrived (reload() fetches them too),
+        // in which case refreshFacts() finds nothing new and does not recompute. The
+        // catalogue is new either way, so recompute here or collections, badges and
+        // carbon would stay empty until the next edit.
+        recompute()
+        await refreshFacts()
+    }
+
     /// Re-reads the log and recomputes every statistic.
     ///
-    /// Called after any write. At M1 scale this is a few milliseconds, and doing it in
-    /// one place means a screen can never show stats that disagree with the list
-    /// beside them.
+    /// Called after any write, so a screen can never show stats that disagree with the
+    /// list beside them.
     public func reload() {
         do {
             log = try store.travelLog()
         } catch {
+            errorMessage = "Your log could not be read: \(error.localizedDescription)"
             log = .empty
         }
-        recomputeStatistics()
+        recompute()
+        Task { await refreshFacts() }
     }
 
-    private func recomputeStatistics() {
-        statistics = StatisticsEngine.compute(for: log, rules: rules)
-    }
-
-    public func loadDatabaseInfo() async {
+    /// Fetches facts for any logged place the cache does not have yet.
+    private func refreshFacts() async {
         guard let places else { return }
-        databaseInfo = try? await places.info()
-        countryListCounts = await (try? places.countryListCounts()) ?? [:]
-        // The denominator for "% of the world" comes from the database rather than a
-        // constant, because which places count as a country is the user's choice
-        // (Q-4). Applying it here means the number and the list name on screen agree.
-        rules.applyCountryCounts(countryListCounts)
+        let ids = Set(log.visits.map(\.place.id) + log.allLegs.flatMap { [
+            $0.origin.id,
+            $0.destination.id,
+        ] })
+        .filter { placeFacts[$0] == nil }
+        .filter {
+            if case .database = $0 {
+                true
+            } else {
+                false
+            }
+        }
+        guard !ids.isEmpty else { return }
+        if let found = try? await places.facts(for: ids) {
+            placeFacts.merge(found) { _, new in new }
+            recompute()
+        }
     }
 
-    /// How many countries each selectable list holds, read from the place database.
-    public private(set) var countryListCounts: [CountryList: Int] = [:]
+    public var gazetteer: Gazetteer {
+        Gazetteer(places: placeFacts, countries: catalogue.countries, themes: catalogue.themes)
+    }
+
+    public var statisticsContext: StatisticsContext {
+        StatisticsContext(
+            rules: rules,
+            gazetteer: gazetteer,
+            home: home,
+            today: .today(),
+            emissionFactors: catalogue.emissionFactors,
+            collections: catalogue.collections,
+            achievements: catalogue.achievements,
+            routes: catalogue.routes
+        )
+    }
+
+    /// Recomputes off the main actor. A newer request supersedes an older one still
+    /// running, so a burst of edits settles on the last.
+    private func recompute() {
+        computeGeneration += 1
+        let generation = computeGeneration
+        let log = log
+        let context = statisticsContext
+        Task {
+            let result = await Task.detached(priority: .userInitiated) {
+                StatisticsEngine.compute(for: log, context: context)
+            }.value
+            guard generation == computeGeneration else { return }
+            statistics = result
+            writeWidgetSnapshot()
+        }
+    }
+
+    // MARK: - Choices
 
     /// Switches the country list and repoints the denominator in one step.
     public func selectCountryList(_ list: CountryList) {
@@ -94,59 +242,198 @@ public final class AppModel {
         rules = updated
     }
 
-    // MARK: - Search
-
-    public func search(_ text: String, kinds: Set<PlaceKind>?) async -> [PlaceSearchResult] {
-        guard let places, text.trimmingCharacters(in: .whitespaces).count >= 1 else { return [] }
-        return await (try? places.search(text, kinds: kinds)) ?? []
-    }
-
-    /// Resolves a dropped pin's country so a custom place still counts in coverage
-    /// (R-LOG-5).
-    public func resolveCountry(for coordinate: Coordinate) async -> PlaceSearchResult? {
-        guard let places else { return nil }
-        return try? await places.approximateCountry(for: coordinate)
+    public func countryCount(for list: CountryList) -> Int {
+        countryListCounts[list] ?? list.fallbackCount
     }
 
     // MARK: - Writing
+
+    /// Runs a write, reloads, and turns a failure into the app-wide alert.
+    @discardableResult
+    public func perform(_ action: () throws -> Void) -> Bool {
+        do {
+            try action()
+            reload()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
 
     public func logVisit(
         place: PlaceReference,
         visitType: VisitType,
         date: FlexibleDate,
-        tripID: UUID?
+        tripID: UUID?,
+        rating: Int? = nil,
+        notes: String? = nil
     ) throws {
         let trip = try tripID.flatMap { try store.trip(id: $0) }
-        try store.logVisit(place: place, visitType: visitType, date: date, trip: trip)
+        try store.logVisit(
+            place: place,
+            visitType: visitType,
+            date: date,
+            trip: trip,
+            rating: rating,
+            notes: notes?.trimmedOrNil
+        )
         reload()
     }
 
-    public func logFlight(
-        from origin: PlaceReference,
-        to destination: PlaceReference,
-        date: FlexibleDate,
-        airline: String?,
-        flightNumber: String?,
-        tripID: UUID?
-    ) throws {
-        let leg = JourneyLeg(
-            mode: .flight,
-            origin: origin,
-            destination: destination,
-            date: date,
-            operatorName: airline?.isEmpty == true ? nil : airline,
-            serviceNumber: flightNumber?.isEmpty == true ? nil : flightNumber
-        )
+    public func updateVisit(_ visit: Visit) {
+        perform { try store.updateVisit(visit) }
+    }
+
+    /// Writes many edited visits, reloading once at the end.
+    public func updateVisits(_ visits: [Visit]) {
+        perform {
+            for visit in visits {
+                try store.updateVisit(visit)
+            }
+        }
+    }
+
+    public func deleteVisits(_ ids: [UUID]) {
+        perform { try store.deleteVisits(ids) }
+    }
+
+    public func moveVisits(_ ids: [UUID], toTrip tripID: UUID?) {
+        perform { try store.moveVisits(ids, toTrip: tripID) }
+    }
+
+    public func logJourney(legs: [JourneyLeg], tripID: UUID?, title: String? = nil) throws {
         let trip = try tripID.flatMap { try store.trip(id: $0) }
-        try store.logJourney(legs: [leg], trip: trip)
+        try store.logJourney(legs: legs, trip: trip, title: title?.trimmedOrNil)
         reload()
+    }
+
+    public func updateJourney(_ journey: Journey) {
+        perform { try store.updateJourney(journey) }
+    }
+
+    public func deleteJourneys(_ ids: [UUID]) {
+        perform { try store.deleteJourneys(ids) }
+    }
+
+    public func moveJourneys(_ ids: [UUID], toTrip tripID: UUID?) {
+        perform { try store.moveJourneys(ids, toTrip: tripID) }
+    }
+
+    /// Duplicates a leg as a new journey dated today (R-JLOG-6).
+    public func rideAgain(_ leg: JourneyLeg, tripID: UUID?) {
+        perform {
+            let trip = try tripID.flatMap { try store.trip(id: $0) }
+            try store.logJourney(legs: [leg.rideAgain(on: .day(.today()))], trip: trip)
+        }
     }
 
     @discardableResult
-    public func createTrip(name: String?) throws -> Trip {
-        let trip = try store.createTrip(name: name)
+    public func createTrip(name: String?, notes: String? = nil) throws -> Trip {
+        let trip = try store.createTrip(name: name?.trimmedOrNil, notes: notes?.trimmedOrNil)
         reload()
         return trip.asTrip
+    }
+
+    public func updateTrip(_ trip: Trip) {
+        perform { try store.updateTrip(trip) }
+    }
+
+    public func deleteTrip(_ id: UUID, deletingContents: Bool) {
+        perform { try store.deleteTrip(id: id, deletingContents: deletingContents) }
+    }
+
+    // MARK: - Wishlist
+
+    public func isOnWishlist(_ place: PlaceReference) -> Bool {
+        log.wishlist.contains { $0.place?.id == place.id }
+    }
+
+    public func isOnWishlist(routeID: Int64) -> Bool {
+        log.wishlist.contains { $0.routeID == routeID }
+    }
+
+    public func addToWishlist(_ place: PlaceReference) {
+        guard !isOnWishlist(place) else { return }
+        perform { try store.addToWishlist(WishlistItem(place: place, createdAt: Date())) }
+    }
+
+    public func addToWishlist(route: RouteInfo) {
+        guard !isOnWishlist(routeID: route.id) else { return }
+        perform {
+            try store.addToWishlist(
+                WishlistItem(
+                    place: route.start,
+                    routeID: route.id,
+                    routeName: route.name,
+                    createdAt: Date()
+                )
+            )
+        }
+    }
+
+    public func removeFromWishlist(_ ids: [UUID]) {
+        perform { try store.removeFromWishlist(ids) }
+    }
+
+    public func removeFromWishlist(place: PlaceReference) {
+        let ids = log.wishlist.filter { $0.place?.id == place.id && $0.routeID == nil }.map(\.id)
+        removeFromWishlist(ids)
+    }
+
+    /// Wishlist places not yet visited, for the globe's wishlist pins (R-GLOBE-4).
+    public var openWishlistPlaces: [PlaceReference] {
+        statistics.wishlist.filter { !$0.isVisited }.compactMap(\.item.place)
+    }
+
+    // MARK: - Import
+
+    /// Restores an Antipodes JSON export, adding only what is not already here.
+    public func importBackup(_ data: Data) throws -> ImportCounts {
+        let imported = try TravelLogExport.importLog(fromJSON: data)
+        let counts = try store.merge(imported)
+        reload()
+        return counts
+    }
+
+    /// Reads another app's flight history and matches it to bundled airports (R-LOG-8).
+    public func readFlightLog(_ data: Data) async throws
+        -> (FlightLogFormat, [FlightImportCandidate]) {
+        let dayFirst = Locale.current.region?.identifier != "US"
+        let (format, rows) = try FlightLogImport.parse(data, dayFirst: dayFirst)
+        let candidates = await FlightLogImport
+            .match(rows, existing: log.allLegs) { [weak self] code in
+                await self?.airport(code: code)
+            }
+        return (format, candidates)
+    }
+
+    /// Logs every included candidate as its own one-leg journey.
+    public func importFlights(_ candidates: [FlightImportCandidate], tripID: UUID?) throws -> Int {
+        let trip = try tripID.flatMap { try store.trip(id: $0) }
+        var count = 0
+        for candidate in candidates where candidate.include {
+            guard let leg = candidate.leg else { continue }
+            try store.logJourney(legs: [leg], trip: trip)
+            count += 1
+        }
+        reload()
+        return count
+    }
+
+    /// Logs the confirmed photo suggestions as visits (R-LOG-7).
+    public func importSuggestions(_ suggestions: [VisitSuggestion], tripID: UUID?) throws -> Int {
+        let trip = try tripID.flatMap { try store.trip(id: $0) }
+        for suggestion in suggestions {
+            try store.logVisit(
+                place: suggestion.place,
+                visitType: suggestion.suggestedType,
+                date: suggestion.date,
+                trip: trip
+            )
+        }
+        reload()
+        return suggestions.count
     }
 
     public func deleteEverything() throws {
@@ -162,5 +449,12 @@ public final class AppModel {
 
     public func exportCSVFiles() -> [String: Data] {
         TravelLogExport.csvFiles(for: log)
+    }
+}
+
+extension String {
+    var trimmedOrNil: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

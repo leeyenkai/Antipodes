@@ -34,14 +34,17 @@ AntipodesKit/            Swift package — all logic and UI. This is where you w
     AntipodesCore/       Value types, flexible dates, visit types, travel modes,
                          great-circle maths, counting rules. No dependencies at all.
     AntipodesPlaces/     Read-only place database: thin SQLite3 wrapper, FTS5 search.
-    AntipodesStats/      Coverage and distance stats. Pure functions over Core types.
+    AntipodesStats/      Every stat family, achievements, collections, Year in
+                         Review. Pure functions over Core types.
     AntipodesExport/     CSV and JSON export of the user's whole log.
+    AntipodesImport/     Flight-log CSV readers and photo clustering. Pure.
     AntipodesStore/      SwiftData models, CloudKit container, mapping to/from Core.
     AntipodesGlobe/      Globe geometry: orthographic projection, limb clipping,
                          bundled border decoding, replay timeline. Pure.
     AntipodesUI/         SwiftUI screens.
   Tests/                 One suite per pure module. Runs with no network, no simulator.
 App/Antipodes/           Xcode app shell: @main entry, Info.plist, assets, resources.
+App/AntipodesWidgets/    WidgetKit extension. Imports AntipodesCore only (D-19).
 Antipodes.xcodeproj      Thin app project; depends on the local AntipodesKit package.
 Tools/placedb/           Python pipeline that builds the read-only places.sqlite
                          from open data. curation/ is tracked; vendor/ and out/ are not.
@@ -56,6 +59,7 @@ AntipodesCore   ← depends on nothing
 AntipodesPlaces ← Core
 AntipodesStats  ← Core
 AntipodesExport ← Core
+AntipodesImport ← Core
 AntipodesStore  ← Core            (SwiftData lives here and nowhere else)
 AntipodesGlobe  ← Core            (globe geometry; no SwiftUI, no MapKit)
 AntipodesUI     ← all of the above
@@ -200,8 +204,9 @@ The place database is built from open data, and the licences differ:
 
 - Read the relevant section of [docs/SPECIFICATION.md](docs/SPECIFICATION.md) and note
   the requirement IDs you are implementing.
-- Check the milestone tag. `[M1]` work is in scope now; `[V1]` and `[LATER]` are not —
-  do not build them early, and do not quietly expand scope.
+- Check the milestone tag. `[M1]` and `[V1]` work is in scope (decision D-18);
+  `[LATER]` is not — do not build it early, and do not quietly expand scope. §13.1 of
+  the spec says which V1 areas are blocked and why.
 
 **While you work**
 
@@ -266,6 +271,16 @@ to avoid it. If you invoke `swift` directly, do the same, or override with
 ```bash
 swift test --package-path AntipodesKit --scratch-path "$HOME/Library/Caches/Antipodes/swiftpm"
 ```
+
+**iCloud leaves duplicate files behind.** When the synced folder and a local edit
+race, the file provider keeps both as `Name 2.swift`. SwiftPM compiles it and the build
+fails with redeclaration errors that point at code you did not touch. Delete the
+` 2` copy after checking it holds nothing newer.
+
+**Widgets need a signed simulator build.** The widget reads the app's snapshot through
+the app-group container, and an unsigned build carries no entitlements, so the widget
+shows its placeholder. `scripts/build-app.sh` signs simulator builds ad hoc for this
+reason; a device build needs a team in Signing & Capabilities.
 
 **SwiftFormat rewrites force-unwraps in tests.** The default `noForceUnwrapInTests`
 rule turns `foo!` into `#require(foo)`. Inside an expression that is already wrapped in

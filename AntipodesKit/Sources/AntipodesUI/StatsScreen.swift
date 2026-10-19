@@ -1,133 +1,381 @@
 import AntipodesCore
 import AntipodesStats
+import Charts
 import SwiftUI
 
-/// The stats dashboard (§9).
+/// Drill-downs from a number to what it rests on (§7: every number is tappable).
+enum StatsRoute: Hashable {
+    case countries
+    case places(PlaceKind)
+    case capitals
+    case unesco
+    case personality
+    case legs(TravelMode?)
+    case carbon
+    case repeats
+    case gaps
+    case year(Int)
+}
+
+/// The stats dashboard (§9): personality first, then the five families.
 ///
-/// Every number carries its caveat, so the user can see what it rests on (R-CALC-5).
-/// M1 ships the coverage and distance families; the other three land in v1 (§13).
+/// Every figure carries its caveat, so the user can see what it rests on (R-CALC-5).
 struct StatsScreen: View {
     @Environment(AppModel.self) private var model
-
-    private var statistics: TravelStatistics {
-        model.statistics
-    }
+    @State private var sharing: ShareItem?
+    @State private var isShowingSettings = false
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    LazyVGrid(
-                        columns: [GridItem(.adaptive(minimum: 140), spacing: 12)],
-                        spacing: 12
-                    ) {
-                        ForEach(statistics.headlines) { StatCard(headline: $0) }
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 28) {
+                    if model.log.isEmpty {
+                        EmptyStateView(
+                            title: "No stats yet",
+                            message: "Log a place or a journey and your numbers start here.",
+                            systemImage: "chart.bar.xaxis",
+                            actionTitle: "Log a Place",
+                            action: { model.addRequest = AddRequest() }
+                        )
+                    } else {
+                        PersonalityHero()
+                        HeadlineGrid(share: share)
+                        CoverageSection(share: share)
+                        DistanceSection(share: share)
+                        JourneyDetailSection()
+                        CarbonSection()
+                        AttributesSection()
+                        PatternsSection()
+                        ThemesSection()
+                        YearInReviewTeaser()
                     }
-                    .padding(.vertical, 4)
                 }
-
-                coverageSection
-                distanceSection
-                extremesSection
-
-                Section {
-                    Text("""
-                    Place attributes, time and patterns, and culture and themes arrive \
-                    in v1. Coverage and distance ship first.
-                    """)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .padding(.horizontal)
+                .padding(.bottom, 32)
+                .frame(maxWidth: 900)
+                .frame(maxWidth: .infinity)
+            }
+            .background(.background)
+            .navigationTitle("Stats")
+            .addToolbarButton()
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Share Globe", systemImage: "square.and.arrow.up") {
+                        sharing = ShareItem(card: .globe)
+                    }
+                }
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Settings", systemImage: "gearshape") { isShowingSettings = true }
                 }
             }
-            .navigationTitle("Stats")
+            .logDestinations()
+            .navigationDestination(for: StatsRoute.self) { route in
+                StatsDrillDown(route: route)
+            }
+            .sheet(item: $sharing) { item in
+                ShareCardSheet(card: item.card)
+            }
+            .sheet(isPresented: $isShowingSettings) {
+                SettingsScreen()
+            }
         }
     }
 
-    private var coverageSection: some View {
-        Section("Coverage") {
-            let coverage = statistics.coverage
-            LabeledContent("Countries", value: "\(coverage.countriesVisited)")
-            LabeledContent(
-                "Share of the world",
-                value: String(format: "%.1f%%", coverage.worldFraction * 100)
-            )
-            LabeledContent(
-                "Continents",
-                value: "\(coverage.continentsVisited) of \(Continent.allSeven.count)"
-            )
-            LabeledContent("Regions", value: "\(coverage.regionsVisited)")
-            LabeledContent("Cities", value: "\(coverage.citiesVisited)")
-            LabeledContent("Landmarks", value: "\(coverage.landmarksVisited)")
-            LabeledContent("Airports", value: "\(coverage.airportsVisited)")
+    private func share(_ card: ShareCard) {
+        sharing = ShareItem(card: card)
+    }
+}
 
-            if let caveat = coverage.input.caveat {
+struct ShareItem: Identifiable {
+    let id = UUID()
+    let card: ShareCard
+}
+
+/// A titled group of stats.
+struct StatsSection<Content: View>: View {
+    let title: String
+    let symbol: String
+    var caveat: String?
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(title, systemImage: symbol)
+                .font(.title3.weight(.bold))
+                .accessibilityAddTraits(.isHeader)
+            content
+            if let caveat {
                 CaveatLabel(text: caveat)
             }
-            Text("Measured against \(coverage.worldCountryCount) countries.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// One labelled figure in a stats card, optionally opening what it rests on.
+struct StatRow<Destination: Hashable>: View {
+    let title: String
+    let value: String
+    var symbol: String?
+    var detail: String?
+    var destination: Destination?
+
+    var body: some View {
+        if let destination {
+            NavigationLink(value: destination) { row(chevron: true) }
+                .buttonStyle(.plain)
+        } else {
+            row(chevron: false)
         }
     }
 
-    private var distanceSection: some View {
-        Section("Distance") {
-            let distance = statistics.distance
-            LabeledContent("Total", value: statistics.formattedDistance)
-            LabeledContent(
-                "Round the Earth",
-                value: String(format: "%.2f×", distance.timesRoundTheEarth)
-            )
-
-            ForEach(distance.modesSortedByDistance, id: \.mode) { entry in
-                LabeledContent {
-                    Text(formatted(entry.kilometres))
-                } label: {
-                    Label(entry.mode.displayName, systemImage: entry.mode.symbolName)
+    private func row(chevron: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            if let symbol {
+                Image(systemName: symbol)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 22)
+            }
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                if let detail {
+                    Text(detail)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
+            Spacer(minLength: 8)
+            Text(value)
+                .font(.body.weight(.semibold).monospacedDigit())
+                .multilineTextAlignment(.trailing)
+            if chevron {
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .padding(.vertical, 9)
+        .contentShape(.rect)
+        .accessibilityElement(children: .combine)
+    }
+}
 
-            if let longest = distance.longestLeg {
-                LabeledContent("Longest leg") {
-                    Text("\(longest.origin.name) → \(longest.destination.name)")
-                        .multilineTextAlignment(.trailing)
+extension StatRow where Destination == StatsRoute {
+    init(
+        _ title: String,
+        _ value: String,
+        symbol: String? = nil,
+        detail: String? = nil,
+        route: StatsRoute? = nil
+    ) {
+        self.title = title
+        self.value = value
+        self.symbol = symbol
+        self.detail = detail
+        destination = route
+    }
+}
+
+/// Rows inside one card, separated by hairlines.
+struct StatCardList<Content: View>: View {
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Group(subviews: content) { subviews in
+                ForEach(Array(subviews.enumerated()), id: \.offset) { index, subview in
+                    subview
+                    if index < subviews.count - 1 {
+                        Divider()
+                    }
                 }
             }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 4)
+        .background(.background.secondary, in: .rect(cornerRadius: 22, style: .continuous))
+    }
+}
 
-            if distance.approximateLegCount > 0 {
-                CaveatLabel(
-                    text: """
-                    \(distance.approximateLegCount) leg\
-                    \(distance.approximateLegCount == 1 ? "" : "s") \
-                    (\(formatted(distance.approximateKm))) use a straight line because \
-                    no real path is available yet.
+// MARK: - Hero and headlines
+
+private struct PersonalityHero: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        NavigationLink(value: StatsRoute.personality) {
+            content
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        let themes = model.statistics.themes
+        if let personality = themes.personality {
+            let tint = Palette.archetype(personality.archetype)
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(spacing: 14) {
+                    Image(systemName: personality.archetype.symbolName)
+                        .font(.system(size: 30, weight: .semibold))
+                        .foregroundStyle(tint)
+                        .frame(width: 60, height: 60)
+                        .background(tint.opacity(0.16), in: .circle)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("YOUR TRAVEL PERSONALITY")
+                            .font(.caption2.weight(.semibold))
+                            .tracking(1)
+                            .foregroundStyle(.secondary)
+                        Text(personality.archetype.name)
+                            .font(.largeTitle.weight(.bold))
+                            .fontDesign(.rounded)
+                    }
+                }
+                Text(personality.archetype.summary)
+                    .foregroundStyle(.secondary)
+                ThemeBars(shares: Array(themes.shares.prefix(4)), tint: tint)
+                Text(
+                    """
+                    From \(Format.ordinalCount(personality.landmarkCount, "landmark")) you've \
+                    visited. Tap to see why.
                     """
                 )
+                .font(.caption)
+                .foregroundStyle(.secondary)
             }
-            if let caveat = distance.input.caveat {
-                CaveatLabel(text: caveat)
+            .padding(20)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(
+                LinearGradient(
+                    colors: [tint.opacity(0.22), tint.opacity(0.05)],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                ),
+                in: .rect(cornerRadius: 26, style: .continuous)
+            )
+        } else {
+            VStack(alignment: .leading, spacing: 8) {
+                Label("Travel personality", systemImage: "sparkles")
+                    .font(.headline)
+                let needed = TravelPersonality.minimumLandmarks - themes.landmarkCount
+                Text("""
+                Log \(Format.ordinalCount(
+                    max(1, needed),
+                    "more landmark"
+                )) — a museum, a temple, a \
+                national park — and Antipodes reads your travel personality from what you \
+                chose to see.
+                """)
+                .foregroundStyle(.secondary)
+            }
+            .card(padding: 20)
+        }
+    }
+}
+
+struct ThemeBars: View {
+    let shares: [ThemeShare]
+    var tint: Color = Palette.visited
+
+    var body: some View {
+        VStack(spacing: 8) {
+            ForEach(shares) { share in
+                HStack(spacing: 10) {
+                    Text(share.label)
+                        .font(.subheadline)
+                        .frame(width: 130, alignment: .leading)
+                        .lineLimit(1)
+                    GeometryReader { proxy in
+                        Capsule()
+                            .fill(tint.gradient)
+                            .frame(width: max(
+                                6,
+                                proxy.size.width * share.share / max(
+                                    0.001,
+                                    shares.first?.share ?? 1
+                                )
+                            ))
+                    }
+                    .frame(height: 10)
+                    Text(Format.percent(share.share, digits: 0))
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 38, alignment: .trailing)
+                }
+                .accessibilityElement(children: .combine)
             }
         }
     }
+}
 
-    private var extremesSection: some View {
-        Section("Extreme points") {
-            let extremes = statistics.extremes
-            extremeRow("Northernmost", extremes.northernmost)
-            extremeRow("Southernmost", extremes.southernmost)
-            extremeRow("Easternmost", extremes.easternmost)
-            extremeRow("Westernmost", extremes.westernmost)
-            if let caveat = extremes.input.caveat {
-                CaveatLabel(text: caveat)
+private struct HeadlineGrid: View {
+    @Environment(AppModel.self) private var model
+    let share: (ShareCard) -> Void
+
+    var body: some View {
+        let statistics = model.statistics
+        let coverage = statistics.coverage
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
+            NavigationLink(value: StatsRoute.countries) {
+                StatCard(
+                    title: "Countries",
+                    value: "\(coverage.listedCountriesVisited)",
+                    detail: """
+                    \(Format.percent(coverage.worldFraction)) of \(coverage.worldCountryCount)
+                    """,
+                    symbol: "flag.fill",
+                    tint: Palette.visited
+                )
+            }
+            .contextMenu {
+                Button("Share", systemImage: "square.and.arrow.up") {
+                    share(.stat(
+                        title: "countries visited",
+                        value: "\(coverage.listedCountriesVisited)",
+                        detail: "\(Format.percent(coverage.worldFraction)) of the world",
+                        symbol: "flag.fill"
+                    ))
+                }
+            }
+            NavigationLink(value: StatsRoute.legs(nil)) {
+                StatCard(
+                    title: "Distance",
+                    value: Format.distance(statistics.distance.totalKm, model.rules.unitSystem),
+                    detail: """
+                    \(Format.multiple(statistics.distance.timesRoundTheEarth)) round the Earth
+                    """,
+                    symbol: "point.topleft.down.to.point.bottomright.curvepath",
+                    tint: Palette.mode(.flight)
+                )
+            }
+            .contextMenu {
+                Button("Share", systemImage: "square.and.arrow.up") {
+                    share(.stat(
+                        title: "travelled",
+                        value: Format.distance(statistics.distance.totalKm, model.rules.unitSystem),
+                        detail: """
+                        \(Format.multiple(statistics.distance.timesRoundTheEarth)) round the Earth
+                        """,
+                        symbol: "globe"
+                    ))
+                }
+            }
+            StatCard(
+                title: "Continents",
+                value: "\(coverage.continentsVisited) of 7",
+                detail: coverage.continents.sorted().map(\.displayName).joined(separator: ", "),
+                symbol: "globe.americas.fill",
+                tint: Palette.mode(.ferry)
+            )
+            NavigationLink(value: StatsRoute.places(.city)) {
+                StatCard(
+                    title: "Cities",
+                    value: "\(coverage.citiesVisited)",
+                    detail: "\(coverage.capitalsVisited) capitals",
+                    symbol: "building.2.fill",
+                    tint: Palette.mode(.rail)
+                )
             }
         }
-    }
-
-    private func extremeRow(_ title: String, _ visit: Visit?) -> some View {
-        LabeledContent(title, value: visit?.place.name ?? "—")
-    }
-
-    private func formatted(_ kilometres: Double) -> String {
-        let value = model.rules.unitSystem.distance(fromKilometres: kilometres)
-        return "\(Int(value.rounded())) \(model.rules.unitSystem.distanceUnitAbbreviation)"
+        .buttonStyle(.plain)
     }
 }

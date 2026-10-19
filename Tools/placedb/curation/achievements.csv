@@ -1,0 +1,63 @@
+# Achievements (R-ACH-1 to R-ACH-3), evaluated on the device from the user's own log.
+#
+# Defined here rather than in the app so new ones arrive with a database update
+# (R-DB-6). `rule` must be one the app knows how to evaluate; an app that meets a rule
+# it does not recognise hides that achievement rather than guessing, so adding a new
+# rule kind needs an app release but adding a new threshold does not.
+#
+# Rules and what `threshold` / `parameter` mean for each:
+#   countries, continents, regions, cities, capitals, landmarks, unesco, airports
+#                         threshold = how many distinct places, counted under the
+#                         user's coverage rules (R-CALC-1)
+#   flights, trips        threshold = how many
+#   distance              threshold = kilometres travelled in total
+#   modes                 threshold = how many different modes of travel
+#   collection-complete   parameter = collection id; every member visited
+#   collection-count      parameter = collection id; threshold = members visited
+#   unesco-in-one-trip    threshold = UNESCO-listed landmarks within a single trip
+#   overnight-train       threshold = rail legs that were sleepers or ran overnight
+#   crossed-equator       a visit or leg endpoint on each side of the Equator
+#   arctic-circle         a visit or leg endpoint north of the Arctic Circle
+#   antarctic-circle      a visit or leg endpoint south of the Antarctic Circle
+#   antipodes             threshold = kilometres; two visited places at most this far
+#                         from being exactly opposite each other on the globe
+#
+# `tier` is bronze, silver, gold or platinum where an achievement is one step of a
+# ladder (R-ACH-3), and empty where it stands alone.
+id,name,description,symbol,rule,threshold,parameter,tier,sort_order
+countries-10,Ten countries,Visit 10 countries.,flag,countries,10,,bronze,10
+countries-25,Twenty-five countries,Visit 25 countries.,flag,countries,25,,silver,11
+countries-50,Fifty countries,Visit 50 countries.,flag,countries,50,,gold,12
+countries-100,Centurion,Visit 100 countries.,flag.filled.and.flag.crossed,countries,100,,platinum,13
+continents-3,Three continents,Set foot on three continents.,globe.europe.africa,continents,3,,bronze,20
+continents-5,Five continents,Set foot on five continents.,globe.americas,continents,5,,silver,21
+continents-7,All seven continents,"Set foot on every continent, Antarctica included.",globe,continents,7,,gold,22
+cities-25,City hopper,Visit 25 cities.,building.2,cities,25,,bronze,30
+cities-100,Urbanist,Visit 100 cities.,building.2.fill,cities,100,,silver,31
+capitals-10,Capital collector,Visit 10 national capitals.,star,capitals,10,,bronze,32
+capitals-25,Seat of power,Visit 25 national capitals.,star.fill,capitals,25,,silver,33
+regions-25,Off the beaten track,Visit 25 regions.,map,regions,25,,bronze,34
+landmarks-10,Sightseer,Visit 10 landmarks.,binoculars,landmarks,10,,bronze,40
+landmarks-50,Connoisseur,Visit 50 landmarks.,binoculars.fill,landmarks,50,,silver,41
+unesco-10,World heritage,Visit 10 UNESCO World Heritage landmarks.,laurel.leading,unesco,10,,silver,42
+unesco-trip-5,Heritage trail,Visit five UNESCO-listed landmarks in a single trip.,laurel.trailing,unesco-in-one-trip,5,,,43
+new-7-wonders,Wonder of the world,Visit every one of the New 7 Wonders.,building.columns.fill,collection-complete,,new-7-wonders,gold,50
+nordic-capitals,Nordic set,"Visit every Nordic capital.",snowflake,collection-complete,,nordic-capitals,,51
+european-capitals-10,Grand tour,Visit 10 European capitals.,building.2.crop.circle,collection-count,10,european-capitals,bronze,52
+european-capitals,Every European capital,Visit the capital of every European state.,building.2.crop.circle.fill,collection-complete,,european-capitals,gold,53
+us-national-parks-10,Ranger,Visit 10 US national parks.,tree,collection-count,10,us-national-parks,bronze,54
+us-national-parks,Every US national park,Visit all 63 US national parks.,tree.fill,collection-complete,,us-national-parks,platinum,55
+flights-10,Frequent flyer,Take 10 flights.,airplane,flights,10,,bronze,60
+flights-50,High flyer,Take 50 flights.,airplane.departure,flights,50,,silver,61
+flights-100,Jet setter,Take 100 flights.,airplane.circle.fill,flights,100,,gold,62
+airports-25,Terminal velocity,Pass through 25 airports.,airplane.arrival,airports,25,,silver,63
+distance-earth,Round the world,Travel as far as once round the Equator.,arrow.triangle.2.circlepath,distance,40075,,silver,70
+distance-moon,To the Moon,Travel as far as the Moon.,moon.stars,distance,384400,,platinum,71
+modes-4,Mixed modes,Travel by four different modes.,arrow.triangle.branch,modes,4,,bronze,72
+modes-8,Every way there is,Travel by all eight modes.,square.grid.3x3.fill,modes,8,,gold,73
+overnight-train-1,Night train,Ride a sleeper or an overnight train.,bed.double,overnight-train,1,,,74
+crossed-equator,Line crosser,Be on both sides of the Equator.,circle.and.line.horizontal,crossed-equator,,,,80
+arctic-circle,Midnight sun,Go north of the Arctic Circle.,sun.max,arctic-circle,,,,81
+antarctic-circle,Southern extreme,Go south of the Antarctic Circle.,snowflake.circle,antarctic-circle,,,,82
+antipodes,Antipodean,Visit two places within 2000 km of being exactly opposite each other on the globe.,circle.circle,antipodes,2000,,gold,83
+trips-10,Seasoned traveller,Log 10 trips.,suitcase,trips,10,,bronze,90

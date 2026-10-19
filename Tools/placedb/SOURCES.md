@@ -11,7 +11,7 @@ courtesy (R-DB-7 in [the specification](../../docs/SPECIFICATION.md)).
 | | |
 |---|---|
 | **Review status** | Complete for everything the database ships today |
-| **Reviewed** | 2026-10-18 |
+| **Reviewed** | 2026-10-18; DESNZ added 2026-10-20 |
 | **Reviewed against** | The licence texts themselves, linked below — not summaries |
 | **Not legal advice** | A solo developer's reading. The conclusions are recorded so they can be checked, and the OpenStreetMap conclusion in particular should be confirmed before a paid release. |
 
@@ -19,7 +19,7 @@ courtesy (R-DB-7 in [the specification](../../docs/SPECIFICATION.md)).
 
 ## 1. Cleared and in use
 
-These four, plus this repository's own curation, are everything in `places.sqlite`.
+These five, plus this repository's own curation, are everything in `places.sqlite`.
 
 | Source | Used for | Licence | Obligation | Met by |
 |---|---|---|---|---|
@@ -27,6 +27,7 @@ These four, plus this repository's own curation, are everything in `places.sqlit
 | [GeoNames](https://creativecommons.org/licenses/by/4.0/) | Cities, regions, elevations, time zones, country facts | **CC BY 4.0** | **Attribution, and an indication that we changed it** | A verbatim credit line in `data_source.attribution`, shown in Settings |
 | [OurAirports](https://ourairports.com/data/) | Airports, IATA and ICAO codes, elevations | Public domain | **None.** "All data is released to the Public Domain"; credit is requested "but you're not required to." | Credited anyway, in Settings |
 | [Wikidata](https://creativecommons.org/publicdomain/zero/1.0/) | Landmark facts, UNESCO status, UN membership | CC0 1.0 | **None.** Main-namespace structured data "is released into the public domain under Creative Commons Zero." | Credited anyway, in Settings |
+| [UK DESNZ GHG conversion factors 2025](https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting) | Carbon emission factors per mode and class (R-CO2-1, decision D-14) | [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/) | **Attribution**; no share-alike, commercial use permitted, compatible with CC BY 4.0 | The OGL credit line, written into `data_source` and shown in Settings; the factor year shown with every carbon figure (R-CO2-3). `curation/emission_factors.csv` names which factor each mode uses and the build reads the value from the published flat file, pinned by digest |
 | `antipodes-curation` | Landmark selection, theme tags, famous routes | CC0 1.0, part of this repository | None | — |
 
 ### The GeoNames obligation, precisely
@@ -156,7 +157,6 @@ it separate costs a file and keeps every option open.
 | UNESCO World Heritage List | UNESCO status on landmarks | No licence covers the List as data. The World Heritage Centre's FAQ states that republication of UNESCO/WHC data requires **prior written authorisation**, and the syndication terms add further conditions. Individual items on the site carry assorted CC licences, several non-commercial. | **Excluded.** UNESCO status comes from Wikidata's `P1435` instead (CC0), which needs no permission |
 | GTFS feeds (Mobility Database, Transitland) | Transit systems, lines, stops, shapes | Licence differs per feed; many are ODbL or CC BY-SA, some have no licence at all | **Not cleared.** Must be reviewed feed by feed when city transit is built `[V1]` |
 | A gridded climate-normals dataset | Monthly climate normals per city (R-CALC-2) | No candidate chosen yet | **Not cleared.** Blocks R-CALC-2 `[V1]` |
-| [UK DESNZ conversion factors](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/) | Carbon emission factors (R-CO2-1) | Open Government Licence v3.0: attribution required, **no share-alike**, commercial use permitted, and expressly compatible with CC BY 4.0 | **Cleared for use**, not yet used. Factors are revised yearly, so the year must be shown with the figure (R-CO2-3) |
 | European Environment Agency | Carbon emission factors | Not examined; DESNZ is cleared and sufficient | **Not needed** |
 
 ### A limit worth knowing about UNESCO status

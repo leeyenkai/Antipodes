@@ -5,8 +5,8 @@ import SwiftUI
 /// The app entry point.
 ///
 /// Everything of substance lives in the `AntipodesKit` package; this target exists to
-/// host `@main`, bundle the place database and carry the app's assets and
-/// entitlements (decision D-3).
+/// host `@main`, bundle the place database and the country outlines, and carry the
+/// app's assets and entitlements (decision D-3).
 @main
 struct AntipodesApp: App {
     @State private var model: AppModel
@@ -14,7 +14,8 @@ struct AntipodesApp: App {
     init() {
         model = AppModel(
             store: Self.makeStore(),
-            placeDatabaseURL: Self.placeDatabaseURL()
+            placeDatabaseURL: Bundle.main.url(forResource: "places", withExtension: "sqlite"),
+            bordersURL: Bundle.main.url(forResource: "borders-50m", withExtension: "antborders")
         )
     }
 
@@ -24,8 +25,18 @@ struct AntipodesApp: App {
                 .environment(model)
         }
         #if os(macOS)
-        .defaultSize(width: 1100, height: 760)
+        .defaultSize(width: 1200, height: 800)
         #endif
+        .commands {
+            CommandGroup(replacing: .newItem) {
+                Button("Log a Place…") { model.addRequest = AddRequest() }
+                    .keyboardShortcut("n", modifiers: .command)
+                Button("Log a Journey…") { model.addRequest = AddRequest(start: .journey(nil)) }
+                    .keyboardShortcut("n", modifiers: [.command, .shift])
+                Button("Drop a Pin…") { model.addRequest = AddRequest(start: .pin(nil)) }
+                    .keyboardShortcut("p", modifiers: [.command, .shift])
+            }
+        }
     }
 
     /// Opens the on-disk store, falling back to memory if that is impossible.
@@ -46,13 +57,5 @@ struct AntipodesApp: App {
                 fatalError("Could not create even an in-memory store: \(error)")
             }
         }
-    }
-
-    /// The read-only place database shipped in the bundle.
-    ///
-    /// Built by `scripts/build-placedb.sh`, which is not run automatically — if it is
-    /// missing, search reports that rather than coming back empty (R-DB-4).
-    private static func placeDatabaseURL() -> URL? {
-        Bundle.main.url(forResource: "places", withExtension: "sqlite")
     }
 }

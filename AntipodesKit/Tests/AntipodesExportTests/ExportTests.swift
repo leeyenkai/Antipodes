@@ -35,6 +35,8 @@ struct CSVWriterTests {
 
 @Suite("Travel log export")
 struct TravelLogExportTests {
+    // One fixture covering every exported column.
+    // swiftlint:disable function_body_length
     static func sampleLog() -> TravelLog {
         let trip = Trip(name: "Nordics 2024")
         let oslo = PlaceReference(
@@ -73,8 +75,17 @@ struct TravelLogExportTests {
             origin: osl,
             destination: jfk,
             date: .day(CalendarDate(iso: "2024-06-20")!),
+            times: LegTimes(scheduledDeparture: LocalDateTime(iso: "2024-06-20T09:00")),
             operatorName: "SK",
-            serviceNumber: "SK905"
+            serviceNumber: "SK905",
+            registration: "LN-RKH"
+        )
+        let rome = PlaceReference(
+            id: .database(.city, 3_169_070),
+            kind: .city,
+            name: "Rome",
+            countryCode: "IT",
+            countryName: "Italy"
         )
 
         return TravelLog(
@@ -91,16 +102,25 @@ struct TravelLogExportTests {
             ],
             journeys: [
                 Journey(legs: [flight], tripID: trip.id),
-            ]
+            ],
+            wishlist: [WishlistItem(place: rome, notes: "Spring")]
         )
     }
+
+    // swiftlint:enable function_body_length
 
     /// R-LOG-9, R-PRIV-6 and M1 acceptance criterion 9: the export is the user's way
     /// out of a no-account app, so it must contain everything.
     @Test("CSV export produces one file per entity, each with its rows")
     func csvFiles() throws {
         let files = TravelLogExport.csvFiles(for: Self.sampleLog())
-        #expect(Set(files.keys) == ["trips.csv", "visits.csv", "journeys.csv", "legs.csv"])
+        #expect(Set(files.keys) == [
+            "trips.csv",
+            "visits.csv",
+            "journeys.csv",
+            "legs.csv",
+            "wishlist.csv",
+        ])
 
         let visitsData = try #require(files["visits.csv"])
         let visits = try #require(String(data: visitsData, encoding: .utf8))
@@ -116,6 +136,12 @@ struct TravelLogExportTests {
         #expect(legs.contains("flight"))
         #expect(legs.contains("SK905"))
         #expect(legs.contains("greatCircleExact"))
+        #expect(legs.contains("2024-06-20T09:00"))
+        #expect(legs.contains("LN-RKH"))
+
+        let wishlistData = try #require(files["wishlist.csv"])
+        let wishlist = try #require(String(data: wishlistData, encoding: .utf8))
+        #expect(wishlist.contains("Rome"))
     }
 
     @Test("Every CSV file has as many rows as records, plus a header")
@@ -141,6 +167,9 @@ struct TravelLogExportTests {
         #expect(restored.visits.first?.date == original.visits.first?.date)
         #expect(restored.visits.first?.notes == "Rainy, but good coffee")
         #expect(restored.journeys.first?.legs.first?.serviceNumber == "SK905")
+        #expect(restored.journeys.first?.legs.first?.times.scheduledDeparture?
+            .iso == "2024-06-20T09:00")
+        #expect(restored.wishlist.first?.place?.name == "Rome")
         // The place reference must survive, or coverage stats break on re-import.
         #expect(restored.visits.first?.place.countryCode == "NO")
         #expect(restored.visits.first?.place.continent == .europe)
@@ -150,7 +179,7 @@ struct TravelLogExportTests {
     func formatVersion() throws {
         let data = try TravelLogExport.json(for: Self.sampleLog())
         let text = try #require(String(data: data, encoding: .utf8))
-        #expect(text.contains("\"formatVersion\" : 1"))
+        #expect(text.contains("\"formatVersion\" : 2"))
         #expect(text.contains("\"application\" : \"Antipodes\""))
     }
 

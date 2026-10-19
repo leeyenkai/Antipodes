@@ -67,6 +67,45 @@ public struct CalendarDate: Hashable, Sendable, Codable, Comparable, CustomStrin
         return era * 146_097 + dayOfEra - 719_468
     }
 
+    /// Inverse of `daysSinceEpoch`, by Howard Hinnant's `civil_from_days`.
+    public init?(daysSinceEpoch: Int) {
+        let shifted = daysSinceEpoch + 719_468
+        let era = (shifted >= 0 ? shifted : shifted - 146_096) / 146_097
+        let dayOfEra = shifted - era * 146_097
+        let yearOfEra = (dayOfEra - dayOfEra / 1460 + dayOfEra / 36524 - dayOfEra / 146_096) / 365
+        let dayOfYear = dayOfEra - (365 * yearOfEra + yearOfEra / 4 - yearOfEra / 100)
+        let monthTerm = (5 * dayOfYear + 2) / 153
+        let day = dayOfYear - (153 * monthTerm + 2) / 5 + 1
+        let month = monthTerm < 10 ? monthTerm + 3 : monthTerm - 9
+        let year = yearOfEra + era * 400 + (month <= 2 ? 1 : 0)
+        self.init(year: year, month: month, day: day)
+    }
+
+    /// The date `days` later, or earlier if negative, by exact day arithmetic.
+    public func adding(days: Int) -> CalendarDate? {
+        CalendarDate(daysSinceEpoch: daysSinceEpoch + days)
+    }
+
+    /// Today on the calendar of the given zone. The one place the app turns "now" into
+    /// a calendar date; stats take the result as a parameter so they stay testable.
+    public static func today(in timeZone: TimeZone = .current, now: Date = Date()) -> CalendarDate {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day], from: now)
+        return CalendarDate(year: parts.year ?? 1970, month: parts.month ?? 1, day: parts.day ?? 1)
+            ?? CalendarDate(year: 1970, month: 1, day: 1)!
+    }
+
+    /// Converts a `Date` the user picked, read on the calendar of the given zone.
+    public init?(_ date: Date, in timeZone: TimeZone = .current) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+        let parts = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let year = parts.year, let month = parts.month,
+              let day = parts.day else { return nil }
+        self.init(year: year, month: month, day: day)
+    }
+
     /// Whole days from this date to `other`, negative if `other` is earlier.
     public func days(to other: CalendarDate) -> Int {
         other.daysSinceEpoch - daysSinceEpoch

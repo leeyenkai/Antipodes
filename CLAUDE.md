@@ -21,8 +21,8 @@ stable requirement IDs (`R-…`) and open questions (`Q-…`). Release history i
   thin app shell. Run `scripts/check.sh` before finishing.
 - `AntipodesCore` depends on nothing; `AntipodesStats` is pure and must never import
   SwiftData. That is what keeps `swift test` fast and hermetic.
-- Current milestone is **M1** (see §13 and the acceptance criteria in §14 of the spec).
-  Do not build `[V1]` or `[LATER]` features early.
+- `[M1]` and `[V1]` work is in scope (decision D-18); §13.1 of the spec says what is
+  blocked. Do not build `[LATER]` features early.
 - Cite requirement IDs in commit messages, and add a `[Unreleased]` line to the
   changelog as part of the change.
 

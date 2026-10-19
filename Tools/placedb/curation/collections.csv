@@ -1,0 +1,12 @@
+# Curated collections the user can work through (R-WISH-2, R-WISH-3).
+#
+# `id` is permanent: the app keys progress and the achievements in achievements.csv on
+# it. `symbol` is an SF Symbol name the app draws beside the collection. Members are in
+# collection_members.csv. New collections ride along in database updates without an
+# app release (R-DB-6).
+id,name,description,symbol,sort_order
+new-7-wonders,New 7 Wonders of the World,"The seven sites chosen in the 2007 New7Wonders public vote.",building.columns,1
+nordic-capitals,Nordic capitals,"Copenhagen, Helsinki, Reykjavík, Oslo and Stockholm.",snowflake,2
+european-capitals,European capitals,"The capital of every European UN member and observer state.",building.2.crop.circle,3
+us-national-parks,US national parks,"The 63 parks the National Park Service designates as national parks.",tree,4
+famous-rail-journeys,Famous rail journeys,"Long-distance and scenic railways from the route catalogue.",tram,5

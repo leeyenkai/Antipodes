@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Keys the generated Info.plist cannot express. Everything else is set through
+  INFOPLIST_KEY_* build settings in the project.
+
+  The launch screen is the globe's night sky rather than the default white: the app is
+  dark by default (decision D-20), and a white flash before a dark screen is jarring.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIColorName</key>
+		<string>LaunchBackground</string>
+	</dict>
+</dict>
+</plist>

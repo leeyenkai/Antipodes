@@ -1,0 +1,32 @@
+# Which published carbon factor each mode and class uses (R-CO2-1 to R-CO2-3, Q-16).
+#
+# Judgements only: this file names a factor by its ID in the UK Government's GHG
+# conversion factors (DESNZ) flat file, and the build reads the value from the cached
+# file itself. Nothing numeric is typed here.
+#
+# Flights use the "International, to/from non-UK" factors with radiative forcing, the
+# set DESNZ recommends for the full climate effect of flying; they already include the
+# 8% uplift DESNZ applies to great-circle distance, so they multiply the great-circle
+# distance directly. Rail uses UK national rail, city transit light rail and tram, and
+# ferries the all-passenger average: the closest published classes to what the app
+# logs, and the reason every carbon figure is labelled an estimate.
+#
+# `basis` is `passenger` for per-passenger-km factors and `vehicle` for per-vehicle-km
+# ones, which a road trip's car uses: the whole car's emissions, however many share it.
+#
+# `travel_class` is empty for the mode's default, or one of the class keys the app maps
+# a leg's class to (economy, premium, business, first; foot, car; motorbike).
+mode,travel_class,desnz_id,basis
+flight,,21_316_3178_11_1,passenger
+flight,economy,21_316_3180_11_1,passenger
+flight,premium,21_316_3182_11_1,passenger
+flight,business,21_316_3184_11_1,passenger
+flight,first,21_316_3186_11_1,passenger
+rail,,25_315_3147_11_1,passenger
+cityTransit,,25_315_3149_11_1,passenger
+coach,,25_314_3146_11_1,passenger
+ferry,,23_318_3190_11_1,passenger
+ferry,foot,23_318_3188_11_1,passenger
+ferry,car,23_318_3189_11_1,passenger
+roadTrip,,25_301_3074_4_1,vehicle
+roadTrip,motorbike,25_302_3080_4_1,vehicle

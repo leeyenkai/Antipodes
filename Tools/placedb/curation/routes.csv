@@ -4,12 +4,38 @@
 # path geometry here: the only practical source for rail and ferry geometry is
 # OpenStreetMap, whose ODbL share-alike terms would attach to this database, so route
 # geometry ships separately or not at all. See SOURCES.md.
-name,mode,start_name,end_name,country_codes,length_km,typical_duration_minutes,highest_point_m
-Bergen Line,rail,Oslo,Bergen,NO,496,420,1237
-Glacier Express,rail,Zermatt,St. Moritz,CH,291,480,2033
-Flåm Railway,rail,Bergen,Bergen,NO,20,60,866
-Trans-Siberian Railway,rail,Moscow,Vladivostok,RU,9289,10080,1040
-Rocky Mountaineer,rail,Vancouver,Toronto,CA,4466,5760,1627
-Shinkansen Tokaido,rail,Tokyo,Osaka,JP,515,145,
-Camino Frances,humanPowered,Saint-Jean-Pied-de-Port,Santiago de Compostela,"FR,ES",780,43200,1505
-Milford Track,humanPowered,Queenstown,Queenstown,NZ,53,5760,1154
+#
+# `id` is the route's permanent identity. A user's log stores it, so it is assigned by
+# hand, never reused and never renumbered — sorting or inserting rows must not move it.
+#
+# `start_place` and `end_place` say which bundled place the route begins and ends at,
+# as `city:<GeoNames id>` or `landmark:<Wikidata QID>`. They are identities, not facts:
+# the coordinates come from GeoNames or Wikidata at build time, and the build fails if
+# the reference does not resolve. Left empty where the end of the line is too small
+# for the bundled city set (Myrdal, Flåm, Mallaig, St. Moritz) — the app then asks the
+# user where they got on or off rather than inventing a point.
+#
+# The numeric columns are the curated facts this file has always carried. New routes
+# are added with them empty: an unknown length is reported as unknown, and the leg
+# falls back to a labelled straight-line estimate (R-PATH-3).
+#
+# Corrections in schema version 3: id 6 was listed as "Rocky Mountaineer" with
+# Vancouver–Toronto figures, which describe VIA Rail's The Canadian — renamed, and its
+# highest point (which was the Rocky Mountaineer's) cleared. The Flåm Railway runs
+# Myrdal–Flåm, not Bergen–Bergen, and the Milford Track from Glade Wharf to Sandfly
+# Point, not Queenstown–Queenstown.
+id,name,mode,start_name,end_name,start_place,end_place,country_codes,length_km,typical_duration_minutes,highest_point_m
+1,Bergen Line,rail,Oslo,Bergen,city:3143244,city:3161732,NO,496,420,1237
+2,Camino Frances,humanPowered,Saint-Jean-Pied-de-Port,Santiago de Compostela,,city:3109642,"FR,ES",780,43200,1505
+3,Flåm Railway,rail,Myrdal,Flåm,,,NO,20,60,866
+4,Glacier Express,rail,Zermatt,St. Moritz,city:2657928,,CH,291,480,2033
+5,Milford Track,humanPowered,Glade Wharf,Sandfly Point,,landmark:Q187197,NZ,53,5760,1154
+6,The Canadian,rail,Toronto,Vancouver,city:6167865,city:6173331,CA,4466,5760,
+7,Tōkaidō Shinkansen,rail,Tokyo,Osaka,city:1850147,city:1853909,JP,515,145,
+8,Trans-Siberian Railway,rail,Moscow,Vladivostok,city:524901,city:2013348,RU,9289,10080,1040
+9,Bernina Express,rail,Chur,Tirano,city:2661169,city:3165647,"CH,IT",,,
+10,West Highland Line,rail,Glasgow,Mallaig,city:2648579,,GB,,,
+11,California Zephyr,rail,Chicago,Emeryville,city:4887398,city:5346462,US,,,
+12,The Ghan,rail,Adelaide,Darwin,city:2078025,city:2073124,AU,,,
+13,Indian Pacific,rail,Sydney,Perth,city:2147714,city:2063523,AU,,,
+14,Qinghai–Tibet Railway,rail,Xining,Lhasa,city:1788852,city:1280737,CN,,,

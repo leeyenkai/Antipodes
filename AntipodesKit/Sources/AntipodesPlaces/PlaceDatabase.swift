@@ -10,7 +10,7 @@ import Foundation
 public actor PlaceDatabase {
     /// Schema version this code expects. The pipeline writes the same number into
     /// `meta`, and a mismatch is an error rather than a wrong query.
-    public static let expectedSchemaVersion = 2
+    public static let expectedSchemaVersion = 3
 
     /// How prominent a row must be for an exact name match to promote it above more
     /// prominent prefix matches.
@@ -124,7 +124,7 @@ public actor PlaceDatabase {
         SELECT p.kind, p.ref_id, p.name, p.subtitle, p.code,
                p.country_iso2, p.country_name, p.continent,
                p.region_code, p.region_name, p.city_id, p.city_name,
-               p.latitude, p.longitude, p.prominence
+               p.latitude, p.longitude, p.prominence, p.timezone
         FROM place_fts
         JOIN place_index AS p ON p.rowid = place_fts.rowid
         WHERE place_fts MATCH ?
@@ -148,7 +148,7 @@ public actor PlaceDatabase {
         LIMIT ?
         """
 
-        return try connection.query(sql, parameters: parameters, row: Self.decodeResult)
+        return try connection.query(sql, parameters: parameters, row: Self.decodeSearchResult(_:))
     }
 
     // MARK: - Lookups
@@ -156,15 +156,12 @@ public actor PlaceDatabase {
     public func place(kind: PlaceKind, id: Int64) throws -> PlaceSearchResult? {
         try connection.queryOne(
             """
-            SELECT p.kind, p.ref_id, p.name, p.subtitle, p.code,
-                   p.country_iso2, p.country_name, p.continent,
-                   p.region_code, p.region_name, p.city_id, p.city_name,
-                   p.latitude, p.longitude, p.prominence
+            SELECT \(Self.resultColumns)
             FROM place_index AS p
             WHERE p.kind = ? AND p.ref_id = ?
             """,
             parameters: [.text(kind.rawValue), .integer(id)],
-            row: Self.decodeResult
+            row: Self.decodeSearchResult(_:)
         )
     }
 
@@ -175,15 +172,12 @@ public actor PlaceDatabase {
         guard (3 ... 4).contains(normalised.count) else { return nil }
         return try connection.queryOne(
             """
-            SELECT p.kind, p.ref_id, p.name, p.subtitle, p.code,
-                   p.country_iso2, p.country_name, p.continent,
-                   p.region_code, p.region_name, p.city_id, p.city_name,
-                   p.latitude, p.longitude, p.prominence
+            SELECT \(Self.resultColumns)
             FROM place_index AS p
             WHERE p.kind = 'airport' AND upper(COALESCE(p.code, '')) = ?
             """,
             parameters: [.text(normalised)],
-            row: Self.decodeResult
+            row: Self.decodeSearchResult(_:)
         )
     }
 
@@ -225,15 +219,12 @@ public actor PlaceDatabase {
 
         return try connection.queryOne(
             """
-            SELECT p.kind, p.ref_id, p.name, p.subtitle, p.code,
-                   p.country_iso2, p.country_name, p.continent,
-                   p.region_code, p.region_name, p.city_id, p.city_name,
-                   p.latitude, p.longitude, p.prominence
+            SELECT \(Self.resultColumns)
             FROM place_index AS p
             WHERE p.kind = 'country' AND p.country_iso2 = ?
             """,
             parameters: [.text(nearestCountryCode)],
-            row: Self.decodeResult
+            row: Self.decodeSearchResult(_:)
         )
     }
 
@@ -312,15 +303,29 @@ public actor PlaceDatabase {
 
     // MARK: - Decoding
 
-    private static func decodeResult(_ row: SQLiteRow) throws -> PlaceSearchResult {
-        let rawKind = try row.requiredString(0)
+    /// The `place_index` columns `decodeResult` reads, in its order.
+    static let resultColumns = """
+    p.kind, p.ref_id, p.name, p.subtitle, p.code,
+    p.country_iso2, p.country_name, p.continent,
+    p.region_code, p.region_name, p.city_id, p.city_name,
+    p.latitude, p.longitude, p.prominence, p.timezone
+    """
+
+    static func decodeSearchResult(_ row: SQLiteRow) throws -> PlaceSearchResult {
+        try decodeSearchResult(row, offset: 0)
+    }
+
+    /// Decodes the `resultColumns` starting at column `offset`, so a query can put its
+    /// own columns first.
+    static func decodeSearchResult(_ row: SQLiteRow, offset: Int32) throws -> PlaceSearchResult {
+        let rawKind = try row.requiredString(offset + 0)
         guard let kind = PlaceKind(rawValue: rawKind) else {
             throw PlaceDatabaseError.unknownPlaceKind(rawKind)
         }
-        let refID = try row.requiredInt64(1)
+        let refID = try row.requiredInt64(offset + 1)
 
         let coordinate: Coordinate? =
-            if let latitude = row.double(12), let longitude = row.double(13) {
+            if let latitude = row.double(offset + 12), let longitude = row.double(offset + 13) {
                 Coordinate(latitude: latitude, longitude: longitude)
             } else {
                 nil
@@ -329,18 +334,19 @@ public actor PlaceDatabase {
         return try PlaceSearchResult(
             id: .database(kind, refID),
             kind: kind,
-            name: row.requiredString(2),
-            subtitle: row.string(3),
-            code: row.string(4),
+            name: row.requiredString(offset + 2),
+            subtitle: row.string(offset + 3),
+            code: row.string(offset + 4),
             coordinate: coordinate,
-            countryCode: row.string(5),
-            countryName: row.string(6),
-            continent: row.string(7).flatMap(Continent.init(rawValue:)),
-            regionCode: row.string(8),
-            regionName: row.string(9),
-            cityID: row.int64(10),
-            cityName: row.string(11),
-            prominence: row.int(14) ?? 0
+            countryCode: row.string(offset + 5),
+            countryName: row.string(offset + 6),
+            continent: row.string(offset + 7).flatMap(Continent.init(rawValue:)),
+            regionCode: row.string(offset + 8),
+            regionName: row.string(offset + 9),
+            cityID: row.int64(offset + 10),
+            cityName: row.string(offset + 11),
+            prominence: row.int(offset + 14) ?? 0,
+            timeZoneIdentifier: row.string(offset + 15)
         )
     }
 }

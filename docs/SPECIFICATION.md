@@ -3,8 +3,8 @@
 | | |
 |---|---|
 | **Status** | Draft |
-| **Spec version** | 0.3.0 |
-| **Last updated** | 2026-10-18 |
+| **Spec version** | 0.4.0 |
+| **Last updated** | 2026-10-20 |
 | **Owner** | Lee Yen Kai |
 | **Source** | Derived from *Antipodes — Spec Sheet (Draft v0.1)* (2026-10-15) |
 
@@ -149,7 +149,7 @@ route is optional and runs entirely on the device.
 | R-LOG-4 | Every visit MUST carry a visit type (§3.1). | `[M1]` |
 | R-LOG-5 | Custom places: the user MUST be able to drop a pin for anything not in the database. It MUST be assigned a country and region automatically from bundled border data, so it still counts in coverage. | `[M1]` |
 | R-LOG-6 | Journeys for all eight modes (§5.1), each made of one or more legs. | `[V1]` |
-| R-LOG-7 | Photo library import, opt-in: read location and date from on-device photos, cluster into suggested trips and visits, confirm each. Nothing is uploaded; only references are stored. | `[V1]` |
+| R-LOG-7 | Photo library import, opt-in: read location and date from on-device photos, cluster into suggested trips and visits, confirm each. Nothing is uploaded, and nothing about a photo is stored (D-17). | `[V1]` |
 | R-LOG-8 | Import from other apps: CSV or JSON from flight loggers and similar trackers, matched against the database, with a review screen for anything ambiguous. | `[V1]` |
 | R-LOG-9 | Export everything as CSV or JSON at any time. | `[M1]` |
 
@@ -314,7 +314,7 @@ hand-curated landmarks and famous routes, shipped inside the app and updated in-
 | City | Coordinates, population, elevation, time zone | GeoNames. Monthly climate normals need a source that is not yet chosen, which is what blocks R-CALC-2. |
 | Landmark | Type, theme tags, year built, UNESCO status, height, parent city | Wikidata for every fact; `Tools/placedb/curation/` for which landmarks exist and their themes |
 | Airport | IATA and ICAO codes, coordinates, elevation, size class | OurAirports |
-| Famous route | Mode, start, end, length (km), typical duration, highest point, countries crossed | Manual curation. **No path geometry** — the only practical source is OpenStreetMap, which is excluded ([D-8](#121-implementation-decisions-taken-during-the-m1-build)). |
+| Famous route | Mode, start, end, length (km), typical duration, highest point, countries crossed | Manual curation. **No path geometry** — the only practical source is OpenStreetMap, which is excluded ([D-8](#121-implementation-decisions)). |
 
 ### 6.1 Curation rules
 
@@ -331,7 +331,7 @@ hand-curated landmarks and famous routes, shipped inside the app and updated in-
 | R-DB-4 | Shipped as a read-only SQLite file, kept separate from user data. `[M1]` |
 | R-DB-5 | Updates download as versioned files from a static host. Every user requests the same files, so an update reveals nothing about anyone's travels. `[V1]` |
 | R-DB-6 | New achievements and curated collections MUST ride along in these updates, without needing an app release. `[V1]` |
-| R-DB-7 | Every source MUST be licence-reviewed before it ships, with the obligation recorded in [Tools/placedb/SOURCES.md](../Tools/placedb/SOURCES.md) and any required attribution shown in the app. **Done for the sources in use:** Natural Earth and OurAirports are public domain, Wikidata is CC0, GeoNames is CC BY 4.0 and its credit is rendered in Settings from the database itself. OpenStreetMap and Trainline are ODbL and are excluded from the bundled database ([D-8](#121-implementation-decisions-taken-during-the-m1-build)); GTFS feeds and a climate-normals source remain unreviewed and block their own features. `[V1]` |
+| R-DB-7 | Every source MUST be licence-reviewed before it ships, with the obligation recorded in [Tools/placedb/SOURCES.md](../Tools/placedb/SOURCES.md) and any required attribution shown in the app. **Done for the sources in use:** Natural Earth and OurAirports are public domain, Wikidata is CC0, GeoNames is CC BY 4.0 and its credit is rendered in Settings from the database itself. OpenStreetMap and Trainline are ODbL and are excluded from the bundled database ([D-8](#121-implementation-decisions)); GTFS feeds and a climate-normals source remain unreviewed and block their own features. `[V1]` |
 
 ---
 
@@ -354,7 +354,7 @@ behind it.
 |---|---|
 | R-PERS-1 | Built from the theme mix of everything a user has visited — e.g. heavy on Roman ruins and light on nightlife reads as a "Historian"; many US national parks reads as a "Trailblazer". `[V1]` |
 | R-PERS-2 | MUST be rule-based, not machine learning, so it is explainable. The personality screen MUST always show the theme breakdown behind it. `[V1]` |
-| R-PERS-3 | Archetype names and thresholds are undecided — [Q-7](#15-open-questions). `[V1]` |
+| R-PERS-3 | Six archetypes and a balanced default, each a group of themes with a threshold share — [D-15](#121-implementation-decisions). `[V1]` |
 
 ### 7.2 Calculation rules
 
@@ -446,7 +446,7 @@ profiles or hosted pages.
 | R-PRIV-1 | No account, no sign-in, no ads, no third-party analytics. `[M1]` |
 | R-PRIV-2 | User data lives on the device and syncs through the user's own private iCloud database. The developer never sees it. `[M1]` |
 | R-PRIV-3 | The place database is read-only and identical for everyone; searches never leave the device. `[M1]` |
-| R-PRIV-4 | Photo access is opt-in and limitable to selected photos. Photos are processed on the device; only references are stored. `[V1]` |
+| R-PRIV-4 | Photo access is opt-in and limitable to selected photos. Photos are processed on the device; only each photo's date and location are read, and nothing about a photo is stored (D-17). `[V1]` |
 | R-PRIV-5 | No background location tracking in v1. `[V1]` |
 | R-PRIV-6 | Full export (CSV and JSON) and a one-tap "delete everything", including the iCloud copy. `[M1]` |
 | R-PRIV-7 | Any network request the app makes MUST be identical for every user (database and pack downloads only). `[V1]` |
@@ -470,9 +470,10 @@ tools.
 | Widgets and share cards | WidgetKit; SwiftUI `ImageRenderer` for card images | Standard, on-device |
 | Data pipeline | Offline Python scripts that build the SQLite file from open data plus curation sheets, versioned per release | Repeatable builds; plays to existing Python and SQL skills |
 
-### 12.1 Implementation decisions taken during the M1 build
+### 12.1 Implementation decisions
 
-These deviate from, or sharpen, the table above. Each is reversible.
+These deviate from, or sharpen, the table above. Each is reversible. D-1 to D-11 were
+taken during the M1 build, D-12 onwards during the V1 build.
 
 | ID | Decision | Rationale |
 |---|---|---|
@@ -487,6 +488,16 @@ These deviate from, or sharpen, the table above. Each is reversible.
 | D-9 | **Fetching is a separate step from building.** `fetch_sources.py` downloads into `Tools/placedb/vendor/` and records each file's digest and retrieval date; `build_placedb.py` reads only that cache and never the network. | Keeps `scripts/check.sh` runnable offline and makes "deterministic" a claim with a stated scope: identical given its inputs, with the manifest saying exactly what those were. Natural Earth is pinned to a release tag; GeoNames, OurAirports and Wikidata are rolling, so the digest is the only honest record of which snapshot a database holds. |
 | D-10 | **Landmarks are curated by identity and themed by hand; every fact comes from Wikidata.** `curation/landmarks.csv` lists a QID, the expected label and the theme tags, and the build fails if Wikidata disagrees about the label or the country. | Automatic selection does not work: the top heritage-designated items in Italy are Verona, Catania and the Croatian *language*, because `P1435` covers intangible heritage and whole cities. Curating identity while sourcing facts keeps the data honest and the list arguable. The label check is not ceremony — it caught "Persepolis" resolving to a football club and "Grand Canyon" to a university. |
 | D-11 | **Search ranks on one prominence scale across place kinds**, with the kind used only to break ties between exact matches, and an exact match promoted only above a prominence floor. `place_index` carries an ASCII-folded copy of each name so a query typed without accents can match exactly. | A per-kind tier made every country outrank every city, so "par" offered Paraguay before Paris; promoting every exact match put *Par*, a Cornish village, above both. One scale plus a floor gives all three documented cases: a country before a city of the same name, a city before a region of the same name, and the most prominent place for a prefix. The folded name matters as much as the ranking: without it no accented name could match exactly, and "malmo" ranked a hamlet in Aruba above Malmö. |
+| D-12 | **Row ids are the upstream identities**: a city or region is its GeoNames id, a landmark its Wikidata QID number, an airport its OurAirports id, and a country a number derived from its ISO code (NO → 14·100 + 15). | A user's log stores these ids and the database is replaced wholesale by updates (R-DB-5). Positional ids would silently repoint every logged place at the next rebuild; upstream ids survive any rebuild and any reordering. |
+| D-13 | **Every bundled place carries an IANA time zone, and a leg's times are read in each end's own zone.** Cities take theirs from GeoNames. Airports and landmarks take the zone of the bundled cities within 75 km when those cities agree, or their country's when it has only one; otherwise the zone stays empty rather than guessed (R-DB-2). | Flight time and connection time are only right if 09:00 in Oslo and 11:30 in New York are compared as instants. Deriving rather than typing zones keeps R-DB-7's "no hand-entered facts", and the unanimity rule refuses to guess near a zone border. |
+| D-14 | **Carbon factors are the UK Government's 2025 GHG conversion factors** (DESNZ, Open Government Licence v3), read from the published flat file by the pipeline; `curation/emission_factors.csv` only names which factor each mode and class uses. Flights use the international factors with radiative forcing and vary by class; a road trip's car is per vehicle. Resolves [Q-16](#15-open-questions). | DESNZ is the one widely used source that is openly licensed, versioned yearly, distinguishes cabin class and documents its method. Its flight factors already include the 8% uplift on great-circle distance, so they apply to the distance the app measures. Every figure is labelled an estimate with the source and year (R-CO2-3). |
+| D-15 | **The travel personality is six archetypes and a balanced default**: Historian, Trailblazer and Aesthete (40% of the theme mix), Futurist (35%), Pilgrim (30%) and Gourmand (20%), each a fixed group of themes; the archetype furthest past its own threshold wins, and Wanderer is the reading when none reaches one. Resolves [Q-7](#15-open-questions). | Narrow groups get lower thresholds because one theme in sixteen at 30% is as strong a signal as five themes at 40%. Rules this simple can be shown in full on the personality screen (R-PERS-2), and a user can see exactly which visits would change the reading. |
+| D-16 | **The first import formats are Flighty, myFlightradar24 and OpenFlights CSV, plus any CSV whose header names a date and two airport columns.** Columns are found by name; airports are matched by code against the bundled database, and anything unmatched goes to a review step. Resolves [Q-8](#15-open-questions). | Between them these cover most people's flight histories, and the generic reader covers a spreadsheet kept by hand. Matching by header name survives reordered or extended exports. |
+| D-17 | **A photo is never stored, not even as a reference.** The importer reads each permitted photo's date and location on the device, clusters them into suggested visits, and a confirmed suggestion becomes an ordinary visit. Resolves [Q-9](#15-open-questions) and sharpens R-LOG-7 and R-PRIV-4. | A stored asset identifier would follow the log into iCloud and the export without adding anything the statistics use, and would break when the photo is deleted. Nothing stored is the strongest privacy position and costs no feature in V1. |
+| D-18 | **The V1 scope is built now.** On 2026-10-20 the owner directed that the app be taken to release standard, superseding the M1-first plan in §13. M1's acceptance criteria (§14) are met; §13.1 records the status of each V1 area, including what is blocked and why. | The owner's call. The milestone tags stay on the requirements as a record of priority. |
+| D-19 | **Widgets read a snapshot, never the log.** After every change the app writes a small JSON summary and a rendered globe image into the shared app-group container (`group.com.leeyenkai.antipodes`); the widget extension depends only on `AntipodesCore`. Widgets are iPhone and iPad only. | A widget process has a tight memory budget and must not open SwiftData or the 40 MB place database. A snapshot also means the widget shows exactly what the app last computed, so the two can never disagree. |
+| D-20 | **Dark appearance is the default**, with Light and System available in Settings. The launch screen is dark to match. | The globe is a night-side globe and the palette is designed around it; a light default would show the app at its weakest first. |
+| D-21 | **Identifiers and entitlements.** Bundle `com.leeyenkai.antipodes` (widgets `.widgets`), app group `group.com.leeyenkai.antipodes`, iCloud container `iCloud.com.leeyenkai.antipodes`. The Mac app is sandboxed through build settings with user-selected file access and Photos. The app-group entitlement is wired for iOS; the iCloud entitlement is documented in `App/Antipodes/Antipodes.entitlements` and enabled from Signing & Capabilities once a team is set. | Simulator builds run unsigned-but-entitled with no account; a device or Mac build needs the owner's team, at which point automatic signing registers the group and container. |
 
 ### 12.2 Module layout
 
@@ -496,14 +507,18 @@ AntipodesKit/
     AntipodesCore      Value types, flexible dates, visit types, modes,
                        great-circle maths, counting rules. No dependencies.
     AntipodesPlaces    Read-only place database: SQLite wrapper, FTS5 search.
-    AntipodesStats     Coverage and distance stats. Pure; reads Core types.
+    AntipodesStats     Every stat family, achievements, collections, Year in
+                       Review. Pure; reads Core types.
     AntipodesExport    CSV and JSON export of the user's whole log.
+    AntipodesImport    Flight-log CSV readers and photo clustering. Pure.
     AntipodesStore     SwiftData models, CloudKit container, mapping to Core.
     AntipodesGlobe     Globe geometry: orthographic projection, limb clipping,
                        bundled border decoding, replay timeline. Pure.
-    AntipodesUI        SwiftUI screens: globe, trips, add sheet, stats, settings.
+    AntipodesUI        SwiftUI screens: globe, trips, add sheet, stats,
+                       collections, Year in Review, import, settings.
   Tests/               One suite per pure module.
-App/                   Xcode app shell: entry point, assets, Info.plist.
+App/Antipodes/         Xcode app shell: entry point, assets, Info.plist.
+App/AntipodesWidgets/  WidgetKit extension; depends on AntipodesCore only (D-19).
 Tools/placedb/         Python pipeline that builds places.sqlite.
 ```
 
@@ -533,11 +548,32 @@ milestone and the public v1 release.
 | Opt-in location suggestions | | | Yes |
 | Localisation beyond English | | | Yes |
 
+### 13.1 V1 status
+
+As of 2026-10-20 (D-18). "Built" means implemented, tested where the logic is pure, and
+checked in the simulator.
+
+| Area | Status |
+|---|---|
+| Journeys in all eight modes, detail fields, catalogue routes, multi-leg journeys with connections and missed connections (R-LOG-6, R-LEG-*, R-JLOG-1 to 4) | Built |
+| Statistics: all five families, drill-downs, personality (R-PERS-*) | Built, except temperature (R-CALC-2) |
+| Achievements, wishlist, curated collections (R-ACH-*, R-WISH-*) | Built; 36 achievements and 5 collections ship in the database |
+| Carbon estimates (R-CO2-*) | Built (D-14) |
+| Globe: wishlist pins, filters, replay (R-GLOBE-4 to 6) | Built |
+| Photo import, flight-log import (R-LOG-7, R-LOG-8, R-JLOG-7 for flights) | Built (D-16, D-17); rail-log import is not |
+| Share cards, widgets, Year in Review (R-SHARE-*) | Built; Year in Review exports images, not video |
+| iPad and Mac (R-PLAT-2, R-PLAT-3, R-NAV-*) | Sidebar navigation, a bulk-edit table and keyboard shortcuts are built; the iPad inspector panel and Mac drag-and-drop import are not |
+| City transit lines and packs, path snapping and path-derived stats (R-TRAN-*, R-JLOG-5, R-PATH-1, 2, 5, 6, 7) | **Blocked**: needs OpenStreetMap-derived packs, which D-8 keeps out of the bundled database. City transit legs are logged between two places with the line as text; surface legs are straight lines marked approximate (R-PATH-3) |
+| Database updates from a static host (R-DB-5) | **Blocked**: needs a host. Achievements and collections are already read from the database (R-DB-6), and D-12 makes the log survive a replaced file |
+| Temperature in the month visited (R-CALC-2) | **Blocked**: needs a licence-reviewed climate-normals source. The stats screen says so |
+| Commute passes, "ride again" as a one-tap duplicate (R-JLOG-6) | Repeat logging is built ("Log again" in the add sheet); passes are not |
+| Name check (R-NAME-1), App Store listing (R-PLAT-4) | Owner's task |
+
 ---
 
 ## 14. Acceptance criteria for M1
 
-M1 is done when, on a device or simulator:
+M1 is done when, on a device or simulator (all met as of 2026-10-20; V1 status is in §13.1):
 
 1. Searching "oslo" offline returns Oslo (city) and OSL (airport), ranked sensibly, in under 100 ms.
 2. A visit can be logged in four taps from the add button, with a visit type and a flexible date.
@@ -560,19 +596,19 @@ M1 is done when, on a device or simulator:
 | Q-1 | Name: "Antipodes" chosen; check App Store and trademark availability. | Open |
 | Q-2 | Minimum iOS version: latest only, or latest minus one? | Working answer: latest minus one (iOS 26) — D-4 |
 | Q-3 | Globe: MapKit (faster to build, needs network) or a custom offline globe? | **Resolved**: custom offline globe — D-5 |
-| Q-4 | Country list: which definition counts as a "country" (UN members, plus territories such as Svalbard or Greenland, disputed places)? Offer a choice of lists? | **Resolved** — yes, offer a choice of three named lists; counts come from the database — [D-6](#121-implementation-decisions-taken-during-the-m1-build) |
-| Q-5 | Database size budget, and the population cut-off for bundled cities. | **Resolved** — 48 MB budget, cities above 5,000 people (30 MB) — [D-7](#121-implementation-decisions-taken-during-the-m1-build) |
-| Q-6 | Theme taxonomy: the final list of themes, and whether tags are curated by hand or derived from Wikidata categories. | Open — working answer: hand-curated, from the sixteen tags in `Tools/placedb/curation/theme_taxonomy.csv` ([D-10](#121-implementation-decisions-taken-during-the-m1-build)) |
-| Q-7 | Personality archetypes: names and the rules that assign them. | Open |
-| Q-8 | Which import formats to support first. | Open |
-| Q-9 | Should a photo be attachable to a visit as a stored copy, or only as a reference? | Open |
-| Q-10 | Journeys with no catalogue route: draw the path by hand, or straight lines between waypoints? | Open |
+| Q-4 | Country list: which definition counts as a "country" (UN members, plus territories such as Svalbard or Greenland, disputed places)? Offer a choice of lists? | **Resolved** — yes, offer a choice of three named lists; counts come from the database — [D-6](#121-implementation-decisions) |
+| Q-5 | Database size budget, and the population cut-off for bundled cities. | **Resolved** — 48 MB budget, cities above 5,000 people (30 MB) — [D-7](#121-implementation-decisions) |
+| Q-6 | Theme taxonomy: the final list of themes, and whether tags are curated by hand or derived from Wikidata categories. | Open — working answer: hand-curated, from the sixteen tags in `Tools/placedb/curation/theme_taxonomy.csv` ([D-10](#121-implementation-decisions)) |
+| Q-7 | Personality archetypes: names and the rules that assign them. | **Resolved** — six archetypes and a balanced default — [D-15](#121-implementation-decisions) |
+| Q-8 | Which import formats to support first. | **Resolved** — Flighty, myFlightradar24, OpenFlights and any date-and-airports CSV — [D-16](#121-implementation-decisions) |
+| Q-9 | Should a photo be attachable to a visit as a stored copy, or only as a reference? | **Resolved** — neither: nothing about a photo is stored — [D-17](#121-implementation-decisions) |
+| Q-10 | Journeys with no catalogue route: draw the path by hand, or straight lines between waypoints? | Working answer for V1: a straight line between the ends, marked approximate, unless the user enters the distance or rides a catalogue route (R-PATH-3). Hand-drawn paths are not built |
 | Q-11 | Any future monetisation (tip jar, optional supporter tier), or free for good? | Open |
-| Q-12 | Which cities make the launch set for city transit? | Open |
-| Q-13 | Size budget for regional network packs and city packs. | Open |
-| Q-14 | Offer an opt-in online timetable lookup, or stay fully offline? | Open |
-| Q-15 | Should commute legs be in stats by default, or out? | Open |
-| Q-16 | Which carbon factor source, and does class (e.g. first vs standard) change the estimate? | Open |
+| Q-12 | Which cities make the launch set for city transit? | Open — blocked with R-TRAN-5 on OpenStreetMap-derived packs (D-8) |
+| Q-13 | Size budget for regional network packs and city packs. | Open — blocked with Q-12 |
+| Q-14 | Offer an opt-in online timetable lookup, or stay fully offline? | Working answer: stay fully offline (R-JLOG-8) |
+| Q-15 | Should commute legs be in stats by default, or out? | Working answer: out by default, with a switch under Settings → What counts |
+| Q-16 | Which carbon factor source, and does class (e.g. first vs standard) change the estimate? | **Resolved** — DESNZ 2025 factors; class changes flight estimates — [D-14](#121-implementation-decisions) |
 
 ---
 
@@ -583,3 +619,4 @@ M1 is done when, on a device or simulator:
 | 2026-10-18 | 0.1.0 | First markdown spec, transcribed from the 2026-10-15 draft. Added requirement IDs, M1 acceptance criteria (§14), and the implementation decisions in §12.1. |
 | 2026-10-18 | 0.2.0 | The place database is built from real open data. Completed the licence review behind R-DB-7 and rewrote §6's source table to what is actually used. Resolved Q-4 (a choice of three country lists) and Q-5 (48 MB budget, cities above 5,000) as D-6 and D-7, and recorded D-8 to D-11: no OpenStreetMap data in the bundled database, fetching split from building, curated landmark identity with sourced facts, and a single cross-kind search prominence scale. |
 | 2026-10-18 | 0.3.0 | Resolved Q-3 as D-5: the globe is drawn by the app over bundled Natural Earth borders rather than fetched through MapKit, after measuring what MapKit actually requests when it cannot reach its service. Added §9.1 (R-GLOBE-1 to R-GLOBE-7) and the pure `AntipodesGlobe` module in §12.2. |
+| 2026-10-20 | 0.4.0 | The V1 scope is built (D-18); §13.1 records what is done and what is blocked. Recorded D-12 to D-21: upstream row ids, per-place time zones, DESNZ carbon factors, the personality rules, the first import formats, storing nothing about photos, widgets reading a snapshot, dark by default, and the app's identifiers and entitlements. Resolved Q-7, Q-8, Q-9 and Q-16; gave working answers to Q-10, Q-14 and Q-15. Sharpened R-LOG-7, R-PERS-3 and R-PRIV-4. Added `AntipodesImport` and the widget extension to §12.2. |

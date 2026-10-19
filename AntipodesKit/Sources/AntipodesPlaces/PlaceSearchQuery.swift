@@ -43,6 +43,42 @@ public struct PlaceSearchResult: Identifiable, Hashable, Sendable {
     public let cityName: String?
     /// Population or curated fame, used for ranking (R-LOG-1).
     public let prominence: Int
+    /// IANA zone, where the database has one (§5.2).
+    public let timeZoneIdentifier: String?
+
+    public init(
+        id: PlaceID,
+        kind: PlaceKind,
+        name: String,
+        subtitle: String? = nil,
+        code: String? = nil,
+        coordinate: Coordinate? = nil,
+        countryCode: String? = nil,
+        countryName: String? = nil,
+        continent: Continent? = nil,
+        regionCode: String? = nil,
+        regionName: String? = nil,
+        cityID: Int64? = nil,
+        cityName: String? = nil,
+        prominence: Int = 0,
+        timeZoneIdentifier: String? = nil
+    ) {
+        self.id = id
+        self.kind = kind
+        self.name = name
+        self.subtitle = subtitle
+        self.code = code
+        self.coordinate = coordinate
+        self.countryCode = countryCode
+        self.countryName = countryName
+        self.continent = continent
+        self.regionCode = regionCode
+        self.regionName = regionName
+        self.cityID = cityID
+        self.cityName = cityName
+        self.prominence = prominence
+        self.timeZoneIdentifier = timeZoneIdentifier
+    }
 
     /// The reference stored in the user's log. Carries the whole hierarchy chain so
     /// stats never need the database again (R-MODEL-6).
@@ -58,7 +94,9 @@ public struct PlaceSearchResult: Identifiable, Hashable, Sendable {
             regionCode: regionCode,
             regionName: regionName,
             cityID: cityID,
-            cityName: cityName
+            cityName: cityName,
+            timeZoneIdentifier: timeZoneIdentifier,
+            code: code
         )
     }
 }

@@ -17,7 +17,7 @@ the app bundle's resources. Pass `--skip-copy` to leave the bundle alone.
 | `sources.py` | The source register: URLs, licences, the exact credit each one requires |
 | `fetch_sources.py` | The only part that touches the network. Downloads into `vendor/`, writes `vendor/manifest.json` |
 | `build_placedb.py` | The build: reads `vendor/` and `curation/`, validates, writes the database |
-| `schema.sql` | Schema version 2, including `data_source`, `place_index` and the FTS5 index over it |
+| `schema.sql` | Schema version 3: places with upstream ids (D-12) and time zones (D-13), `data_source`, `place_index` and its FTS5 index, and the catalogue tables — routes, themes, collections, achievements, carbon factors |
 | `queries/` | The SPARQL sent to Wikidata, as files so they can be read and reviewed |
 | `curation/` | Deliberate human input — see below |
 | `SOURCES.md` | Every source, its licence, and the licence review (R-DB-7) |
@@ -36,6 +36,7 @@ the globe draws into its own `.antborders` file, deliberately not a table here
 | Country facts, regions, cities, elevations, time zones | GeoNames (**CC BY 4.0 — attribution required**) |
 | Airports, IATA and ICAO codes | OurAirports (public domain) |
 | Landmark facts, UNESCO status, UN membership | Wikidata (CC0) |
+| Carbon emission factors | UK DESNZ 2025 (Open Government Licence v3 — attribution required) |
 | Which landmarks and routes exist, and their themes | `curation/` |
 
 There is **no OpenStreetMap data here and there will not be**: ODbL's share-alike terms
@@ -44,15 +45,18 @@ what would have to be true to ship OSM geometry as a separate pack.
 
 ## What is curated, and why
 
-The sources above carry facts, not judgements. Three judgements are needed, and they
-live in `curation/` where they can be read and argued with:
+The sources above carry facts, not judgements. The judgements live in `curation/`
+where they can be read and argued with:
 
 | | |
 |---|---|
 | `landmarks.csv` | Which landmarks exist, which city each belongs to, and its theme tags. Every *fact* — name, coordinate, year built, height, UNESCO status — comes from Wikidata at build time. |
-| `theme_taxonomy.csv` | The fixed theme list every landmark draws from (R-DB-1, Q-6 still open) |
+| `theme_taxonomy.csv` | The fixed theme list every landmark draws from (R-DB-1; working answer to Q-6) |
 | `landmark_kinds.csv` | Wikidata class → the `kind` label shown, by priority |
-| `routes.csv` | The famous routes, with scalar facts only |
+| `routes.csv` | The famous routes, with scalar facts only, and where each starts and ends as a reference to a bundled place |
+| `collections.csv`, `collection_members.csv` | Curated collections and the places in each (R-WISH-2) |
+| `achievements.csv` | Badge definitions: a rule the app knows, a parameter and a tier (R-ACH-1) |
+| `emission_factors.csv` | Which DESNZ factor each mode and class uses — names only, never a number (D-14) |
 | `un_membership.csv` | The reconciliations upstream data cannot express, each with its reason |
 
 `landmarks.csv` records the **expected** Wikidata label and country for each QID, and

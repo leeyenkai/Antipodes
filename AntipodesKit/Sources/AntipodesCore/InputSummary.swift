@@ -14,6 +14,16 @@ public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable
     case commuteExcluded
     /// No distance could be worked out for the leg at all.
     case distanceUnavailable
+    /// The stat needs a day, and the record only says a month or a year (R-DATE-2).
+    case datePrecisionTooLow
+    /// The place database has no value for the attribute this stat measures (R-DB-2).
+    case attributeUnknown
+    /// The leg has no times, or not the time zones needed to read them.
+    case timesUnavailable
+    /// No published carbon factor covers this mode (R-CO2-3).
+    case noEmissionFactor
+    /// Not in a trip, for a stat that is about trips.
+    case notInATrip
 
     public var explanation: String {
         switch self {
@@ -23,6 +33,11 @@ public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable
         case .missingCoordinate: "no location recorded"
         case .commuteExcluded: "commute, excluded from stats"
         case .distanceUnavailable: "no distance available"
+        case .datePrecisionTooLow: "no exact day recorded"
+        case .attributeUnknown: "not known for that place"
+        case .timesUnavailable: "no usable times"
+        case .noEmissionFactor: "no carbon factor for that mode"
+        case .notInATrip: "not in a trip"
         }
     }
 
@@ -76,11 +91,27 @@ public struct StatInputSummary: Hashable, Sendable, Codable {
     ///
     /// e.g. `"Based on 42 of 50 records; 6 no date recorded, 2 no country resolved."`
     public var caveat: String? {
+        caveat(counting: "records")
+    }
+
+    /// The same sentence, naming what was counted: "Based on 42 of 50 landmarks".
+    public func caveat(counting noun: String) -> String? {
         guard !isComplete else { return nil }
         let reasons = exclusions
             .sorted { ($0.value, $1.key) > ($1.value, $0.key) }
             .map { "\($0.value) \($0.key.explanation)" }
             .joined(separator: ", ")
-        return "Based on \(used) of \(considered) records; \(reasons)."
+        return "Based on \(used) of \(considered) \(noun); \(reasons)."
+    }
+
+    /// Two summaries added together, for a stat built from several passes.
+    public static func + (lhs: StatInputSummary, rhs: StatInputSummary) -> StatInputSummary {
+        var result = lhs
+        result.considered += rhs.considered
+        result.used += rhs.used
+        for (reason, count) in rhs.exclusions {
+            result.exclusions[reason, default: 0] += count
+        }
+        return result
     }
 }

@@ -13,9 +13,12 @@ struct GlobeCanvas: View {
     let camera: GlobeCamera
     let selection: GlobeSelection?
     let palette: GlobePalette
+    /// Off the main thread on screen, so dragging stays smooth; on the main thread for
+    /// `ImageRenderer`, which needs the drawing finished when it returns.
+    var rendersAsynchronously = true
 
     var body: some View {
-        Canvas(opaque: false, rendersAsynchronously: false) { context, size in
+        Canvas(opaque: false, rendersAsynchronously: rendersAsynchronously) { context, size in
             let globe = OrthographicGlobe(
                 camera: camera,
                 size: GlobeSize(width: size.width, height: size.height)
@@ -190,6 +193,8 @@ struct GlobeCanvas: View {
 
     // MARK: - Pins
 
+    // Every pin style is drawn in one pass over the projected points.
+    // swiftlint:disable function_body_length
     private func drawPins(in context: inout GraphicsContext, globe: OrthographicGlobe) {
         for pin in scene.pins {
             let projected = globe.project(pin.coordinate)
@@ -231,14 +236,42 @@ struct GlobeCanvas: View {
                 context.fill(dot, with: .color(palette.oceanShadow.opacity(0.8)))
                 context.stroke(dot, with: .color(palette.notCountedPin), lineWidth: 1.4)
             case .wishlist:
+                context.fill(dot, with: .color(palette.wishlistPin.opacity(0.25)))
                 context.stroke(
                     dot,
                     with: .color(palette.wishlistPin),
                     style: StrokeStyle(lineWidth: 1.6, dash: [2.4, 2])
                 )
+            case .home:
+                let ring = Path(ellipseIn: CGRect(
+                    x: centre.x - 7,
+                    y: centre.y - 7,
+                    width: 14,
+                    height: 14
+                ))
+                context.fill(ring, with: .color(palette.homePin))
+                context.stroke(ring, with: .color(.white), lineWidth: 2)
+            case .antipode:
+                let ring = Path(ellipseIn: CGRect(
+                    x: centre.x - 9,
+                    y: centre.y - 9,
+                    width: 18,
+                    height: 18
+                ))
+                context.stroke(
+                    ring,
+                    with: .color(palette.homePin),
+                    style: StrokeStyle(lineWidth: 2, dash: [3, 3])
+                )
+                context.fill(
+                    Path(ellipseIn: CGRect(x: centre.x - 2, y: centre.y - 2, width: 4, height: 4)),
+                    with: .color(palette.homePin)
+                )
             }
         }
     }
+
+    // swiftlint:enable function_body_length
 
     // MARK: - Helpers
 
@@ -276,7 +309,7 @@ struct GlobeCanvas: View {
 
     private var accessibilityLabel: String {
         let countries = scene.shadedCountryCodes.count
-        let places = scene.pins.filter { $0.style != .wishlist }.count
+        let places = scene.pins.filter(\.style.isTravel).count
         return "Globe showing \(places) places in \(countries) countries, "
             + "and \(scene.arcs.count) journeys."
     }
@@ -295,12 +328,13 @@ struct GlobePalette: Sendable {
     var graticule = Color.white.opacity(0.08)
 
     var land = Color(red: 0.24, green: 0.29, blue: 0.35)
-    var visitedLand = Color(red: 0.31, green: 0.70, blue: 0.56)
+    var visitedLand = Color(red: 0.31, green: 0.74, blue: 0.59)
     var border = Color.black.opacity(0.35)
 
     var visitedPin = Color(red: 0.99, green: 0.85, blue: 0.42)
     var notCountedPin = Color.white.opacity(0.45)
     var wishlistPin = Color(red: 0.78, green: 0.62, blue: 0.98)
+    var homePin = Color(red: 0.36, green: 0.86, blue: 0.96)
     var pinOutline = Color.black.opacity(0.55)
 
     func colour(for mode: TravelMode) -> Color {
@@ -321,6 +355,7 @@ struct GlobePalette: Sendable {
         case .visited: visitedPin
         case .notCounted: notCountedPin
         case .wishlist: wishlistPin
+        case .home, .antipode: homePin
         }
     }
 }

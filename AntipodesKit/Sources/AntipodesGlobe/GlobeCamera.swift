@@ -157,3 +157,29 @@ public struct BoundingBox: Hashable, Sendable {
         latitudeSpan > BoundingBox.samplingLimit || longitudeSpan > BoundingBox.samplingLimit
     }
 }
+
+public extension GlobeCamera {
+    /// A camera that shows every coordinate: centred on their mean direction, and zoomed
+    /// in as far as keeps the furthest one inside 80% of the disc.
+    ///
+    /// On an orthographic globe a point θ from the centre lands r·sin θ from the middle
+    /// of the disc, so the furthest point fits at a zoom of 0.8 / sin θ. Anything more
+    /// than 60° out needs the whole hemisphere, and a single point gets a city-scale
+    /// view rather than an infinite zoom.
+    static func framing(_ coordinates: [Coordinate], maximumZoom: Double = 10) -> GlobeCamera? {
+        guard !coordinates.isEmpty else { return nil }
+        var sum = Vector3(x: 0, y: 0, z: 0)
+        for coordinate in coordinates {
+            sum = sum.adding(Vector3.onUnitSphere(coordinate))
+        }
+        let length = (sum.x * sum.x + sum.y * sum.y + sum.z * sum.z).squareRoot()
+        guard length > 1e-6 else { return GlobeCamera(centre: coordinates[0], zoom: 1) }
+        let centre = sum.coordinate
+        let spread = coordinates
+            .map { GreatCircle.centralAngle(from: centre, to: $0) }
+            .max() ?? 0
+        guard spread < .pi / 3 else { return GlobeCamera(centre: centre, zoom: 1) }
+        let zoom = spread < 1e-4 ? maximumZoom : 0.8 / sin(spread)
+        return GlobeCamera(centre: centre, zoom: min(maximumZoom, max(1, zoom)))
+    }
+}

@@ -39,12 +39,18 @@ public enum GlobePinStyle: String, Sendable, Hashable, CaseIterable {
     /// Logged, but not counted — passed through, or a layover (R-CALC-1). Drawn fainter
     /// so the globe agrees with the coverage number beside it.
     case notCounted
-    /// Somewhere the user wants to go, not somewhere they have been.
-    ///
-    /// The wishlist itself is a `[V1]` feature and does not exist yet (§8). This is the
-    /// seam for it: the builder takes wishlist places and styles them, so adding the
-    /// feature later is a matter of passing a non-empty array.
+    /// Somewhere the user wants to go, not somewhere they have been (R-GLOBE-4).
     case wishlist
+    /// Where the user lives.
+    case home
+    /// The point on exactly the other side of the globe from home — the app's namesake.
+    case antipode
+
+    /// Whether this pin stands for somewhere the user has been. Home, its antipode and
+    /// wishlist places are markers, not travel, and are never counted as places.
+    public var isTravel: Bool {
+        self == .visited || self == .notCounted
+    }
 }
 
 public struct GlobePin: Identifiable, Sendable {
@@ -124,13 +130,41 @@ public enum GlobeSceneBuilder {
         rules: CountingRules,
         filter: GlobeFilter = .none,
         wishlist: [PlaceReference] = [],
+        home: PlaceReference? = nil,
         arcSegments: Int = defaultArcSegments
     ) -> GlobeScene {
         let places = buildPins(log: log, rules: rules, filter: filter, wishlist: wishlist)
         let journeys = buildArcs(log: log, rules: rules, filter: filter, segments: arcSegments)
 
+        // Home and its antipode are drawn as markers, outside the bookkeeping: they are
+        // not records, so they are neither drawn nor excluded as travel.
+        var pins = places.pins
+        if let home, let coordinate = home.coordinate {
+            pins.append(GlobePin(
+                id: markerID(1),
+                coordinate: coordinate,
+                place: home,
+                style: .home,
+                visitType: nil,
+                date: .unknown
+            ))
+            pins.append(GlobePin(
+                id: markerID(2),
+                coordinate: coordinate.antipode,
+                place: PlaceReference(
+                    id: .custom(markerID(2)),
+                    kind: .custom,
+                    name: "Your antipode",
+                    coordinate: coordinate.antipode
+                ),
+                style: .antipode,
+                visitType: nil,
+                date: .unknown
+            ))
+        }
+
         return GlobeScene(
-            pins: places.pins,
+            pins: pins,
             arcs: journeys.arcs,
             shadedCountryCodes: places.shadedCountryCodes,
             totalDistanceKm: journeys.totalDistanceKm,
@@ -138,6 +172,11 @@ public enum GlobeSceneBuilder {
             arcSummary: journeys.summary,
             shadingSummary: places.shadingSummary
         )
+    }
+
+    /// Fixed identities for the home markers, so a selection survives a rebuild.
+    static func markerID(_ index: UInt8) -> UUID {
+        UUID(uuid: (0, 0, 0, 0, 0, 0, 0x40, 0, 0x80, 0, 0, 0, 0, 0, 0, index))
     }
 
     private struct Places {
@@ -314,7 +353,8 @@ public extension GlobeScene {
         var sum = Vector3(x: 0, y: 0, z: 0)
         var count = 0
 
-        for pin in pins {
+        // Home and its antipode would cancel each other out, and are not travel.
+        for pin in pins where pin.style.isTravel || pin.style == .wishlist {
             sum = sum.adding(Vector3.onUnitSphere(pin.coordinate))
             count += 1
         }

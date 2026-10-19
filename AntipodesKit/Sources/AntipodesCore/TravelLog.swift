@@ -6,11 +6,20 @@ public struct Trip: Identifiable, Hashable, Sendable, Codable {
     /// Trips may be unnamed; the UI falls back to dates and places.
     public var name: String?
     public var notes: String?
+    /// When the trip was created in the app. Only used to order trips that have nothing
+    /// dated in them yet; it is not when the trip happened.
+    public var createdAt: Date?
 
-    public init(id: UUID = UUID(), name: String? = nil, notes: String? = nil) {
+    public init(
+        id: UUID = UUID(),
+        name: String? = nil,
+        notes: String? = nil,
+        createdAt: Date? = nil
+    ) {
         self.id = id
         self.name = name
         self.notes = notes
+        self.createdAt = createdAt
     }
 }
 
@@ -24,6 +33,8 @@ public struct Visit: Identifiable, Hashable, Sendable, Codable {
     public var tripID: UUID?
     public var rating: Int?
     public var notes: String?
+    /// When it was logged, for ordering undated visits. Not when it happened.
+    public var createdAt: Date?
 
     public init(
         id: UUID = UUID(),
@@ -32,7 +43,8 @@ public struct Visit: Identifiable, Hashable, Sendable, Codable {
         date: FlexibleDate = .unknown,
         tripID: UUID? = nil,
         rating: Int? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        createdAt: Date? = nil
     ) {
         self.id = id
         self.place = place
@@ -41,6 +53,7 @@ public struct Visit: Identifiable, Hashable, Sendable, Codable {
         self.tripID = tripID
         self.rating = rating.map { min(5, max(1, $0)) }
         self.notes = notes
+        self.createdAt = createdAt
     }
 }
 
@@ -49,7 +62,7 @@ public struct Visit: Identifiable, Hashable, Sendable, Codable {
 public enum DistanceSource: String, Sendable, Codable, CaseIterable {
     /// The user typed the distance, which wins over everything.
     case userOverride
-    /// Measured along real track, road or sea geometry.
+    /// Measured along real track, road or sea geometry, or a catalogue route's length.
     case storedPath
     /// Great-circle between the endpoints, and exact for a flight.
     case greatCircleExact
@@ -64,100 +77,17 @@ public enum DistanceSource: String, Sendable, Codable, CaseIterable {
     }
 }
 
-/// One stage of a journey: a single vehicle from one place to another (§5.2).
-///
-/// Only `mode`, `origin` and `destination` are required (R-LEG-1).
-public struct JourneyLeg: Identifiable, Hashable, Sendable, Codable {
-    public var id: UUID
-    public var mode: TravelMode
-    public var origin: PlaceReference
-    public var destination: PlaceReference
-    public var date: FlexibleDate
-    public var purpose: TripPurpose
-
-    /// Length of the real path, where the pipeline or on-device snapping produced one.
-    public var storedPathLengthKm: Double?
-    /// The user's own figure, which beats any computed one.
-    public var distanceKmOverride: Double?
-    public var durationMinutesOverride: Int?
-
-    public var operatorName: String?
-    public var serviceNumber: String?
-    public var vehicle: String?
-    public var travelClass: String?
-    public var seat: String?
-    public var rating: Int?
-    public var notes: String?
-
-    public init(
-        id: UUID = UUID(),
-        mode: TravelMode,
-        origin: PlaceReference,
-        destination: PlaceReference,
-        date: FlexibleDate = .unknown,
-        purpose: TripPurpose = .leisure,
-        storedPathLengthKm: Double? = nil,
-        distanceKmOverride: Double? = nil,
-        durationMinutesOverride: Int? = nil,
-        operatorName: String? = nil,
-        serviceNumber: String? = nil,
-        vehicle: String? = nil,
-        travelClass: String? = nil,
-        seat: String? = nil,
-        rating: Int? = nil,
-        notes: String? = nil
-    ) {
-        self.id = id
-        self.mode = mode
-        self.origin = origin
-        self.destination = destination
-        self.date = date
-        self.purpose = purpose
-        self.storedPathLengthKm = storedPathLengthKm
-        self.distanceKmOverride = distanceKmOverride
-        self.durationMinutesOverride = durationMinutesOverride
-        self.operatorName = operatorName
-        self.serviceNumber = serviceNumber
-        self.vehicle = vehicle
-        self.travelClass = travelClass
-        self.seat = seat
-        self.rating = rating.map { min(5, max(1, $0)) }
-        self.notes = notes
-    }
-
-    /// Distance and where it came from, resolved in one place so every caller agrees.
-    ///
-    /// Order: the user's override, then a real stored path, then the great circle —
-    /// exact for a flight, flagged approximate for anything that should have followed
-    /// the ground (R-PATH-5).
-    public var distance: (kilometres: Double, source: DistanceSource) {
-        if let override = distanceKmOverride, override >= 0 {
-            return (override, .userOverride)
-        }
-        if let stored = storedPathLengthKm, stored >= 0 {
-            return (stored, .storedPath)
-        }
-        guard let from = origin.coordinate, let to = destination.coordinate else {
-            return (0, .unavailable)
-        }
-        let kilometres = GreatCircle.distanceKm(from: from, to: to)
-        return (kilometres, mode.greatCircleIsExact ? .greatCircleExact : .greatCircleApproximate)
-    }
-
-    public var distanceKm: Double {
-        distance.kilometres
-    }
-
-    public var distanceSource: DistanceSource {
-        distance.source
-    }
-
-    /// The arc to draw on the globe. A flight curves; anything else is a straight
-    /// stand-in until a real path exists.
-    public func pathForDisplay(segments: Int = 64) -> [Coordinate] {
-        guard let from = origin.coordinate, let to = destination.coordinate else { return [] }
-        return GreatCircle.arc(from: from, to: to, segments: segments)
-    }
+/// The time between one leg arriving and the next departing (R-JLOG-4).
+public struct Connection: Hashable, Sendable {
+    public let arrivingLegID: UUID
+    public let departingLegID: UUID
+    /// `nil` when either time is missing, or the zones needed to compare them are.
+    public let minutes: Int?
+    /// The user marked the connection as missed.
+    public let isMissed: Bool
+    /// The next leg does not start where the last one ended — a gap the user filled
+    /// some other way, such as a taxi across town.
+    public let changesPlace: Bool
 }
 
 /// A journey: one or more legs travelled as a single movement (R-MODEL-4).
@@ -199,29 +129,109 @@ public struct Journey: Identifiable, Hashable, Sendable, Codable {
     public var destination: PlaceReference? {
         legs.last?.destination
     }
+
+    /// Every change between consecutive legs, in order.
+    public var connections: [Connection] {
+        zip(legs, legs.dropFirst()).map { arriving, departing in
+            var minutes: Int?
+            if let arrival = arriving.times.bestArrival,
+               let departure = departing.times.bestDeparture {
+                minutes = JourneyLeg.minutes(
+                    from: arrival, in: arriving.destination,
+                    to: departure, in: departing.origin
+                )
+            }
+            return Connection(
+                arrivingLegID: arriving.id,
+                departingLegID: departing.id,
+                minutes: minutes,
+                isMissed: departing.missedConnection,
+                changesPlace: arriving.destination.id != departing.origin.id
+            )
+        }
+    }
+
+    /// Total minutes from first departure to last arrival, where every leg's duration
+    /// and every connection are known.
+    public var elapsedMinutes: Int? {
+        var total = 0
+        for leg in legs {
+            guard let minutes = leg.durationMinutes else { return nil }
+            total += minutes
+        }
+        for connection in connections {
+            guard let minutes = connection.minutes, minutes >= 0 else { return nil }
+            total += minutes
+        }
+        return legs.isEmpty ? nil : total
+    }
+}
+
+/// Somewhere the user wants to go (R-WISH-1).
+///
+/// A wishlist entry is never ticked off by hand: whether it has been visited is worked
+/// out from the log every time, so logging a visit ticks it off automatically and
+/// deleting that visit puts it back (R-WISH-4).
+public struct WishlistItem: Identifiable, Hashable, Sendable, Codable {
+    public var id: UUID
+    /// The place, or `nil` for a catalogue route.
+    public var place: PlaceReference?
+    public var routeID: Int64?
+    public var routeName: String?
+    public var notes: String?
+    public var createdAt: Date?
+
+    public init(
+        id: UUID = UUID(),
+        place: PlaceReference? = nil,
+        routeID: Int64? = nil,
+        routeName: String? = nil,
+        notes: String? = nil,
+        createdAt: Date? = nil
+    ) {
+        self.id = id
+        self.place = place
+        self.routeID = routeID
+        self.routeName = routeName
+        self.notes = notes
+        self.createdAt = createdAt
+    }
+
+    public var title: String {
+        place?.name ?? routeName ?? "Route"
+    }
 }
 
 /// Everything the user has logged, as plain values.
 ///
 /// This is what the statistics engine reads. It is deliberately free of SwiftData so
 /// the whole engine can be tested without a model container (decision D-2).
-public struct TravelLog: Hashable, Sendable, Codable {
+public struct TravelLog: Hashable, Sendable {
     public var trips: [Trip]
     public var visits: [Visit]
     public var journeys: [Journey]
+    public var wishlist: [WishlistItem]
 
     public static let empty = TravelLog()
 
-    public init(trips: [Trip] = [], visits: [Visit] = [], journeys: [Journey] = []) {
+    public init(
+        trips: [Trip] = [],
+        visits: [Visit] = [],
+        journeys: [Journey] = [],
+        wishlist: [WishlistItem] = []
+    ) {
         self.trips = trips
         self.visits = visits
         self.journeys = journeys
+        self.wishlist = wishlist
     }
 
     public var allLegs: [JourneyLeg] {
         journeys.flatMap(\.legs)
     }
 
+    /// Whether anything has been *logged*. A wishlist on its own is somewhere the user
+    /// has not been yet, so it does not make the log non-empty.
     public var isEmpty: Bool {
         trips.isEmpty && visits.isEmpty && journeys.isEmpty
     }
@@ -232,5 +242,58 @@ public struct TravelLog: Hashable, Sendable, Codable {
 
     public func journeys(inTrip tripID: UUID) -> [Journey] {
         journeys.filter { $0.tripID == tripID }
+    }
+
+    public func trip(id: UUID) -> Trip? {
+        trips.first { $0.id == id }
+    }
+
+    /// The part of the log that belongs to one trip, with the trip itself.
+    public func restricted(toTrip tripID: UUID) -> TravelLog {
+        TravelLog(
+            trips: trips.filter { $0.id == tripID },
+            visits: visits(inTrip: tripID),
+            journeys: journeys(inTrip: tripID)
+        )
+    }
+
+    /// The part of the log dated within one calendar year. A visit or leg counts for a
+    /// year when its date falls entirely inside it; undated records belong to no year.
+    public func restricted(toYear year: Int) -> TravelLog {
+        TravelLog(
+            trips: trips,
+            visits: visits.filter { $0.date.year == year },
+            journeys: journeys.compactMap { journey in
+                let legs = journey.legs.filter { $0.date.year == year }
+                guard !legs.isEmpty else { return nil }
+                var copy = journey
+                copy.legs = legs
+                return copy
+            }
+        )
+    }
+}
+
+extension TravelLog: Codable {
+    private enum CodingKeys: String, CodingKey {
+        case trips, visits, journeys, wishlist
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            trips: container.decodeIfPresent([Trip].self, forKey: .trips) ?? [],
+            visits: container.decodeIfPresent([Visit].self, forKey: .visits) ?? [],
+            journeys: container.decodeIfPresent([Journey].self, forKey: .journeys) ?? [],
+            wishlist: container.decodeIfPresent([WishlistItem].self, forKey: .wishlist) ?? []
+        )
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(trips, forKey: .trips)
+        try container.encode(visits, forKey: .visits)
+        try container.encode(journeys, forKey: .journeys)
+        try container.encode(wishlist, forKey: .wishlist)
     }
 }

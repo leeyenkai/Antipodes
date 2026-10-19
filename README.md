@@ -7,9 +7,9 @@ Flight loggers cover one mode deeply. Country-checklist apps cover everywhere
 shallowly. Antipodes covers **every mode** — places, flights, rail, road, sea,
 trails — with flight-logger depth, and keeps all of it on your own devices.
 
-> **Status: pre-alpha.** The first internal milestone (M1) is under construction.
-> Nothing is released yet and the data pipeline ships with a small development seed
-> rather than the real dataset.
+> **Status: pre-release.** The v1 feature set is built and tested; nothing is
+> released yet. What is still blocked, and why, is in §13.1 of the
+> [specification](docs/SPECIFICATION.md#131-v1-status).
 
 ---
 
@@ -19,11 +19,19 @@ trails — with flight-logger depth, and keeps all of it on your own devices.
   coordinates, no looking up airport codes.
 - **Every mode of travel.** Flights, intercity and regional rail, city transit,
   coaches, ferries and cruises, road trips, hikes and trails, cable cars and
-  funiculars — each with its own detail and its own real path on the map.
-- **Statistics nobody else offers.** Not just countries counted: average age of the
-  landmarks you have seen, the temperature in the month you visited, percentage of a
-  country's rail network you have ridden, and a rule-based "travel personality" that
-  always shows its working.
+  funiculars — each with its own detail, multi-leg journeys with connection times, and
+  famous routes such as the Glacier Express ready to ride.
+- **Statistics nobody else offers.** Not just countries counted: the average age of
+  the landmarks you have seen, flight hours and punctuality, days away per year, the
+  longest gap since you last saw a country, an estimate of your carbon and what going
+  overland saved, and a rule-based "travel personality" that always shows its working.
+- **Collections and badges.** The New 7 Wonders, the Nordic capitals, every US national
+  park; a wishlist that ticks itself off; badges for the Arctic Circle and the Equator.
+- **Bring your history with you.** Import flights from Flighty, myFlightradar24 or
+  OpenFlights, and find past trips in the dates and places of your photos — on the
+  device, with nothing stored about any photo.
+- **Share it.** Cards for a stat, a trip or a year, a Year in Review, and Home and
+  Lock Screen widgets.
 - **A globe, not a list.** The home screen is a 3D globe with your countries shaded,
   your pins placed and your journeys drawn as arcs.
 - **Private by design.** No account. No server. No analytics. Your travel history
@@ -47,12 +55,15 @@ AntipodesKit/        Swift package: all logic and UI
   Sources/
     AntipodesCore/     Value types, flexible dates, great-circle maths, counting rules
     AntipodesPlaces/   Read-only place database (SQLite + FTS5 search)
-    AntipodesStats/    Coverage and distance statistics (pure, no persistence)
+    AntipodesStats/    Every statistic, badge and collection (pure, no persistence)
     AntipodesExport/   CSV and JSON export
+    AntipodesImport/   Flight-log and photo import (pure)
     AntipodesStore/    SwiftData models and CloudKit sync
+    AntipodesGlobe/    Globe geometry and replay (pure, no SwiftUI or MapKit)
     AntipodesUI/       SwiftUI screens
   Tests/               One suite per pure module
 App/Antipodes/       App shell: entry point, Info.plist, assets, bundled resources
+App/AntipodesWidgets/ Home and Lock Screen widgets
 Antipodes.xcodeproj  Thin app project depending on the local package
 Tools/placedb/       Python pipeline that builds the read-only place database
 docs/                Specification and design notes
@@ -78,7 +89,7 @@ Individually:
 | `scripts/build.sh` | Build the `AntipodesKit` package |
 | `scripts/test.sh` | Run the full test suite (no simulator, no network) |
 | `scripts/lint.sh` | SwiftFormat + SwiftLint |
-| `scripts/build-placedb.sh` | Build `places.sqlite` from the seed data |
+| `scripts/build-placedb.sh` | Build `places.sqlite` from the cached open data (fetches it first if missing) |
 | `scripts/build-app.sh` | Build the iOS app with `xcodebuild` |
 | `scripts/check.sh` | Everything above except the app build |
 
@@ -105,11 +116,10 @@ project-specific traps.
 
 ## Data and attribution
 
-The place database is built from open data. Sources, licences and attribution
-obligations are tracked in [Tools/placedb/SOURCES.md](Tools/placedb/SOURCES.md), and
-the licence review is not yet complete — see R-DB-7 in the specification. The data
-currently in `Tools/placedb/seed/` is a small hand-entered development seed, not the
-real dataset.
+The place database is built from open data: Natural Earth, GeoNames, OurAirports,
+Wikidata and the UK Government's carbon conversion factors. Every source's licence and
+what it obliges is recorded in [Tools/placedb/SOURCES.md](Tools/placedb/SOURCES.md), and
+the required credits are shown in the app under Settings.
 
 ## Contributing
 

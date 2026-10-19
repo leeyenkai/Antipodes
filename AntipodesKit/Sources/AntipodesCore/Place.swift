@@ -80,6 +80,11 @@ public struct PlaceReference: Hashable, Sendable, Codable, Identifiable {
     /// The city a landmark or airport belongs to, so logging it implies the city.
     public var cityID: Int64?
     public var cityName: String?
+    /// IANA zone, where the database has one. A leg's times are read in its origin's
+    /// and destination's zones to give a duration (§5.2).
+    public var timeZoneIdentifier: String?
+    /// An airport's IATA code, a country's ISO code: the short form a list shows.
+    public var code: String?
 
     public init(
         id: PlaceID,
@@ -92,7 +97,9 @@ public struct PlaceReference: Hashable, Sendable, Codable, Identifiable {
         regionCode: String? = nil,
         regionName: String? = nil,
         cityID: Int64? = nil,
-        cityName: String? = nil
+        cityName: String? = nil,
+        timeZoneIdentifier: String? = nil,
+        code: String? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -105,6 +112,45 @@ public struct PlaceReference: Hashable, Sendable, Codable, Identifiable {
         self.regionName = regionName
         self.cityID = cityID
         self.cityName = cityName
+        self.timeZoneIdentifier = timeZoneIdentifier
+        self.code = code
+    }
+
+    /// The short form for a journey title: "OSL" for an airport, the name otherwise.
+    public var shortName: String {
+        if kind == .airport, let code, !code.isEmpty {
+            return code
+        }
+        return name
+    }
+
+    public var timeZone: TimeZone? {
+        timeZoneIdentifier.flatMap(TimeZone.init(identifier:))
+    }
+
+    /// Whether a visit here also counts as having been to `target` — the rule behind
+    /// ticking off a wishlist entry (R-WISH-4) and a collection member (R-WISH-3).
+    ///
+    /// It follows the implication chain of R-MODEL-6 and nothing wider: a visit to the
+    /// Colosseum covers the Colosseum, Rome, Lazio and Italy. It does not cover the
+    /// Pantheon in the same city, or the Vatican next door.
+    public func covers(_ target: PlaceReference) -> Bool {
+        if id == target.id {
+            return true
+        }
+        switch target.kind {
+        case .country:
+            return countryCode != nil && countryCode == target.countryCode
+        case .region:
+            return qualifiedRegionCode != nil && qualifiedRegionCode == target.qualifiedRegionCode
+        case .city:
+            if case let .database(.city, row) = target.id {
+                return impliedCityID == row
+            }
+            return false
+        case .landmark, .airport, .route, .custom:
+            return false
+        }
     }
 
     /// Every city this place implies, as database identity. A city implies itself; a

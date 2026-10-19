@@ -8,14 +8,62 @@
 
 /* Begin PBXBuildFile section */
 		A100000000000000000000B1 /* AntipodesKit in Frameworks */ = {isa = PBXBuildFile; productRef = A100000000000000000000C1 /* AntipodesKit */; };
+		A2000000000000000000B001 /* AntipodesWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A2000000000000000000A001 /* AntipodesWidgets.appex */; platformFilter = ios; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A2000000000000000000B002 /* AntipodesCore in Frameworks */ = {isa = PBXBuildFile; productRef = A2000000000000000000C001 /* AntipodesCore */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A2000000000000000000D101 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A10000000000000000000121 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A2000000000000000000F001;
+			remoteInfo = AntipodesWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A2000000000000000000E001 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A2000000000000000000B001 /* AntipodesWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		A100000000000000000000A1 /* Antipodes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Antipodes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2000000000000000000A001 /* AntipodesWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AntipodesWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		A2000000000000000000E101 /* Exceptions for "Antipodes" folder in "Antipodes" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"Antipodes-iOS.entitlements",
+				Antipodes.entitlements,
+				Info.plist,
+			);
+			target = A100000000000000000000F1 /* Antipodes */;
+		};
+		A2000000000000000000E102 /* Exceptions for "AntipodesWidgets" folder in "AntipodesWidgets" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				AntipodesWidgets.entitlements,
+				Info.plist,
+			);
+			target = A2000000000000000000F001 /* AntipodesWidgets */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A100000000000000000000A2 /* Antipodes */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Antipodes; sourceTree = "<group>"; };
+		A100000000000000000000A2 /* Antipodes */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (A2000000000000000000E101 /* Exceptions for "Antipodes" folder in "Antipodes" target */, ); explicitFileTypes = {}; explicitFolders = (); path = Antipodes; sourceTree = "<group>"; };
+		A2000000000000000000A002 /* AntipodesWidgets */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (A2000000000000000000E102 /* Exceptions for "AntipodesWidgets" folder in "AntipodesWidgets" target */, ); explicitFileTypes = {}; explicitFolders = (); path = AntipodesWidgets; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -24,6 +72,14 @@
 			buildActionMask = 2147483647;
 			files = (
 				A100000000000000000000B1 /* AntipodesKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2000000000000000000D001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A2000000000000000000B002 /* AntipodesCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -42,6 +98,7 @@
 			isa = PBXGroup;
 			children = (
 				A100000000000000000000A2 /* Antipodes */,
+				A2000000000000000000A002 /* AntipodesWidgets */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -50,6 +107,7 @@
 			isa = PBXGroup;
 			children = (
 				A100000000000000000000A1 /* Antipodes.app */,
+				A2000000000000000000A001 /* AntipodesWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -64,10 +122,12 @@
 				A10000000000000000000111 /* Sources */,
 				A100000000000000000000D1 /* Frameworks */,
 				A10000000000000000000112 /* Resources */,
+				A2000000000000000000E001 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A2000000000000000000D102 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A100000000000000000000A2 /* Antipodes */,
@@ -80,6 +140,29 @@
 			productReference = A100000000000000000000A1 /* Antipodes.app */;
 			productType = "com.apple.product-type.application";
 		};
+		A2000000000000000000F001 /* AntipodesWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A2000000000000000000C101 /* Build configuration list for PBXNativeTarget "AntipodesWidgets" */;
+			buildPhases = (
+				A2000000000000000000D003 /* Sources */,
+				A2000000000000000000D001 /* Frameworks */,
+				A2000000000000000000D002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A2000000000000000000A002 /* AntipodesWidgets */,
+			);
+			name = AntipodesWidgets;
+			packageProductDependencies = (
+				A2000000000000000000C001 /* AntipodesCore */,
+			);
+			productName = AntipodesWidgets;
+			productReference = A2000000000000000000A001 /* AntipodesWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -91,6 +174,9 @@
 				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					A100000000000000000000F1 = {
+						CreatedOnToolsVersion = 27.0;
+					};
+					A2000000000000000000F001 = {
 						CreatedOnToolsVersion = 27.0;
 					};
 				};
@@ -113,12 +199,20 @@
 			projectRoot = "";
 			targets = (
 				A100000000000000000000F1 /* Antipodes */,
+				A2000000000000000000F001 /* AntipodesWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A10000000000000000000112 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A2000000000000000000D002 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -135,7 +229,23 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A2000000000000000000D003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A2000000000000000000D102 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			platformFilter = ios;
+			target = A2000000000000000000F001 /* AntipodesWidgets */;
+			targetProxy = A2000000000000000000D101 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A10000000000000000000141 /* Debug */ = {
@@ -199,15 +309,22 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphone*]" = "App/Antipodes/Antipodes-iOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Antipodes;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Lee Yen Kai";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Antipodes reads the date and location of your photos on this device to suggest visits for you to confirm. Nothing is uploaded and no photo is copied.";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_FILE = App/Antipodes/Info.plist;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -215,8 +332,8 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.antipodes;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leeyenkai.antipodes;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -228,15 +345,22 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphone*]" = "App/Antipodes/Antipodes-iOS.entitlements";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = YES;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_RESOURCE_ACCESS_PHOTO_LIBRARY = YES;
+				ENABLE_USER_SELECTED_FILES = readwrite;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_CFBundleDisplayName = Antipodes;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.travel";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Lee Yen Kai";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Antipodes reads the date and location of your photos on this device to suggest visits for you to confirm. Nothing is uploaded and no photo is copied.";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_FILE = App/Antipodes/Info.plist;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -244,9 +368,65 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.example.antipodes;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leeyenkai.antipodes;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A2000000000000000000C111 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = App/AntipodesWidgets/AntipodesWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = App/AntipodesWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Antipodes;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Lee Yen Kai";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leeyenkai.antipodes.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A2000000000000000000C112 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = App/AntipodesWidgets/AntipodesWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = App/AntipodesWidgets/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Antipodes;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Lee Yen Kai";
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.leeyenkai.antipodes.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
@@ -273,6 +453,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
+		A2000000000000000000C101 /* Build configuration list for PBXNativeTarget "AntipodesWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A2000000000000000000C111 /* Debug */,
+				A2000000000000000000C112 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -286,6 +475,10 @@
 		A100000000000000000000C1 /* AntipodesKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AntipodesKit;
+		};
+		A2000000000000000000C001 /* AntipodesCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = AntipodesCore;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

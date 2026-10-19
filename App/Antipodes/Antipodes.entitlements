@@ -18,7 +18,7 @@
 <dict>
 	<key>com.apple.developer.icloud-container-identifiers</key>
 	<array>
-		<string>iCloud.com.example.antipodes</string>
+		<string>iCloud.com.leeyenkai.antipodes</string>
 	</array>
 	<key>com.apple.developer.icloud-services</key>
 	<array>

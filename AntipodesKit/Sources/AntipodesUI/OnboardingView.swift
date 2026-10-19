@@ -1,0 +1,168 @@
+import AntipodesCore
+import AntipodesGlobe
+import SwiftUI
+
+/// First run: what the app is, what it promises about privacy, and where home is.
+struct OnboardingView: View {
+    @Environment(AppModel.self) private var model
+    @Environment(GlobeBorderStore.self) private var borderStore
+    @State private var page = 0
+    @State private var isPickingHome = false
+    @State private var spin = 0.0
+
+    var body: some View {
+        ZStack {
+            Palette.heroGradient.ignoresSafeArea()
+            VStack(spacing: 0) {
+                TabView(selection: $page) {
+                    welcome.tag(0)
+                    privacy.tag(1)
+                    home.tag(2)
+                }
+                #if os(iOS)
+                .tabViewStyle(.page(indexDisplayMode: .always))
+                #endif
+                Button {
+                    if page < 2 {
+                        withAnimation { page += 1 }
+                    } else {
+                        model.hasCompletedOnboarding = true
+                    }
+                } label: {
+                    Text(page < 2 ? "Continue" : "Start Exploring")
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 6)
+                }
+                .buttonStyle(.glassProminent)
+                .controlSize(.large)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
+            }
+        }
+        .environment(\.colorScheme, .dark)
+        .foregroundStyle(.white)
+        .onAppear { borderStore.loadCoarse() }
+        .sheet(isPresented: $isPickingHome) {
+            PlacePickerSheet(
+                title: "Home",
+                prompt: "Search your home city",
+                kinds: [.city],
+                fixedKinds: [.city]
+            ) {
+                model.home = $0
+            }
+        }
+        .interactiveDismissDisabled()
+    }
+
+    private var welcome: some View {
+        onboardingPage(
+            title: "Every place you've ever been",
+            message: """
+            Log countries, cities, landmarks and journeys of every kind — then see your \
+            travels on a globe and in statistics nobody else offers.
+            """
+        ) {
+            TimelineView(.periodic(from: .now, by: 1.0 / 30)) { context in
+                let longitude = (context.date.timeIntervalSinceReferenceDate * 8)
+                    .truncatingRemainder(dividingBy: 360) - 180
+                GlobeCanvas(
+                    scene: .empty,
+                    borders: borderStore.coarse,
+                    camera: GlobeCamera(
+                        centre: Coordinate(latitude: 20, longitude: longitude),
+                        zoom: 1
+                    ),
+                    selection: nil,
+                    palette: GlobePalette()
+                )
+            }
+            .frame(height: 300)
+        }
+    }
+
+    private var privacy: some View {
+        onboardingPage(
+            title: "Yours alone",
+            message: """
+            No account. No server. No analytics. Your log stays on this device and in your \
+            own iCloud — the developer never sees it.
+            """
+        ) {
+            VStack(alignment: .leading, spacing: 22) {
+                promise("lock.shield.fill", "Nothing to sign up for")
+                promise("wifi.slash", "Search, maps and stats work offline")
+                promise("icloud.fill", "Syncs through your private iCloud")
+                promise("square.and.arrow.up.fill", "Export everything, any time")
+            }
+            .font(.title3)
+            .padding(.vertical, 30)
+        }
+    }
+
+    private var home: some View {
+        onboardingPage(
+            title: "Where's home?",
+            message: """
+            Home is left out of your days away, and it's where your antipode — the point on \
+            exactly the other side of the world — is measured from. You can change it later.
+            """
+        ) {
+            VStack(spacing: 16) {
+                Image(systemName: model.home == nil ? "house" : "house.fill")
+                    .font(.system(size: 64))
+                    .foregroundStyle(Palette.visited)
+                    .padding(.vertical, 20)
+                Button {
+                    isPickingHome = true
+                } label: {
+                    Label(
+                        model.home.map { "\($0.flag) \($0.name)" } ?? "Choose Home City",
+                        systemImage: "magnifyingglass"
+                    )
+                    .frame(maxWidth: 280)
+                }
+                .buttonStyle(.glass)
+                .controlSize(.large)
+                if let antipode = model.home?.coordinate?.antipode {
+                    Text("Your antipode is at \(antipode.displayText).")
+                        .font(.footnote)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+        }
+    }
+
+    private func onboardingPage(
+        title: String,
+        message: String,
+        @ViewBuilder art: () -> some View
+    ) -> some View {
+        VStack(spacing: 18) {
+            Spacer(minLength: 20)
+            art()
+            Text(title)
+                .font(.largeTitle.weight(.bold))
+                .fontDesign(.rounded)
+                .multilineTextAlignment(.center)
+            Text(message)
+                .font(.body)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.white.opacity(0.75))
+            Spacer(minLength: 40)
+        }
+        .padding(.horizontal, 28)
+        .frame(maxWidth: 560)
+    }
+
+    private func promise(_ symbol: String, _ text: String) -> some View {
+        Label {
+            Text(text)
+        } icon: {
+            Image(systemName: symbol)
+                .foregroundStyle(Palette.visited)
+                .frame(width: 32)
+        }
+    }
+}

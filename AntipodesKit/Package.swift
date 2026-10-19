@@ -15,6 +15,7 @@ let package = Package(
         .library(name: "AntipodesExport", targets: ["AntipodesExport"]),
         .library(name: "AntipodesStore", targets: ["AntipodesStore"]),
         .library(name: "AntipodesGlobe", targets: ["AntipodesGlobe"]),
+        .library(name: "AntipodesImport", targets: ["AntipodesImport"]),
     ],
     targets: [
         // Value types and maths. Depends on nothing but the standard library.
@@ -39,6 +40,9 @@ let package = Package(
         // Globe geometry: orthographic projection, limb clipping, the bundled border
         // file and the replay timeline. Pure, and must not import SwiftUI or MapKit.
         .target(name: "AntipodesGlobe", dependencies: ["AntipodesCore"]),
+        // Reading other apps' files and clustering photo locations into suggested
+        // visits. Pure: matching against the place database is passed in as a closure.
+        .target(name: "AntipodesImport", dependencies: ["AntipodesCore"]),
 
         // SwiftUI screens.
         .target(
@@ -50,6 +54,7 @@ let package = Package(
                 "AntipodesExport",
                 "AntipodesStore",
                 "AntipodesGlobe",
+                "AntipodesImport",
             ]
         ),
 
@@ -69,6 +74,10 @@ let package = Package(
         .testTarget(
             name: "AntipodesGlobeTests",
             dependencies: ["AntipodesGlobe", "AntipodesCore"]
+        ),
+        .testTarget(
+            name: "AntipodesImportTests",
+            dependencies: ["AntipodesImport", "AntipodesCore"]
         ),
     ]
 )

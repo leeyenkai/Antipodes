@@ -69,23 +69,87 @@ public enum TravelMode: String, Sendable, Codable, CaseIterable, Identifiable {
         self == .flight
     }
 
-    /// Where a path for this mode comes from (§5.1). Shown in the UI so the user knows
-    /// why a distance is marked approximate.
+    /// How the app draws and measures a leg of this mode today (§5.1). Shown beside a
+    /// leg so the user knows why its distance is, or is not, marked approximate.
+    ///
+    /// Real track, road and sea geometry needs a route pack built from OpenStreetMap,
+    /// which ships separately if at all (decision D-8), so every surface mode is a
+    /// labelled straight line until then (R-PATH-3).
     public var pathSourceDescription: String {
         switch self {
-        case .flight: "Great-circle arc between airports"
-        case .rail: "Railway lines from OpenStreetMap"
-        case .cityTransit: "Line shapes from transit feeds, OpenStreetMap as fallback"
-        case .coach: "Roads, snapped with a road router"
-        case .ferry: "OpenStreetMap ferry routes; cruises as port-to-port legs"
-        case .roadTrip: "Roads, snapped with a road router"
-        case .humanPowered: "Trail geometry from OpenStreetMap"
-        case .cableAndMountain: "OpenStreetMap aerialway and railway lines"
+        case .flight:
+            "Great-circle arc between the airports — the path the distance is measured on."
+        case .rail, .cityTransit, .coach, .ferry, .roadTrip, .humanPowered, .cableAndMountain:
+            "A straight line between the two ends. The real route is longer, so the "
+                + "distance is marked approximate unless you enter it or ride a catalogue "
+                + "route."
         }
+    }
+
+    /// What the vehicle field means for this mode, for its placeholder text.
+    public var vehicleLabel: String {
+        switch self {
+        case .flight: "Aircraft type"
+        case .rail: "Train type"
+        case .cityTransit: "Vehicle"
+        case .coach: "Bus model"
+        case .ferry: "Ship"
+        case .roadTrip: "Car, campervan or motorbike"
+        case .humanPowered: "Bike or on foot"
+        case .cableAndMountain: "Cabin or car"
+        }
+    }
+
+    /// What the service-number field means, where the mode has one.
+    public var serviceNumberLabel: String? {
+        switch self {
+        case .flight: "Flight number"
+        case .rail: "Train number"
+        case .cityTransit: "Line"
+        case .coach: "Route number"
+        case .ferry: "Sailing"
+        case .roadTrip, .humanPowered, .cableAndMountain: nil
+        }
+    }
+
+    /// The classes worth offering in a picker. Free text is still accepted.
+    public var classOptions: [String] {
+        switch self {
+        case .flight: ["Economy", "Premium economy", "Business", "First"]
+        case .rail: ["Standard", "First", "Sleeper", "Couchette"]
+        case .coach: ["Standard", "Premium"]
+        case .ferry: ["Foot passenger", "Car passenger", "Cabin", "Deck"]
+        case .cityTransit, .roadTrip, .humanPowered, .cableAndMountain: []
+        }
+    }
+
+    /// What the origin and destination usually are, for the search prompt.
+    public var endpointNoun: String {
+        switch self {
+        case .flight: "airport"
+        case .rail: "station or city"
+        case .cityTransit: "stop or city"
+        case .coach: "stop or city"
+        case .ferry: "port or city"
+        case .roadTrip: "town"
+        case .humanPowered: "start or end point"
+        case .cableAndMountain: "station"
+        }
+    }
+
+    /// Which place kinds the search offers for this mode's ends. Flights only ever go
+    /// between airports; everything else can start or end anywhere.
+    public var endpointKinds: Set<PlaceKind>? {
+        self == .flight ? [.airport] : [.city, .landmark, .airport, .region]
     }
 
     /// Modes implemented in the first milestone (§5.8).
     public static var milestoneOne: [TravelMode] {
         [.flight]
+    }
+
+    /// Every mode the v1 app logs (R-LOG-6).
+    public static var loggable: [TravelMode] {
+        allCases
     }
 }

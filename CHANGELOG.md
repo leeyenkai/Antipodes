@@ -14,7 +14,55 @@ Security, Data (place-database changes).
 
 ## [Unreleased]
 
+The V1 scope is built (decision D-18). §13.1 of the spec records what is done and what
+is blocked.
+
 ### Added
+
+- **Journeys in all eight modes** (R-LOG-6, §5): flights, rail, city transit, coach,
+  ferry, road trips, on foot or by bike, and cable cars and mountain railways. A journey
+  is one or more legs; each new leg starts where the last ended, the connection time
+  shows between legs, and a connection can be marked missed (R-JLOG-4). Leg details —
+  service number, scheduled and actual times, class, vehicle, seat, operator,
+  registration, rating — stay collapsed until asked for (R-LEG-2, R-JLOG-2). Times are
+  read in each end's own time zone, so flight and connection times are right across
+  zones (D-13).
+- **Catalogue routes** (R-JLOG-3): fourteen named journeys such as the Bergen Line and
+  the Glacier Express, ridden end to end with their published length, or in part.
+- **The full statistics dashboard** (§7): place attributes (landmark age, elevation,
+  city population, languages, currencies, time zones), time and patterns (days away,
+  trips per year, busiest month, seasonality, repeat visits, longest gaps, on this day),
+  culture and themes with the travel personality (R-PERS-1 to R-PERS-3, D-15), flight
+  and rail detail, punctuality, and carbon estimates with the overland saving
+  (R-CO2-1 to R-CO2-3, D-14). Every number drills down to the records behind it, and
+  every stat says what it could not use.
+- **Achievements, wishlist and collections** (§8): 36 badges defined in the database,
+  tiered where it makes sense (R-ACH-1 to R-ACH-3); a wishlist pinned on the globe in its
+  own style that ticks itself off when a visit is logged (R-WISH-1, R-WISH-4); and five
+  curated collections with progress — New 7 Wonders, Nordic capitals, European capitals,
+  US national parks and famous rail journeys (R-WISH-2, R-WISH-3).
+- **Import** (`AntipodesImport`): flight histories from Flighty, myFlightradar24,
+  OpenFlights or any CSV with a date and two airport columns, matched by code with a
+  review step for anything unmatched (R-LOG-8, R-JLOG-7, D-16); and visit suggestions
+  from the dates and locations of photos, read on the device, opt-in, and limited to the
+  photos the user allows (R-LOG-7, R-PRIV-4). Nothing about a photo is stored (D-17).
+- **Sharing**: share cards for a stat, the globe, a trip, a journey or a year, in square
+  and story sizes (R-SHARE-1); Year in Review as a set of cards per year, shareable as
+  images (R-SHARE-3).
+- **Home and Lock Screen widgets** (R-SHARE-2): countries and share of the world, the
+  globe, on this day, and progress on a chosen collection. Widgets read a snapshot the
+  app writes into the shared app group and never open the log or the database (D-19).
+- **Mac and iPad**: a sidebar on iPad and Mac (R-NAV-1), an *All records* table for
+  editing the type, date or trip of many visits at once (R-PLAT-3, R-NAV-2), and menu
+  commands with keyboard shortcuts for logging.
+- Onboarding: what the app does, what it never does with your data, and where home is.
+- Settings: appearance, home, counting rules, units, a JSON backup that can be restored,
+  CSV export, imports, a plain-language account of how things are counted, and the data
+  sources with their credits.
+- `-seedSampleData` launch argument, debug builds only, for screenshots and manual
+  testing.
+
+### Added (M1)
 
 - The v1 globe screen: a 3D globe drawn by the app rather than fetched, with visited
   countries shaded, pins for places, great-circle arcs for journeys, filtering by year,
@@ -75,6 +123,26 @@ Security, Data (place-database changes).
 
 ### Data
 
+- **Schema version 3.** Row ids are now the upstream identities — GeoNames id, Wikidata
+  QID number, OurAirports id, and a number derived from the ISO code for countries — so
+  a logged place survives any rebuild of the database (D-12).
+- Every place carries an IANA time zone where it can be known: cities from GeoNames,
+  airports and landmarks from the bundled cities within 75 km when they agree, or a
+  single-zone country. 85% of airports and 90% of landmarks get one; the rest stay empty
+  rather than guessed (D-13, R-DB-2).
+- New tables for routes with resolved start and end places, themes, collections and
+  their members, achievements, and carbon factors. Achievements and collections ride in
+  the database so updates can add them without an app release (R-ACH-1, R-DB-6).
+- Carbon factors from the UK Government's 2025 GHG conversion factors (DESNZ, Open
+  Government Licence v3), read from the published file; the curation sheet names only
+  which factor each mode and class uses (D-14). Credited in Settings.
+- 60 US national parks added to the landmarks, for the collection of the same name: 296
+  landmarks in all.
+- GeoNames' "no data" elevation of −9,999 m is stored as unknown. It had made Tromsø
+  the lowest place anyone had visited.
+
+### Data (M1)
+
 - **The place database is now built from real open data.** The hand-entered development
   seed in `Tools/placedb/seed/` is gone, replaced by a pipeline over Natural Earth
   (country list, ISO codes, sovereignty), GeoNames (regions, cities, elevations, time
@@ -125,6 +193,34 @@ Security, Data (place-database changes).
 
 ### Changed
 
+- **Dark appearance by default**, with Light and System in Settings, and a dark launch
+  screen to match (D-20).
+- The app's identifiers are `com.leeyenkai.antipodes`, with app group
+  `group.com.leeyenkai.antipodes` and iCloud container `iCloud.com.leeyenkai.antipodes`.
+  The Mac app is sandboxed, with access to files the user picks and to Photos (D-21).
+- `scripts/build-app.sh` signs simulator builds ad hoc, so the app-group entitlement the
+  widgets depend on is present; device and Mac builds stay unsigned.
+- The SwiftData model gains the wishlist and the new leg fields. Every new property is
+  optional or defaulted, so existing stores migrate lightweight.
+- Long source files are split by concern (`JourneyLeg.swift`, `AppModel+Search.swift`,
+  `AppModel+Widgets.swift` and others). A handful of single-pass algorithms carry a
+  documented SwiftLint region instead of being broken up; `scripts/lint.sh --check`
+  reports nothing.
+
+### Fixed
+
+- Collections, badges and carbon could stay empty after launch until the next edit,
+  when the log's place facts arrived before the database catalogue had loaded.
+- The globe's summary counted every country while Stats counted only those on the
+  chosen list; both now count the listed ones.
+- Onboarding stuttered and could ignore taps while its globe was drawn on the main
+  thread every frame.
+- Picking a leg's endpoint could dismiss the whole add sheet.
+- iPhone showed a stray "More" tab for destinations meant only for the sidebar.
+- "On this day" could crash when the range ran into the current year.
+
+### Changed (M1)
+
 - `StatInputSummary` and `ExclusionReason` moved from `AntipodesStats` to
   `AntipodesCore`. The globe reports what it could not draw in the same terms a
   statistic does, and the two should not word it differently (AGENTS.md §2).
@@ -167,6 +263,19 @@ Security, Data (place-database changes).
 
 ### Verified
 
+- `scripts/check.sh` passes: the database and borders build, the package builds clean,
+  261 tests pass with no network and no simulator, and SwiftFormat and SwiftLint
+  (strict) report nothing.
+- The app builds for the iOS Simulator and for macOS. On an iPhone simulator:
+  onboarding, logging a place, a flight leg (SIN → SYD, 6,293 km), the globe with
+  shading, pins, arcs, wishlist and home markers, trips, every stats section, Year in
+  Review, collections and badges; all four widgets render live data from the app's
+  snapshot. On an iPad simulator the globe opens with the sidebar-adaptable tab bar.
+- Not checked by eye: the Mac app's windows, the photo and flight import flows end to
+  end, and anything on a physical device.
+
+### Verified (M1)
+
 - `scripts/check.sh` passes: the place database builds (byte-identically on a rebuild),
   the package builds clean, and 104 tests pass with no network and no simulator.
 - The app builds for both the iOS Simulator and macOS, and runs on an iPhone simulator:
@@ -178,6 +287,14 @@ Security, Data (place-database changes).
 
 ### Notes
 
+- Blocked, and recorded as such in §13.1 of the spec: city transit lines and packs and
+  path snapping (they need OpenStreetMap-derived packs, which D-8 keeps out of the
+  bundled database), database updates from a host (R-DB-5 needs a host), temperature in
+  the month visited (R-CALC-2 needs a licensed climate-normals source), and Year in
+  Review as video.
+- Owner's tasks before release: set a development team so device and Mac builds sign,
+  enable the iCloud capability (the keys are in `App/Antipodes/Antipodes.entitlements`),
+  and check the name (R-NAME-1).
 - The hand-entered development seed is gone: the pipeline now builds from Natural
   Earth, GeoNames, OurAirports and Wikidata, and the licence review behind R-DB-7 is
   complete. See `Tools/placedb/SOURCES.md`.

@@ -11,6 +11,15 @@ if [[ ! -f "$APP_RESOURCE_DB" ]]; then
     "$REPO_ROOT/scripts/build-placedb.sh"
 fi
 
+# The simulator takes an ad-hoc signature, which is what carries the app-group
+# entitlement the widgets read through. A device or Mac build needs a team, so
+# those are built unsigned here; archive from Xcode to ship.
+if [[ "$DESTINATION" == *Simulator* ]]; then
+    SIGNING=(CODE_SIGN_IDENTITY=-)
+else
+    SIGNING=(CODE_SIGNING_ALLOWED=NO)
+fi
+
 step "Building the app for $DESTINATION"
 note "derived data: $SCRATCH_PATH/DerivedData"
 xcodebuild \
@@ -19,5 +28,5 @@ xcodebuild \
     -destination "$DESTINATION" \
     -derivedDataPath "$SCRATCH_PATH/DerivedData" \
     -clonedSourcePackagesDirPath "$SCRATCH_PATH/SourcePackages" \
-    CODE_SIGNING_ALLOWED=NO \
+    "${SIGNING[@]}" \
     build

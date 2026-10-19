@@ -9,50 +9,62 @@ import SwiftUI
 /// carries one: a place quietly missing from the map is worse than a map that admits
 /// what it is missing (R-CALC-5).
 struct GlobeSummaryBar: View {
+    @Environment(AppModel.self) private var model
     let scene: GlobeScene
-    let model: AppModel
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             // Every number here is the scene's own, so the bar describes what is on
             // the globe. Scrub the replay back and these follow it; they are not the
             // whole-log figures from the Stats screen, which would quietly disagree
             // with the picture underneath them.
-            HStack(spacing: 16) {
-                item("\(scene.shadedCountryCodes.count)", label: "countries")
+            HStack(spacing: 18) {
+                item("\(countries)", label: countries == 1 ? "country" : "countries")
                 item(distance, label: "travelled")
-                item("\(places)", label: "places")
-                item("\(scene.arcs.count)", label: "journeys")
+                item("\(places)", label: places == 1 ? "place" : "places")
+                item("\(scene.arcs.count)", label: scene.arcs.count == 1 ? "leg" : "legs")
             }
-            .padding(.horizontal, 16)
+            .padding(.horizontal, 18)
             .padding(.vertical, 10)
-            .background(.regularMaterial, in: .capsule)
+            .glassEffect(.regular, in: .capsule)
 
             if let caveat {
                 CaveatLabel(text: caveat)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(.thinMaterial, in: .rect(cornerRadius: 9))
+                    .glassEffect(.regular, in: .rect(cornerRadius: 12))
+                    .padding(.horizontal, 24)
             }
         }
         .padding(.top, 8)
     }
 
-    /// Wishlist pins are places the user has *not* been, so they are not counted here.
+    /// Shaded countries on the list the user counts (Q-4), so this agrees with the
+    /// headline on the Stats screen; land off the list is still shaded, just not counted.
+    private var countries: Int {
+        let facts = model.catalogue.countries
+        guard !facts.isEmpty else { return scene.shadedCountryCodes.count }
+        return scene.shadedCountryCodes
+            .count { facts[$0]?.isCounted(on: model.rules.countryList) ?? false }
+    }
+
+    /// Wishlist pins and the home markers are not places the user has been.
     private var places: Int {
-        scene.pins.filter { $0.style != .wishlist }.count
+        scene.pins.filter(\.style.isTravel).count
     }
 
     private var distance: String {
-        let value = model.rules.unitSystem.distance(fromKilometres: scene.totalDistanceKm)
-        return "\(Int(value.rounded())) \(model.rules.unitSystem.distanceUnitAbbreviation)"
+        Format.distance(scene.totalDistanceKm, model.rules.unitSystem)
     }
 
     private func item(_ value: String, label: String) -> some View {
         VStack(spacing: 0) {
-            Text(value).font(.subheadline.weight(.semibold))
+            Text(value)
+                .font(.system(.subheadline, design: .rounded, weight: .bold).monospacedDigit())
+                .contentTransition(.numericText())
             Text(label).font(.caption2).foregroundStyle(.secondary)
         }
+        .accessibilityElement(children: .combine)
     }
 
     /// The pins, arcs and shading caveats joined into one line, so the globe does not
@@ -89,8 +101,8 @@ struct GlobeTimelineBar: View {
                         .foregroundStyle(.secondary)
                 }
             }
-            .padding(12)
-            .background(.regularMaterial, in: .rect(cornerRadius: 14))
+            .padding(14)
+            .glassEffect(.regular, in: .rect(cornerRadius: 22))
         }
     }
 
@@ -201,7 +213,7 @@ struct GlobeFilterMenu: View {
     }
 }
 
-/// What a tap on a pin or an arc opens (§9).
+/// What a tap on a pin or an arc opens (§9): the record itself, ready to edit.
 struct GlobeSelectionSheet: View {
     let selection: GlobeSelection
     @Environment(\.dismiss) private var dismiss
@@ -209,95 +221,91 @@ struct GlobeSelectionSheet: View {
 
     var body: some View {
         NavigationStack {
-            List {
-                switch selection {
-                case let .pin(pin): pinDetail(pin)
-                case let .arc(arc): arcDetail(arc)
+            content
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
                 }
-            }
-            .navigationTitle(title)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                }
-            }
+                .logDestinations()
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 
-    private var title: String {
+    @ViewBuilder
+    private var content: some View {
         switch selection {
-        case let .pin(pin): pin.place.name
-        case let .arc(arc): arc.title
-        }
-    }
-
-    @ViewBuilder
-    private func pinDetail(_ pin: GlobePin) -> some View {
-        Section {
-            row("Kind", pin.place.kind.displayName)
-            if let visitType = pin.visitType {
-                row("Visit", visitType.displayName)
-                Text(visitType.explanation)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        case let .pin(pin):
+            switch pin.style {
+            case .visited, .notCounted:
+                if let visit = model.log.visits.first(where: { $0.id == pin.id }) {
+                    VisitForm(place: visit.place, existing: visit) { dismiss() }
+                } else {
+                    markerDetail(pin)
+                }
+            case .wishlist, .home, .antipode:
+                markerDetail(pin)
             }
-            if pin.style == .wishlist {
-                row("Status", "On your wishlist")
-            }
-            if pin.date.isKnown {
-                row("Date", pin.date.exportString)
+        case let .arc(arc):
+            if let journey = model.log.journeys
+                .first(where: { $0.legs.contains { $0.id == arc.id } }) {
+                JourneyEditor(existing: journey) { dismiss() }
             } else {
-                row("Date", "Not recorded")
-            }
-        }
-        if let country = pin.place.countryName {
-            Section("Where") {
-                row("Country", country)
-                if let region = pin.place.regionName {
-                    row("Region", region)
-                }
-                if let city = pin.place.cityName, city != pin.place.name {
-                    row("City", city)
-                }
+                ContentUnavailableView("Journey not found", systemImage: "questionmark")
             }
         }
     }
 
-    @ViewBuilder
-    private func arcDetail(_ arc: GlobeArc) -> some View {
-        Section {
-            Label(arc.mode.displayName, systemImage: arc.mode.symbolName)
-            row("From", arc.origin.name)
-            row("To", arc.destination.name)
-            row("Date", arc.date.isKnown ? arc.date.exportString : "Not recorded")
+    private func markerDetail(_ pin: GlobePin) -> some View {
+        List {
+            Section {
+                PlaceHeader(place: pin.place)
+            }
+            switch pin.style {
+            case .wishlist:
+                Section {
+                    Button("Log a Visit", systemImage: "plus") {
+                        dismiss()
+                        model.addRequest = AddRequest(start: .place(pin.place))
+                    }
+                    Button("Remove from Wishlist", systemImage: "star.slash", role: .destructive) {
+                        model.removeFromWishlist(place: pin.place)
+                        dismiss()
+                    }
+                } footer: {
+                    Text("On your wishlist. It ticks itself off when you log a visit here.")
+                }
+            case .home:
+                Section {
+                    Text("Home. Your antipode is the dashed ring on the far side of the globe.")
+                        .foregroundStyle(.secondary)
+                }
+            case .antipode:
+                Section {
+                    Text("""
+                    The point on exactly the other side of the Earth from \(model.home?
+                        .name ?? "home"). \
+                    \(antipodeLine)
+                    """)
+                    .foregroundStyle(.secondary)
+                }
+            case .visited, .notCounted:
+                EmptyView()
+            }
         }
-        Section("Distance") {
-            row("Distance", distanceText(for: arc))
-            Text(arc.mode.pathSourceDescription)
-                .font(.caption)
-                .foregroundStyle(.secondary)
-        }
+        .navigationTitle(pin.place.name)
+        .toolbarTitleDisplayMode(.inline)
     }
 
-    /// Read off the leg in the log, never recomputed here: the one implementation of
-    /// distance lives in `AntipodesCore.GreatCircle` (AGENTS.md §7).
-    private func distanceText(for arc: GlobeArc) -> String {
-        guard let leg = model.log.allLegs.first(where: { $0.id == arc.id }) else {
-            return "Unknown"
+    private var antipodeLine: String {
+        let extremes = model.statistics.extremes
+        guard let nearest = extremes.nearestToAntipodeOfHome,
+              let gap = extremes.nearestToAntipodeKm else {
+            return "Log places to see how close you've been."
         }
-        let distance = leg.distance
-        let converted = model.rules.unitSystem.distance(fromKilometres: distance.kilometres)
-        let unit = model.rules.unitSystem.distanceUnitAbbreviation
-        let formatted = "\(Int(converted.rounded())) \(unit)"
-        return distance.source.isApproximate ? "\(formatted) (approximate)" : formatted
-    }
-
-    private func row(_ label: String, _ value: String) -> some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Text(value).foregroundStyle(.secondary)
-        }
+        return """
+        The closest you've been is \(nearest.place.name), \
+        \(Format.distance(gap, model.rules.unitSystem)) away.
+        """
     }
 }

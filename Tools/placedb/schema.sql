@@ -1,4 +1,4 @@
--- Antipodes place database, schema version 2.
+-- Antipodes place database, schema version 3.
 --
 -- Read-only at runtime (R-DB-4). Built by build_placedb.py from the open-data sources
 -- registered in `data_source`, and shipped in the app bundle, kept entirely separate
@@ -12,6 +12,15 @@
 -- There is deliberately **no geometry** here. Country border polygons live in their own
 -- `.antborders` file built by build_borders.py, because the globe needs every visible
 -- polygon per frame rather than a query (decision D-5).
+--
+-- **Row ids are permanent.** A user's log stores `(kind, id)` for every place it
+-- references, and the database is replaced wholesale by updates (R-DB-5), so an id
+-- must name the same place in every future build. Each kind takes its id from an
+-- upstream identifier that is itself stable — GeoNames ids for cities and regions, the
+-- Wikidata QID number for landmarks, OurAirports' own row id for airports, a curated
+-- id for routes, and the ISO letters for countries. Schema version 2 numbered rows by
+-- their position in a sorted list, so adding one landmark renumbered every landmark
+-- after it; version 3 fixes that before anything ships.
 --
 -- `place_index` is a denormalised view of everything searchable, and `place_fts` is an
 -- external-content FTS5 index over it. One search field covers every place type
@@ -146,6 +155,10 @@ CREATE TABLE airport (
     latitude     REAL NOT NULL,
     longitude    REAL NOT NULL,
     elevation_m  INTEGER,
+    -- IANA time zone, taken from the linked city, or else from the bundled cities of
+    -- the same country where they all share one zone. NULL where neither settles it:
+    -- a time zone near a zone boundary is not something to guess (R-DB-2).
+    timezone     TEXT,
     -- OurAirports' size class: large_airport, medium_airport, small_airport.
     kind              TEXT,
     scheduled_service INTEGER NOT NULL DEFAULT 0,
@@ -158,6 +171,13 @@ CREATE TABLE route (
     mode                     TEXT NOT NULL,
     start_name               TEXT,
     end_name                 TEXT,
+    -- Where the route begins and ends, as bundled places, so logging a ride can fill
+    -- in both ends (R-JLOG-3). NULL where the end of the line is too small to be in
+    -- the bundled city set.
+    start_kind               TEXT,
+    start_ref_id             INTEGER,
+    end_kind                 TEXT,
+    end_ref_id               INTEGER,
     country_codes            TEXT,
     length_km                REAL,
     typical_duration_minutes INTEGER,
@@ -165,7 +185,63 @@ CREATE TABLE route (
     source                   TEXT NOT NULL REFERENCES data_source (id)
 );
 
+-- The landmark theme taxonomy (R-DB-1, Q-6), with the label the app shows.
+CREATE TABLE theme (
+    id          TEXT PRIMARY KEY,
+    label       TEXT NOT NULL,
+    description TEXT,
+    sort_order  INTEGER NOT NULL
+);
+
+-- Curated collections to work through (R-WISH-2) and their members, resolved to
+-- bundled places at build time so a member can never point at nothing.
+CREATE TABLE collection (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    description TEXT,
+    symbol      TEXT,
+    sort_order  INTEGER NOT NULL
+);
+
+CREATE TABLE collection_member (
+    collection_id TEXT NOT NULL REFERENCES collection (id),
+    place_kind    TEXT NOT NULL,
+    ref_id        INTEGER NOT NULL,
+    sort_order    INTEGER NOT NULL,
+    PRIMARY KEY (collection_id, place_kind, ref_id)
+);
+
+-- Achievement definitions (R-ACH-1). Evaluated on the device; shipped here so new ones
+-- arrive with a database update (R-DB-6). See curation/achievements.csv for the rules.
+CREATE TABLE achievement (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    description TEXT NOT NULL,
+    symbol      TEXT,
+    rule        TEXT NOT NULL,
+    threshold   REAL,
+    parameter   TEXT,
+    tier        TEXT,
+    sort_order  INTEGER NOT NULL
+);
+
+-- Carbon factors per mode and class (R-CO2-1). `basis` says whether a factor is per
+-- passenger-km or per vehicle-km; `year` is the factor set's own year, shown with every
+-- carbon figure (R-CO2-3).
+CREATE TABLE emission_factor (
+    mode           TEXT NOT NULL,
+    travel_class   TEXT NOT NULL DEFAULT '',
+    kg_co2e_per_km REAL NOT NULL,
+    basis          TEXT NOT NULL,
+    label          TEXT NOT NULL,
+    year           INTEGER NOT NULL,
+    source         TEXT NOT NULL REFERENCES data_source (id),
+    PRIMARY KEY (mode, travel_class)
+);
+
 CREATE INDEX idx_city_country ON city (country_iso2);
+-- Nearest-city lookups (dropped pins, photo import) narrow by latitude band first.
+CREATE INDEX idx_city_latitude ON city (latitude);
 CREATE INDEX idx_city_region ON city (region_code);
 CREATE INDEX idx_landmark_city ON landmark (city_id);
 CREATE INDEX idx_airport_iata ON airport (iata);
@@ -201,6 +277,9 @@ CREATE TABLE place_index (
     city_name    TEXT,
     latitude     REAL,
     longitude    REAL,
+    -- IANA time zone where the place has one, so a leg's times can be read in the
+    -- zone they happened in (§5.2).
+    timezone     TEXT,
     kind_rank    INTEGER NOT NULL DEFAULT 0,
     prominence   INTEGER NOT NULL DEFAULT 0
 );

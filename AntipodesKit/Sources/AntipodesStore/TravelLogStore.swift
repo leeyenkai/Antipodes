@@ -20,6 +20,7 @@ public final class TravelLogStore {
         StoredVisit.self,
         StoredJourney.self,
         StoredLeg.self,
+        StoredWishlistItem.self,
     ])
 
     /// Opens the on-disk store, syncing through the user's private iCloud database.
@@ -40,18 +41,20 @@ public final class TravelLogStore {
 
     /// Loads everything as plain values for the statistics engine.
     ///
-    /// Reading the whole log is fine at M1 scale (thousands of records). When it stops
+    /// Reading the whole log is fine at v1 scale (thousands of records). When it stops
     /// being fine, the fix is incremental statistics, not leaking SwiftData into
     /// `AntipodesStats`.
     public func travelLog() throws -> TravelLog {
         let trips = try context.fetch(FetchDescriptor<StoredTrip>())
         let visits = try context.fetch(FetchDescriptor<StoredVisit>())
         let journeys = try context.fetch(FetchDescriptor<StoredJourney>())
+        let wishlist = try context.fetch(FetchDescriptor<StoredWishlistItem>())
 
         return TravelLog(
             trips: trips.map(\.asTrip),
             visits: visits.map(\.asVisit),
-            journeys: journeys.map(\.asJourney)
+            journeys: journeys.map(\.asJourney),
+            wishlist: wishlist.map(\.asWishlistItem)
         )
     }
 
@@ -61,7 +64,25 @@ public final class TravelLogStore {
         ).first
     }
 
-    // MARK: - Writing
+    public func visit(id: UUID) throws -> StoredVisit? {
+        try context.fetch(
+            FetchDescriptor<StoredVisit>(predicate: #Predicate { $0.identifier == id })
+        ).first
+    }
+
+    public func journey(id: UUID) throws -> StoredJourney? {
+        try context.fetch(
+            FetchDescriptor<StoredJourney>(predicate: #Predicate { $0.identifier == id })
+        ).first
+    }
+
+    public func wishlistItem(id: UUID) throws -> StoredWishlistItem? {
+        try context.fetch(
+            FetchDescriptor<StoredWishlistItem>(predicate: #Predicate { $0.identifier == id })
+        ).first
+    }
+
+    // MARK: - Trips
 
     @discardableResult
     public func createTrip(name: String?, notes: String? = nil) throws -> StoredTrip {
@@ -70,6 +91,32 @@ public final class TravelLogStore {
         try context.save()
         return trip
     }
+
+    public func updateTrip(_ trip: Trip) throws {
+        guard let stored = try self.trip(id: trip.id) else { return }
+        stored.name = trip.name?.trimmedOrNil
+        stored.notes = trip.notes?.trimmedOrNil
+        try context.save()
+    }
+
+    /// Deletes a trip. By default its visits and journeys stay in the log, unfiled —
+    /// the travel happened whether or not the trip that grouped it still exists
+    /// (R-MODEL-3). Pass `deletingContents` to remove them too.
+    public func deleteTrip(id: UUID, deletingContents: Bool) throws {
+        guard let stored = try trip(id: id) else { return }
+        if !deletingContents {
+            for visit in stored.visits ?? [] {
+                visit.trip = nil
+            }
+            for journey in stored.journeys ?? [] {
+                journey.trip = nil
+            }
+        }
+        context.delete(stored)
+        try context.save()
+    }
+
+    // MARK: - Visits
 
     /// Logs a visit. The place reference carries its own hierarchy, so a landmark
     /// brings its city, region and country with it (R-MODEL-6).
@@ -94,6 +141,34 @@ public final class TravelLogStore {
         return stored
     }
 
+    /// Writes every field of an edited visit back, including which trip it is in.
+    public func updateVisit(_ visit: Visit) throws {
+        guard let stored = try self.visit(id: visit.id) else { return }
+        stored.apply(visit)
+        stored.trip = try visit.tripID.flatMap { try trip(id: $0) }
+        try context.save()
+    }
+
+    /// Files many visits under one trip at once, or takes them out of any trip.
+    public func moveVisits(_ ids: [UUID], toTrip tripID: UUID?) throws {
+        let destination = try tripID.flatMap { try trip(id: $0) }
+        for id in ids {
+            try visit(id: id)?.trip = destination
+        }
+        try context.save()
+    }
+
+    public func deleteVisits(_ ids: [UUID]) throws {
+        for id in ids {
+            if let stored = try visit(id: id) {
+                context.delete(stored)
+            }
+        }
+        try context.save()
+    }
+
+    // MARK: - Journeys
+
     @discardableResult
     public func logJourney(
         legs: [JourneyLeg],
@@ -114,20 +189,144 @@ public final class TravelLogStore {
         return journey
     }
 
-    public func delete(_ visit: StoredVisit) throws {
-        context.delete(visit)
+    /// Replaces a journey's legs, title and trip with an edited copy.
+    ///
+    /// Legs are matched by identity: an edited leg is updated in place, a new one is
+    /// inserted, and one the user removed is deleted — so a sync conflict touches only
+    /// what actually changed.
+    public func updateJourney(_ journey: Journey) throws {
+        guard let stored = try self.journey(id: journey.id) else { return }
+        stored.title = journey.title?.trimmedOrNil
+        stored.trip = try journey.tripID.flatMap { try trip(id: $0) }
+
+        var existing = Dictionary(
+            (stored.legs ?? []).map { ($0.identifier, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        for (index, leg) in journey.legs.enumerated() {
+            let row: StoredLeg
+            if let found = existing.removeValue(forKey: leg.id) {
+                row = found
+            } else {
+                row = StoredLeg()
+                row.journey = stored
+                context.insert(row)
+            }
+            row.apply(leg, sequence: index)
+        }
+        for removed in existing.values {
+            context.delete(removed)
+        }
         try context.save()
     }
 
-    public func delete(_ journey: StoredJourney) throws {
-        context.delete(journey)
+    public func moveJourneys(_ ids: [UUID], toTrip tripID: UUID?) throws {
+        let destination = try tripID.flatMap { try trip(id: $0) }
+        for id in ids {
+            try journey(id: id)?.trip = destination
+        }
         try context.save()
     }
 
-    /// Deletes a trip and everything in it. Visits and journeys cascade.
-    public func delete(_ trip: StoredTrip) throws {
-        context.delete(trip)
+    public func deleteJourneys(_ ids: [UUID]) throws {
+        for id in ids {
+            if let stored = try journey(id: id) {
+                context.delete(stored)
+            }
+        }
         try context.save()
+    }
+
+    // MARK: - Wishlist
+
+    @discardableResult
+    public func addToWishlist(_ item: WishlistItem) throws -> StoredWishlistItem {
+        let stored = StoredWishlistItem()
+        stored.apply(item)
+        context.insert(stored)
+        try context.save()
+        return stored
+    }
+
+    public func updateWishlistItem(_ item: WishlistItem) throws {
+        guard let stored = try wishlistItem(id: item.id) else { return }
+        stored.apply(item)
+        try context.save()
+    }
+
+    public func removeFromWishlist(_ ids: [UUID]) throws {
+        for id in ids {
+            if let stored = try wishlistItem(id: id) {
+                context.delete(stored)
+            }
+        }
+        try context.save()
+    }
+
+    // MARK: - Import
+
+    /// Adds every record in `log` that the store does not already hold, matched by
+    /// identity, and reports how many of each it added.
+    ///
+    /// Importing the same export twice adds nothing the second time, which is what
+    /// makes an export a safe backup to restore from (R-LOG-8, R-LOG-9).
+    @discardableResult
+    public func merge(_ log: TravelLog) throws -> ImportCounts {
+        var counts = ImportCounts()
+        let existingTrips = try Set(context.fetch(FetchDescriptor<StoredTrip>()).map(\.identifier))
+        let existingVisits = try Set(context.fetch(FetchDescriptor<StoredVisit>())
+            .map(\.identifier))
+        let existingJourneys = try Set(
+            context.fetch(FetchDescriptor<StoredJourney>()).map(\.identifier)
+        )
+        let existingWishes = try Set(
+            context.fetch(FetchDescriptor<StoredWishlistItem>()).map(\.identifier)
+        )
+
+        var tripsByID: [UUID: StoredTrip] = [:]
+        for trip in try context.fetch(FetchDescriptor<StoredTrip>()) {
+            tripsByID[trip.identifier] = trip
+        }
+        for trip in log.trips where !existingTrips.contains(trip.id) {
+            let stored = StoredTrip(identifier: trip.id, name: trip.name, notes: trip.notes)
+            if let created = trip.createdAt {
+                stored.createdAt = created
+            }
+            context.insert(stored)
+            tripsByID[trip.id] = stored
+            counts.trips += 1
+        }
+        for visit in log.visits where !existingVisits.contains(visit.id) {
+            let stored = StoredVisit()
+            stored.apply(visit)
+            if let created = visit.createdAt {
+                stored.createdAt = created
+            }
+            stored.trip = visit.tripID.flatMap { tripsByID[$0] }
+            context.insert(stored)
+            counts.visits += 1
+        }
+        for journey in log.journeys where !existingJourneys.contains(journey.id) {
+            let stored = StoredJourney(identifier: journey.id, title: journey.title)
+            stored.trip = journey.tripID.flatMap { tripsByID[$0] }
+            context.insert(stored)
+            for (index, leg) in journey.legs.enumerated() {
+                let row = StoredLeg()
+                row.apply(leg, sequence: index)
+                row.journey = stored
+                context.insert(row)
+            }
+            counts.journeys += 1
+            counts.legs += journey.legs.count
+        }
+        for item in log.wishlist where !existingWishes.contains(item.id) {
+            let stored = StoredWishlistItem()
+            stored.apply(item)
+            context.insert(stored)
+            counts.wishlist += 1
+        }
+        try context.save()
+        return counts
     }
 
     // MARK: - Delete everything
@@ -135,13 +334,52 @@ public final class TravelLogStore {
     /// Erases every record, on this device and — through CloudKit — in the user's
     /// iCloud (R-PRIV-6).
     ///
+    /// Each object is deleted individually rather than with a batch delete. A batch
+    /// delete goes straight to the store without the change tracking CloudKit mirroring
+    /// exports from, so on some systems the iCloud copy would survive it — exactly the
+    /// failure a "delete everything" button must not have.
+    ///
     /// Removal propagates only while the device can reach iCloud. The UI must say so
     /// rather than implying the iCloud copy is already gone.
     public func deleteEverything() throws {
-        try context.delete(model: StoredLeg.self)
-        try context.delete(model: StoredJourney.self)
-        try context.delete(model: StoredVisit.self)
-        try context.delete(model: StoredTrip.self)
+        for leg in try context.fetch(FetchDescriptor<StoredLeg>()) {
+            context.delete(leg)
+        }
+        for journey in try context.fetch(FetchDescriptor<StoredJourney>()) {
+            context.delete(journey)
+        }
+        for visit in try context.fetch(FetchDescriptor<StoredVisit>()) {
+            context.delete(visit)
+        }
+        for trip in try context.fetch(FetchDescriptor<StoredTrip>()) {
+            context.delete(trip)
+        }
+        for item in try context.fetch(FetchDescriptor<StoredWishlistItem>()) {
+            context.delete(item)
+        }
         try context.save()
+    }
+}
+
+/// What an import added, for the confirmation the user sees.
+public struct ImportCounts: Hashable, Sendable {
+    public var trips = 0
+    public var visits = 0
+    public var journeys = 0
+    public var legs = 0
+    public var wishlist = 0
+
+    public init() {}
+
+    public var total: Int {
+        trips + visits + journeys + wishlist
+    }
+}
+
+extension String {
+    /// `nil` for an empty or whitespace-only string, the trimmed string otherwise.
+    var trimmedOrNil: String? {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
     }
 }

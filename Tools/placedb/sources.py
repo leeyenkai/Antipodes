@@ -36,12 +36,19 @@ NATURAL_EARTH_BASE = (
 GEONAMES_BASE = "https://download.geonames.org/export/dump"
 OURAIRPORTS_BASE = "https://davidmegginson.github.io/ourairports-data"
 WIKIDATA_SPARQL = "https://query.wikidata.org/sparql"
+# The UK Government's greenhouse-gas conversion factors, 2025 release. Published as an
+# immutable asset URL, so the digest is pinned like Natural Earth's (Q-16).
+DESNZ_FACTORS_URL = (
+    "https://assets.publishing.service.gov.uk/media/6846b6ea57f3515d9611f0dd/"
+    "ghg-conversion-factors-2025-flat-format.xlsx"
+)
+DESNZ_FACTORS_YEAR = 2025
 
 # The Wikidata Query Service blocks clients that do not identify themselves, and asks
 # for a contact route in the User-Agent.
 # https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual
 USER_AGENT = (
-    "AntipodesPlaceDB/0.2 (https://github.com/leeyenkai/Antipodes; place database pipeline)"
+    "AntipodesPlaceDB/0.3 (https://github.com/leeyenkai/Antipodes; place database pipeline)"
 )
 
 
@@ -172,6 +179,27 @@ WIKIDATA = Source(
     ),
 )
 
+#: Carbon factors for the journey stats (R-CO2-1 to R-CO2-3). Crown copyright under the
+#: Open Government Licence v3.0, whose §"Your obligations" asks for this exact statement
+#: wherever the information is used — so it is a required credit, rendered in Settings.
+DESNZ = Source(
+    id="desnz",
+    name="UK Government GHG Conversion Factors 2025 (DESNZ)",
+    url="https://www.gov.uk/government/publications/greenhouse-gas-reporting-conversion-factors-2025",
+    licence="Open Government Licence v3.0",
+    licence_url="https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/",
+    attribution="Contains public sector information licensed under the Open Government "
+    "Licence v3.0.",
+    used_for="Carbon estimates per passenger-km and vehicle-km",
+    files=(
+        RemoteFile(
+            "ghg-conversion-factors-2025-flat-format.xlsx",
+            DESNZ_FACTORS_URL,
+            sha256="8bfdb45b81ec4a88e3bdf4584637330f62e6bd09ce1940e654c5d7b7f736de94",
+        ),
+    ),
+)
+
 #: Deliberate human input: which landmarks and routes exist, the theme taxonomy, and
 #: the two reconciliations the upstream data cannot express. §6 of the specification
 #: calls for landmarks and famous routes to be curated, and R-DB-1 requires a theme
@@ -183,7 +211,7 @@ CURATION = Source(
     licence="CC0 1.0 (part of this repository)",
     licence_url=None,
     attribution=None,
-    used_for="Landmark selection, theme tags, famous routes",
+    used_for="Landmark selection, theme tags, famous routes, collections, achievements",
     files=(),
 )
 
@@ -194,6 +222,7 @@ def all_sources(cities_dataset: str = DEFAULT_CITIES_DATASET) -> tuple[Source, .
         sorted(
             (
                 NATURAL_EARTH,
+                DESNZ,
                 geonames_source(cities_dataset),
                 OURAIRPORTS,
                 WIKIDATA,
