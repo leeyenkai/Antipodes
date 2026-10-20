@@ -137,6 +137,21 @@ extension PlaceKind {
     }
 }
 
+/// Ends text editing anywhere in the window, so a field lets go of what it is bound to.
+@MainActor
+func endEditing() {
+    #if os(iOS)
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+    #elseif os(macOS)
+        NSApp.keyWindow?.makeFirstResponder(nil)
+    #endif
+}
+
 extension View {
     /// Word capitalisation for name fields, where the platform has it.
     func capitalizingWords() -> some View {
@@ -153,6 +168,16 @@ extension View {
             textInputAutocapitalization(.characters).autocorrectionDisabled()
         #else
             autocorrectionDisabled()
+        #endif
+    }
+
+    /// Numbers with a minus sign, for coordinates: the decimal pad has no minus key, so
+    /// south and west could not be typed.
+    func signedDecimalKeyboard() -> some View {
+        #if os(iOS)
+            keyboardType(.numbersAndPunctuation).autocorrectionDisabled()
+        #else
+            self
         #endif
     }
 

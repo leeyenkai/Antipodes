@@ -58,11 +58,23 @@ public final class AppModel {
 
     public private(set) var log: TravelLog = .empty
     public private(set) var statistics: TravelStatistics
+    /// Bumped each time `statistics` is replaced, so a view that derives something from
+    /// the log — a trip's own numbers — knows when to work it out again.
+    public private(set) var statisticsRevision = 0
     public private(set) var catalogue = Catalogue()
     public private(set) var countryListCounts: [CountryList: Int] = [:]
     /// Facts fetched for the places in the log, so attribute stats can run.
     @ObservationIgnored private var placeFacts: [PlaceID: PlaceFacts] = [:]
     @ObservationIgnored private var computeGeneration = 0
+    /// Bumped on every reload of the log, to invalidate the caches below.
+    @ObservationIgnored var logRevision = 0
+    /// Each trip's thumbnail scene, built once per change to the log rather than on
+    /// every redraw of the list it sits in.
+    @ObservationIgnored var tripSceneCache: [UUID: (
+        revision: Int,
+        rules: CountingRules,
+        scene: GlobeScene
+    )] = [:]
     @ObservationIgnored var borders: CountryBorders?
     #if os(iOS)
         @ObservationIgnored var widgetGlobeSignature: Int?
@@ -156,6 +168,7 @@ public final class AppModel {
         // carbon would stay empty until the next edit.
         recompute()
         await refreshFacts()
+        await preloadBorders()
     }
 
     /// What the user is told when the bundled place database cannot be read. It ships
@@ -178,6 +191,7 @@ public final class AppModel {
     /// Called after any write, so a screen can never show stats that disagree with the
     /// list beside them.
     public func reload() {
+        logRevision += 1
         do {
             log = try store.travelLog()
         } catch {
@@ -231,6 +245,7 @@ public final class AppModel {
             }.value
             guard generation == computeGeneration else { return }
             statistics = result
+            statisticsRevision += 1
             writeWidgetSnapshot()
         }
     }
@@ -284,7 +299,8 @@ public final class AppModel {
         reload()
     }
 
-    public func updateVisit(_ visit: Visit) {
+    @discardableResult
+    public func updateVisit(_ visit: Visit) -> Bool {
         perform { try store.updateVisit(visit) }
     }
 
@@ -307,7 +323,8 @@ public final class AppModel {
         reload()
     }
 
-    public func updateJourney(_ journey: Journey) {
+    @discardableResult
+    public func updateJourney(_ journey: Journey) -> Bool {
         perform { try store.updateJourney(journey) }
     }
 
@@ -327,6 +344,11 @@ public final class AppModel {
         }
     }
 
+    /// The alert for a trip that could not be made.
+    static func tripNotCreated(_ error: any Error) -> String {
+        "The trip couldn't be created. \(error.localizedDescription)"
+    }
+
     @discardableResult
     public func createTrip(name: String?, notes: String? = nil) throws -> Trip {
         let trip = try store.createTrip(name: name?.trimmedOrNil, notes: notes?.trimmedOrNil)
@@ -340,49 +362,6 @@ public final class AppModel {
 
     public func deleteTrip(_ id: UUID, deletingContents: Bool) {
         perform { try store.deleteTrip(id: id, deletingContents: deletingContents) }
-    }
-
-    // MARK: - Wishlist
-
-    public func isOnWishlist(_ place: PlaceReference) -> Bool {
-        log.wishlist.contains { $0.place?.id == place.id }
-    }
-
-    public func isOnWishlist(routeID: Int64) -> Bool {
-        log.wishlist.contains { $0.routeID == routeID }
-    }
-
-    public func addToWishlist(_ place: PlaceReference) {
-        guard !isOnWishlist(place) else { return }
-        perform { try store.addToWishlist(WishlistItem(place: place, createdAt: Date())) }
-    }
-
-    public func addToWishlist(route: RouteInfo) {
-        guard !isOnWishlist(routeID: route.id) else { return }
-        perform {
-            try store.addToWishlist(
-                WishlistItem(
-                    place: route.start,
-                    routeID: route.id,
-                    routeName: route.name,
-                    createdAt: Date()
-                )
-            )
-        }
-    }
-
-    public func removeFromWishlist(_ ids: [UUID]) {
-        perform { try store.removeFromWishlist(ids) }
-    }
-
-    public func removeFromWishlist(place: PlaceReference) {
-        let ids = log.wishlist.filter { $0.place?.id == place.id && $0.routeID == nil }.map(\.id)
-        removeFromWishlist(ids)
-    }
-
-    /// Wishlist places not yet visited, for the globe's wishlist pins (R-GLOBE-4).
-    public var openWishlistPlaces: [PlaceReference] {
-        statistics.wishlist.filter { !$0.isVisited }.compactMap(\.item.place)
     }
 
     // MARK: - Import

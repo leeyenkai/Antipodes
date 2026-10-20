@@ -49,7 +49,7 @@ public struct RootView: View {
             }
             // Sidebar-only destinations. On iPhone they would turn into a "More" tab,
             // so there they are reached from Trips and the Stats toolbar instead.
-            if sizeClass != .compact {
+            if DeviceLayout.hasSidebar(sizeClass) {
                 Tab("All Records", systemImage: "tablecells", value: .records) {
                     NavigationStack {
                         AllRecordsView()
@@ -69,6 +69,13 @@ public struct RootView: View {
                     .settings))
             .tabBarMinimizeBehavior(.onScrollDown)
         #endif
+            // Narrowing an iPad window takes the sidebar, and with it these tabs, away;
+            // a selection left on one would show an empty screen.
+            .onChange(of: DeviceLayout.hasSidebar(sizeClass)) { _, hasSidebar in
+                if !hasSidebar, selection == .records || selection == .settings {
+                    selection = selection == .records ? .trips : .stats
+                }
+            }
             .fileDropImport()
             .environment(borderStore)
             .tint(.accentColor)
@@ -184,8 +191,8 @@ struct AddToolbarModifier: ViewModifier {
         content.toolbar {
             if showsButton {
                 ToolbarItem(placement: .primaryAction) {
+                    // ⌘N belongs to the app's File menu command, which reaches this too.
                     Button("Log", systemImage: "plus") { model.addRequest = AddRequest() }
-                        .keyboardShortcut("n", modifiers: .command)
                 }
             }
         }

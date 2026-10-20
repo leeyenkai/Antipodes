@@ -30,7 +30,12 @@ public final class GlobeBorderStore {
     /// drawing an unshaded globe.
     public private(set) var failure: String?
 
-    private var isLoadingFine = false
+    /// Bookkeeping for the background load of the fine outlines. Not observed: it is
+    /// set while the globe is being drawn, and drawing must not change what it observes.
+    @ObservationIgnored private var isLoadingFine = false
+    /// Set when the fine file could not be read, so a bad file is tried once rather than
+    /// on every frame of a pinch.
+    @ObservationIgnored private var fineFailed = false
     private let locate: @Sendable (Resolution) -> URL?
 
     /// `locate` is injectable so previews and tests can stand in their own files; the
@@ -62,22 +67,32 @@ public final class GlobeBorderStore {
     public func loadCoarse() {
         guard coarse == nil else { return }
         guard let url = locate(.coarse) else {
-            failure = """
-            Country outlines are not in the app bundle. Run scripts/fetch-borders.sh \
-            and scripts/build-borders.sh, then rebuild.
-            """
+            failure = Self.unavailable(
+                detail: "Not in the bundle: run scripts/fetch-borders.sh, then build-borders.sh."
+            )
             return
         }
         do {
             coarse = try CountryBorders.load(from: url)
             failure = nil
         } catch {
-            failure = "Country outlines could not be read: \(error)"
+            failure = Self.unavailable(detail: String(describing: error))
         }
     }
 
+    /// What the user reads when countries cannot be shaded: the outlines ship inside the
+    /// app, so reinstalling is the remedy. The cause is for the developer, in debug builds.
+    private static func unavailable(detail: String) -> String {
+        var message = "Countries can't be shaded: the outlines in this copy of Antipodes "
+            + "couldn't be read. Reinstalling should fix it."
+        #if DEBUG
+            message += " (\(detail))"
+        #endif
+        return message
+    }
+
     private func loadFineIfNeeded() {
-        guard fine == nil, !isLoadingFine, let url = locate(.fine) else { return }
+        guard fine == nil, !isLoadingFine, !fineFailed, let url = locate(.fine) else { return }
         isLoadingFine = true
         Task {
             // Roughly 70 ms of decoding, which would be a visible stutter mid-pinch.
@@ -85,6 +100,7 @@ public final class GlobeBorderStore {
                 try? CountryBorders.load(from: url)
             }.value
             fine = loaded
+            fineFailed = loaded == nil
             isLoadingFine = false
         }
     }

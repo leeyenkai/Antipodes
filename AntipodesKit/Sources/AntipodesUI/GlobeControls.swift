@@ -214,7 +214,7 @@ struct GlobeFilterMenu: View {
 }
 
 /// What a tap on a pin or an arc opens on iPhone (§9): the record in a sheet over the
-/// globe.
+/// globe. The record's own form supplies Cancel and Save; a marker supplies Close.
 struct GlobeSelectionSheet: View {
     let selection: GlobeSelection
     @Environment(\.dismiss) private var dismiss
@@ -222,11 +222,7 @@ struct GlobeSelectionSheet: View {
     var body: some View {
         NavigationStack {
             GlobeSelectionDetail(selection: selection) { dismiss() }
-                .toolbar {
-                    ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }
-                    }
-                }
+                .environment(\.editorPlacement, .root)
                 .logDestinations()
         }
         .presentationDetents([.medium, .large])
@@ -242,15 +238,11 @@ struct GlobeSelectionInspector: View {
     var body: some View {
         NavigationStack {
             GlobeSelectionDetail(selection: selection, close: close)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Close", systemImage: "xmark", action: close)
-                    }
-                }
+                .environment(\.editorPlacement, .root)
                 .logDestinations()
         }
-        // A new tap is a new record: start its form afresh rather than carrying over
-        // the last one's edits.
+        // A new tap is a new record: start its form afresh. The globe asks before
+        // replacing a form with unsaved edits (`UnsavedEditsKey`).
         .id(selection.id)
     }
 }
@@ -261,6 +253,7 @@ struct GlobeSelectionDetail: View {
     /// Closes whatever is showing this: the sheet, or the inspector.
     let close: () -> Void
     @Environment(AppModel.self) private var model
+    @Environment(\.deferredAdd) private var deferredAdd
 
     var body: some View {
         switch selection {
@@ -294,8 +287,13 @@ struct GlobeSelectionDetail: View {
             case .wishlist:
                 Section {
                     Button("Log a Visit", systemImage: "plus") {
-                        close()
-                        model.addRequest = AddRequest(start: .place(pin.place))
+                        let request = AddRequest(start: .place(pin.place))
+                        if let deferredAdd {
+                            deferredAdd(request)
+                        } else {
+                            close()
+                            model.addRequest = request
+                        }
                     }
                     Button("Remove from Wishlist", systemImage: "star.slash", role: .destructive) {
                         model.removeFromWishlist(place: pin.place)
@@ -324,6 +322,11 @@ struct GlobeSelectionDetail: View {
         }
         .navigationTitle(pin.place.name)
         .toolbarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Close", action: close)
+            }
+        }
     }
 
     private var antipodeLine: String {

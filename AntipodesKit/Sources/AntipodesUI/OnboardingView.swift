@@ -9,19 +9,19 @@ struct OnboardingView: View {
     @State private var page = 0
     @State private var isPickingHome = false
     @State private var spin = 0.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
             Palette.heroGradient.ignoresSafeArea()
             VStack(spacing: 0) {
-                TabView(selection: $page) {
-                    welcome.tag(0)
-                    privacy.tag(1)
-                    home.tag(2)
+                Pager(page: $page, count: 3) { index in
+                    switch index {
+                    case 0: welcome
+                    case 1: privacy
+                    default: home
+                    }
                 }
-                #if os(iOS)
-                .tabViewStyle(.page(indexDisplayMode: .always))
-                #endif
                 Button {
                     if page < 2 {
                         withAnimation { page += 1 }
@@ -64,7 +64,8 @@ struct OnboardingView: View {
             travels on a globe and in statistics nobody else offers.
             """
         ) {
-            TimelineView(.periodic(from: .now, by: 1.0 / 30)) { context in
+            // Turning slowly, unless the user has asked for less motion.
+            TimelineView(.animation(minimumInterval: 1.0 / 30, paused: reduceMotion)) { context in
                 let longitude = (context.date.timeIntervalSinceReferenceDate * 8)
                     .truncatingRemainder(dividingBy: 360) - 180
                 GlobeCanvas(

@@ -16,6 +16,9 @@ struct AddSheet: View {
 
     @State private var entry: Entry
     @State private var path: [Destination]
+    /// Whether the journey being built here has anything in it to lose.
+    @State private var hasEdits = false
+    @State private var isConfirmingCancel = false
 
     enum Entry: String, CaseIterable, Identifiable {
         case place
@@ -58,11 +61,19 @@ struct AddSheet: View {
     var body: some View {
         NavigationStack(path: $path) {
             content
+                .environment(\.editorPlacement, .embedded)
+                .onPreferenceChange(UnsavedEditsKey.self) { hasEdits = $0 }
                 .navigationTitle("Log")
                 .toolbarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel", systemImage: "xmark", role: .cancel) { dismiss() }
+                        Button("Cancel", role: .cancel) {
+                            if hasEdits {
+                                isConfirmingCancel = true
+                            } else {
+                                dismiss()
+                            }
+                        }
                     }
                     ToolbarItem(placement: .principal) {
                         Picker("What are you logging?", selection: $entry) {
@@ -82,6 +93,7 @@ struct AddSheet: View {
                 }
         }
         .presentationDetents([.large])
+        .confirmingDiscard(isPresented: $isConfirmingCancel) { dismiss() }
     }
 
     @ViewBuilder

@@ -23,6 +23,8 @@ struct SettingsScreen: View {
     @State private var isImportingFlights = false
     @State private var isImportingPhotos = false
     @State private var message: String?
+    /// A backup read and compared with the log, waiting for the user's yes.
+    @State private var pendingBackup: BackupPreview?
 
     var body: some View {
         NavigationStack {
@@ -106,6 +108,28 @@ struct SettingsScreen: View {
             }
             .fileImporter(isPresented: $isImportingBackup, allowedContentTypes: [.json]) { result in
                 importBackup(result)
+            }
+            .alert(
+                pendingBackup
+                    .map { $0.additions.total > 0 ? "Restore this backup?" : "Nothing new" } ?? "",
+                isPresented: Binding(
+                    get: { pendingBackup != nil },
+                    set: {
+                        if !$0 {
+                            pendingBackup = nil
+                        }
+                    }
+                ),
+                presenting: pendingBackup
+            ) { preview in
+                if preview.additions.total > 0 {
+                    Button("Restore") { restore(preview) }
+                    Button("Cancel", role: .cancel) {}
+                } else {
+                    Button("OK", role: .cancel) {}
+                }
+            } message: { preview in
+                Text(preview.confirmationMessage)
             }
             .sheet(isPresented: $isImportingFlights) {
                 FlightImportView()
@@ -349,7 +373,7 @@ struct SettingsScreen: View {
         } footer: {
             Text(
                 """
-                Removes your whole log from this device and your iCloud (R-PRIV-6). Export first \
+                Removes your whole log from this device and your iCloud. Export first \
                 if you want a copy.
                 """
             )
@@ -375,16 +399,23 @@ struct SettingsScreen: View {
                     url.stopAccessingSecurityScopedResource()
                 }
             }
-            let counts = try model.importBackup(Data(contentsOf: url))
-            message = counts.total == 0
-                ? "Everything in that backup is already in your log."
-                : """
-                Added \(Format.ordinalCount(counts.trips, "trip")), \
-                \(Format.ordinalCount(counts.visits, "place")) and \
-                \(Format.ordinalCount(counts.journeys, "journey")).
-                """
+            pendingBackup = try model.previewBackup(Data(contentsOf: url))
         } catch {
-            model.errorMessage = "That file couldn't be imported: \(error.localizedDescription)"
+            model.errorMessage = "That file couldn't be imported. \(error.localizedDescription)"
+        }
+    }
+
+    private func restore(_ preview: BackupPreview) {
+        do {
+            let counts = try model.importBackup(preview)
+            pendingBackup = nil
+            Task {
+                // Let the confirmation leave before the result appears.
+                try? await Task.sleep(for: .milliseconds(300))
+                message = "Added \(counts.summary)."
+            }
+        } catch {
+            model.errorMessage = "That backup couldn't be restored. \(error.localizedDescription)"
         }
     }
 
@@ -395,92 +426,5 @@ struct SettingsScreen: View {
         } catch {
             model.errorMessage = error.localizedDescription
         }
-    }
-}
-
-/// The counting rules in plain words, so a number is never a mystery.
-private struct CountingExplainer: View {
-    var body: some View {
-        List {
-            Section("Visit types") {
-                ForEach(VisitType.allCases) { type in
-                    Label {
-                        VStack(alignment: .leading) {
-                            Text(type.displayName)
-                            Text(type.explanation).font(.caption).foregroundStyle(.secondary)
-                        }
-                    } icon: {
-                        Image(systemName: type.symbolName)
-                    }
-                }
-            }
-            Section("Rules") {
-                Text("""
-                A landmark counts its city, region and country. A city counts its region and \
-                country. Nothing wider is ever implied.
-                """)
-                Text(
-                    """
-                    Averages over places count each place once; patterns over time count every \
-                    visit.
-                    """
-                )
-                Text(
-                    """
-                    Anything a stat couldn't use is listed under it, with the reason — no record \
-                    is dropped silently.
-                    """
-                )
-                Text("""
-                Distances for flights follow the great circle. Other modes are straight lines \
-                between the ends, marked approximate, unless you enter the distance or ride a \
-                catalogue route.
-                """)
-            }
-        }
-        .navigationTitle("How Antipodes counts")
-    }
-}
-
-/// One source's licence, obligation and the snapshot this database was built from.
-struct SourceDetailView: View {
-    let source: PlaceDataSource
-
-    var body: some View {
-        Form {
-            Section("Licence") {
-                LabeledContent("Licence", value: source.licence)
-                if let licenceURL = source.licenceURL, let url = URL(string: licenceURL) {
-                    Link("Read the licence", destination: url)
-                }
-                if let url = URL(string: source.url) {
-                    Link(source.name, destination: url)
-                }
-            }
-            if let attribution = source.attribution {
-                Section {
-                    Text(attribution)
-                } header: {
-                    Text("Required credit")
-                } footer: {
-                    Text("This licence requires the credit above wherever the data is used.")
-                }
-            }
-            Section("Used for") {
-                Text(source.usedFor)
-            }
-            if source.sha256 != nil || source.retrieved != nil {
-                Section("This build") {
-                    if let retrieved = source.retrieved {
-                        LabeledContent("Retrieved", value: retrieved)
-                    }
-                    if let digest = source.sha256 {
-                        LabeledContent("Digest", value: String(digest.prefix(16)))
-                            .font(.caption.monospaced())
-                    }
-                }
-            }
-        }
-        .navigationTitle(source.name)
     }
 }

@@ -15,7 +15,8 @@ struct LegDraft: Identifiable, Equatable {
     var routeID: Int64?
     var routeName: String?
     var storedPathLengthKm: Double?
-    var distanceOverride = ""
+    /// The user's own distance, in kilometres, kept exactly as given.
+    var distanceOverrideKm: Double?
     var durationOverrideMinutes: Int?
     var operatorName = ""
     var serviceNumber = ""
@@ -42,7 +43,7 @@ struct LegDraft: Identifiable, Equatable {
         routeID = leg.routeID
         routeName = leg.routeName
         storedPathLengthKm = leg.storedPathLengthKm
-        distanceOverride = leg.distanceKmOverride.map { String(format: "%.0f", $0) } ?? ""
+        distanceOverrideKm = leg.distanceKmOverride
         durationOverrideMinutes = leg.durationMinutesOverride
         operatorName = leg.operatorName ?? ""
         serviceNumber = leg.serviceNumber ?? ""
@@ -82,7 +83,6 @@ struct LegDraft: Identifiable, Equatable {
     /// The leg as it would be saved, or `nil` until both ends are set.
     var leg: JourneyLeg? {
         guard let origin, let destination else { return nil }
-        let override = Double(distanceOverride.replacingOccurrences(of: ",", with: "."))
         return JourneyLeg(
             id: id,
             mode: mode,
@@ -93,7 +93,7 @@ struct LegDraft: Identifiable, Equatable {
             // A route's length applies only while both ends are the route's own; pick a
             // different station and the leg is a section of it, with no known length.
             storedPathLengthKm: storedPathLengthKm,
-            distanceKmOverride: override.flatMap { $0 > 0 ? $0 : nil },
+            distanceKmOverride: distanceOverrideKm.flatMap { $0 > 0 ? $0 : nil },
             durationMinutesOverride: durationOverrideMinutes,
             times: times,
             missedConnection: missedConnection,
@@ -124,7 +124,7 @@ struct LegDraft: Identifiable, Equatable {
     var hasDetails: Bool {
         !times.isEmpty || !operatorName.isEmpty || !serviceNumber.isEmpty || !vehicle.isEmpty
             || !registration.isEmpty || !travelClass.isEmpty || !seat.isEmpty || rating != nil
-            || !notes.isEmpty || !distanceOverride.isEmpty || durationOverrideMinutes != nil
+            || !notes.isEmpty || distanceOverrideKm != nil || durationOverrideMinutes != nil
             || purpose != .leisure
     }
 }

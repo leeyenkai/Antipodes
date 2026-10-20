@@ -36,11 +36,18 @@ extension MiniGlobe {
     /// A thumbnail of one trip.
     @MainActor
     static func trip(_ tripID: UUID, model: AppModel) -> MiniGlobe {
-        let scene = GlobeSceneBuilder.build(
-            log: model.log.restricted(toTrip: tripID),
-            rules: model.rules,
-            arcSegments: 24
-        )
+        let scene: GlobeScene
+        if let cached = model.tripSceneCache[tripID],
+           cached.revision == model.logRevision, cached.rules == model.rules {
+            scene = cached.scene
+        } else {
+            scene = GlobeSceneBuilder.build(
+                log: model.log.restricted(toTrip: tripID),
+                rules: model.rules,
+                arcSegments: 24
+            )
+            model.tripSceneCache[tripID] = (model.logRevision, model.rules, scene)
+        }
         // Framed on the places, not the flights there: a trip to Japan is about Japan,
         // and framing the long-haul arc would shrink it to a dot.
         let places = scene.pins.filter(\.style.isTravel).map(\.coordinate)

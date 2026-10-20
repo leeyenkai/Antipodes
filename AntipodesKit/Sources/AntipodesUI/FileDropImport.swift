@@ -26,12 +26,15 @@ extension View {
         @State private var flightLog: DroppedFlightLog?
         @State private var backup: DroppedBackup?
         @State private var outcome: String?
+        /// The result of a restore, held until the confirmation alert has gone: an
+        /// alert asked for from another alert's button would never appear.
+        @State private var pendingOutcome: String?
 
         func body(content: Content) -> some View {
             content
                 .dropDestination(for: URL.self) { urls, _ in
                     isTargeted = false
-                    receive(urls)
+                    Task { await receive(urls) }
                 }
                 .onDropSessionUpdated { session in
                     isTargeted = session.phase == .entering || session.phase == .active
@@ -80,12 +83,27 @@ extension View {
                 } message: {
                     Text(outcome ?? "")
                 }
+                .onChange(of: backup == nil) { _, isGone in
+                    guard isGone, let pending = pendingOutcome else { return }
+                    pendingOutcome = nil
+                    Task {
+                        // Let the confirmation finish leaving before the next appears.
+                        try? await Task.sleep(for: .milliseconds(300))
+                        outcome = pending
+                    }
+                }
         }
 
         /// Takes the first file dropped. Each import has its own review, so a second
         /// file waits for a second drop rather than queueing behind the first.
-        private func receive(_ urls: [URL]) {
-            guard let url = urls.first(where: \.isFileURL) else { return }
+        private func receive(_ urls: [URL]) async {
+            guard let url = urls.first(where: \.isFileURL) else {
+                model.errorMessage = """
+                Drop a file saved on this Mac — a flight log as CSV, or an Antipodes backup. \
+                Links and text can't be imported.
+                """
+                return
+            }
             let access = url.startAccessingSecurityScopedResource()
             defer {
                 if access {
@@ -93,7 +111,10 @@ extension View {
                 }
             }
             do {
-                let data = try Data(contentsOf: url)
+                // Off the main thread: a file on a network volume can take its time.
+                let data = try await Task.detached(priority: .userInitiated) {
+                    try Data(contentsOf: url)
+                }.value
                 switch DroppedFileKind(url) {
                 case .backup:
                     backup = try DroppedBackup(
@@ -118,7 +139,7 @@ extension View {
         private func restore(_ backup: DroppedBackup) {
             do {
                 let counts = try model.importBackup(backup.preview)
-                outcome = "Added \(DroppedBackup.describe(counts))."
+                pendingOutcome = "Added \(counts.summary)."
             } catch {
                 model.errorMessage = """
                 That backup couldn't be imported: \(error.localizedDescription)
@@ -163,37 +184,7 @@ extension View {
         }
 
         var message: String {
-            let additions = preview.additions
-            guard additions.total > 0 else {
-                return "Everything in this backup is already in your log."
-            }
-            var text = "This adds \(Self.describe(additions)) to your log."
-            if preview.alreadyInLog > 0 {
-                text += """
-                 \(Format.ordinalCount(preview.alreadyInLog, "record")) already in your log \
-                stay as they are.
-                """
-            }
-            if additions.unfiled > 0 {
-                text += """
-                 \(Format.ordinalCount(additions.unfiled, "record")) belonged to a trip that \
-                isn't in the file, and will arrive unfiled.
-                """
-            }
-            return text
-        }
-
-        /// "2 trips, 14 places, 3 journeys and 1 wishlist place", leaving out the kinds
-        /// with none.
-        static func describe(_ counts: ImportCounts) -> String {
-            let parts = [
-                counts.trips > 0 ? Format.ordinalCount(counts.trips, "trip") : nil,
-                counts.visits > 0 ? Format.ordinalCount(counts.visits, "place") : nil,
-                counts.journeys > 0 ? Format.ordinalCount(counts.journeys, "journey") : nil,
-                counts.wishlist > 0
-                    ? Format.ordinalCount(counts.wishlist, "wishlist place") : nil,
-            ].compactMap(\.self)
-            return parts.formatted(.list(type: .and))
+            preview.confirmationMessage
         }
     }
 

@@ -157,9 +157,10 @@ struct PatternsSection: View {
                 if let average = time.averageTripDays {
                     StatRow(
                         "Average trip",
-                        "\(Int(average.rounded())) days",
+                        Format.ordinalCount(Int(average.rounded()), "day"),
                         symbol: "ruler",
-                        detail: time.longestTrip.map { "Longest: \($0.days) days" }
+                        detail: time.longestTrip
+                            .map { "Longest: \(Format.ordinalCount($0.days, "day"))" }
                     )
                 }
                 if let busiest = time.busiestMonth {

@@ -108,9 +108,9 @@ struct PinDropView: View {
         .background(.background)
         .alert("Enter Coordinates", isPresented: $isEnteringCoordinates) {
             TextField("Latitude, e.g. 59.91", text: $latitudeText)
-                .decimalKeyboard()
+                .signedDecimalKeyboard()
             TextField("Longitude, e.g. 10.75", text: $longitudeText)
-                .decimalKeyboard()
+                .signedDecimalKeyboard()
             Button("Cancel", role: .cancel) {}
             Button("Go") {
                 if let latitude = Double(latitudeText.replacingOccurrences(of: ",", with: ".")),
@@ -141,7 +141,7 @@ struct PinDropView: View {
             dx: dragTranslation.width,
             dy: dragTranslation.height,
             in: GlobeSize(width: size.width, height: size.height)
-        )
+        ).withZoom(of: camera)
     }
 
     private func drag(in size: CGSize) -> some Gesture {
@@ -157,7 +157,7 @@ struct PinDropView: View {
                     dx: value.translation.width,
                     dy: value.translation.height,
                     in: GlobeSize(width: size.width, height: size.height)
-                )
+                ).withZoom(of: camera)
                 dragStart = nil
             }
     }

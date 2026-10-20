@@ -411,8 +411,10 @@ struct TripPicker: View {
                 TextField("Name", text: $newTripName)
                 Button("Cancel", role: .cancel) { newTripName = "" }
                 Button("Create") {
-                    if let trip = try? model.createTrip(name: newTripName) {
-                        selection = trip.id
+                    do {
+                        selection = try model.createTrip(name: newTripName).id
+                    } catch {
+                        model.errorMessage = AppModel.tripNotCreated(error)
                     }
                     newTripName = ""
                 }
@@ -429,10 +431,9 @@ extension Trip {
         if let name, !name.isEmpty {
             return name
         }
-        if let span = model.dateSpan(ofTrip: id) {
+        if let dates = model.dates(ofTrip: id) {
             let place = model.log.visits(inTrip: id).first?.place.name
-            return [place, Format.span(span.start, span.end)].compactMap(\.self)
-                .joined(separator: ", ")
+            return [place, dates.text].compactMap(\.self).joined(separator: ", ")
         }
         return "Untitled trip"
     }

@@ -225,6 +225,40 @@ is blocked.
 
 ### Fixed
 
+- **Edits no longer vanish.** Every edit form saves only on its confirm button, and now
+  leaving any other way asks first: while there are unsaved changes, Back gives way to
+  Cancel, Cancel asks "Discard your changes?", and a sheet cannot be swiped away. The
+  globe's sheet on iPhone had two "Done" buttons, one of which threw edits away; it now
+  has Close or Cancel and Save. On iPad and Mac, tapping another pin while the inspector
+  holds unsaved edits asks before replacing them. A form whose save failed stays open.
+- The distance on a leg accepts decimals ("2.5") and keeps an override exactly instead
+  of rounding it on every save; a duration is chosen as hours and minutes instead of a
+  5-minute stepper. Coordinates for a dropped pin can be typed negative on iPhone.
+- "Log Another Visit Here" and a wishlist pin's "Log a Visit" did nothing on iPhone,
+  because the add sheet cannot open over the globe's sheet; it now opens once that
+  sheet has closed. The globe's sheet follows the app's appearance instead of always
+  being dark.
+- Creating a trip that fails says so instead of doing nothing.
+- The replay turns the globe to the newest record by date rather than the last one read,
+  after the scene has moved on, and starts again when a filter changes. A pinch that
+  drifts into a drag keeps its zoom.
+- A trip dated only "2019" reads "2019", not "1 Jan – 31 Dec 2019 · 365 days"; the trip
+  list counts countries by the counting rules, like the trip itself.
+- Narrowing an iPad window while on All Records or Settings no longer leaves a blank
+  screen, and All Records is reachable on every iPhone, held either way.
+- On the Mac, Year in Review and onboarding page with arrows and the arrow keys instead
+  of showing as unlabelled tabs, and Year in Review opens at a sensible size.
+- Restoring a backup from Settings shows what it will add first, as dropping one on the
+  Mac window does, and counts wishlist entries. A dropped link explains what can be
+  imported; the result of a dropped backup no longer goes missing behind its own
+  confirmation. Closing the photo import stops its scan.
+- Plurals: "1 day", "1 country · 1 continent", and "Longest since" in months or days
+  rather than "0 years". Requirement IDs no longer appear in Settings' text.
+- Smoother: a trip's statistics are worked out off the main thread and only when the
+  log changes, trip thumbnails are drawn once per change, the detailed outlines load in
+  the background at launch, and a damaged outline file is tried once rather than on
+  every frame. The globe no longer changes state while it is being drawn.
+- Reduce Motion stops the onboarding globe turning and calms Year in Review.
 - **Flight imports** (R-LOG-8, D-16):
   - Airports given by their four-letter ICAO code (`ENGM`) are matched; they had always
     needed choosing by hand.

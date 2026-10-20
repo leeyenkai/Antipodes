@@ -58,7 +58,7 @@ struct TripsScreen: View {
                             model.addRequest = AddRequest(start: .journey(nil))
                         }
                         // With a sidebar, All Records is a destination of its own.
-                        if sizeClass == .compact {
+                        if !DeviceLayout.hasSidebar(sizeClass) {
                             Divider()
                             NavigationLink(value: LogRoute.allVisits) {
                                 Label("All Records", systemImage: "tablecells")
@@ -74,7 +74,11 @@ struct TripsScreen: View {
                 TextField("Name", text: $newTripName)
                 Button("Cancel", role: .cancel) { newTripName = "" }
                 Button("Create") {
-                    _ = try? model.createTrip(name: newTripName)
+                    do {
+                        try model.createTrip(name: newTripName)
+                    } catch {
+                        model.errorMessage = AppModel.tripNotCreated(error)
+                    }
                     newTripName = ""
                 }
             } message: {
@@ -100,7 +104,7 @@ struct TripsScreen: View {
         var byYear: [Int: [Trip]] = [:]
         var undated: [Trip] = []
         for trip in filteredTrips {
-            if let year = model.dateSpan(ofTrip: trip.id)?.start.year {
+            if let year = model.dates(ofTrip: trip.id)?.start.year {
                 byYear[year, default: []].append(trip)
             } else {
                 undated.append(trip)
@@ -127,8 +131,8 @@ private struct TripRow: View {
                 Text(trip.displayName(model: model))
                     .font(.headline)
                     .lineLimit(1)
-                if let span = model.dateSpan(ofTrip: trip.id), trip.name != nil {
-                    Text(Format.span(span.start, span.end))
+                if let dates = model.dates(ofTrip: trip.id), trip.name != nil {
+                    Text(dates.text)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                 }
@@ -145,7 +149,10 @@ private struct TripRow: View {
     private var summary: String {
         let visits = model.log.visits(inTrip: trip.id)
         let journeys = model.log.journeys(inTrip: trip.id)
-        let countries = Set(visits.compactMap(\.place.countryCode)).count
+        // The same rule as the trip's own header and every other count: a layover does
+        // not add a country unless the user counts layovers.
+        let counted = visits.filter { model.rules.countsTowardsCoverage($0.visitType) }
+        let countries = Set(counted.compactMap(\.place.countryCode)).count
         var parts: [String] = []
         if countries > 0 {
             parts.append(Format.ordinalCount(countries, "country", "countries"))
@@ -155,7 +162,7 @@ private struct TripRow: View {
             let kilometres = journeys.reduce(0) { $0 + $1.totalDistanceKm }
             parts.append(Format.distance(kilometres, model.rules.unitSystem))
         }
-        let flags = Set(visits.compactMap(\.place.countryCode)).sorted().prefix(5).map(Format.flag)
+        let flags = Set(counted.compactMap(\.place.countryCode)).sorted().prefix(5).map(Format.flag)
             .joined()
         return ([flags] + parts).filter { !$0.isEmpty }.joined(separator: "  ")
     }

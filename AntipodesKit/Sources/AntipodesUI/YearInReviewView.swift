@@ -10,29 +10,42 @@ struct YearInReviewView: View {
     @Environment(\.dismiss) private var dismiss
     let year: Int
     @State private var page = 0
+    /// The year's review and its cards, worked out once per change to the log rather
+    /// than on every swipe.
+    @State private var built: (review: YearInReview, cards: [ReviewCard])?
 
     var body: some View {
-        let review = model.yearInReview(year)
-        let pages = pages(review)
         ZStack(alignment: .top) {
             Palette.heroGradient.ignoresSafeArea()
-            TabView(selection: $page) {
-                ForEach(Array(pages.enumerated()), id: \.offset) { index, card in
-                    ReviewPage(card: card, isActive: page == index)
-                        .tag(index)
+            if let built {
+                Pager(page: $page, count: built.cards.count) { index in
+                    ReviewPage(card: built.cards[index], isActive: page == index)
                         .padding(.horizontal, 24)
                         .padding(.top, 70)
                         .padding(.bottom, 50)
                 }
+                header(built.review)
+            } else {
+                ProgressView()
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            #if os(iOS)
-            .tabViewStyle(.page(indexDisplayMode: .always))
-            #endif
-            header(review)
         }
         .environment(\.colorScheme, .dark)
         .foregroundStyle(.white)
+        .task(id: ReviewInputs(log: model.log, rules: model.rules, year: year)) {
+            let review = model.yearInReview(year)
+            built = (review, pages(review))
+        }
         .onAppear { page = 0 }
+        #if os(macOS)
+            .frame(minWidth: 460, idealWidth: 540, minHeight: 640, idealHeight: 760)
+        #endif
+    }
+
+    private struct ReviewInputs: Equatable {
+        let log: TravelLog
+        let rules: CountingRules
+        let year: Int
     }
 
     private func header(_ review: YearInReview) -> some View {
@@ -153,7 +166,9 @@ struct YearInReviewView: View {
             eyebrow: "\(year) in short",
             value: "\(review.places)",
             title: """
-            places · \(review.countries.count) countries · \(review.continents.count) continents
+            \(review.places == 1 ? "place" : "places") · \
+            \(Format.ordinalCount(review.countries.count, "country", "countries")) · \
+            \(Format.ordinalCount(review.continents.count, "continent"))
             """,
             detail: "Share it with the button above. Made on your device; nothing is uploaded.",
             scene: GlobeSceneBuilder.build(
@@ -178,6 +193,7 @@ struct ReviewCard {
 
 private struct ReviewPage: View {
     @Environment(GlobeBorderStore.self) private var borderStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let card: ReviewCard
     let isActive: Bool
     @State private var appeared = false
@@ -194,7 +210,7 @@ private struct ReviewPage: View {
                     palette: GlobePalette()
                 )
                 .frame(maxHeight: 320)
-                .scaleEffect(appeared ? 1 : 0.85)
+                .scaleEffect(appeared || reduceMotion ? 1 : 0.85)
                 .opacity(appeared ? 1 : 0)
             } else {
                 Spacer(minLength: 40)
@@ -212,7 +228,7 @@ private struct ReviewPage: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
                 .contentTransition(.numericText())
-                .offset(y: appeared ? 0 : 24)
+                .offset(y: appeared || reduceMotion ? 0 : 24)
                 .opacity(appeared ? 1 : 0)
             Text(card.title)
                 .font(.title2.weight(.semibold))
@@ -232,7 +248,10 @@ private struct ReviewPage: View {
         .onChange(of: isActive, initial: true) { _, active in
             if active {
                 appeared = false
-                withAnimation(.spring(duration: 0.7, bounce: 0.25).delay(0.1)) { appeared = true }
+                withAnimation(
+                    reduceMotion ? .easeIn(duration: 0.2) : .spring(duration: 0.7, bounce: 0.25)
+                        .delay(0.1)
+                ) { appeared = true }
             }
         }
         .accessibilityElement(children: .combine)

@@ -53,7 +53,7 @@ struct GlobeSurface: View {
             dx: dragTranslation.width,
             dy: dragTranslation.height,
             in: GlobeSize(width: size.width, height: size.height)
-        )
+        ).withZoom(of: camera)
     }
 
     private func rotation(in size: CGSize) -> some Gesture {
@@ -69,7 +69,7 @@ struct GlobeSurface: View {
                     dx: value.translation.width,
                     dy: value.translation.height,
                     in: GlobeSize(width: size.width, height: size.height)
-                )
+                ).withZoom(of: camera)
                 gestureStartCamera = nil
             }
     }
@@ -132,13 +132,30 @@ struct GlobeBackdrop: View {
 ///
 /// Not the size class alone: a large iPhone in landscape reports a regular width, and
 /// the iPhone keeps its own layout there (R-PLAT-1).
+@MainActor
 enum DeviceLayout {
+    /// Whether the tab view shows as a sidebar, with room for the sidebar-only
+    /// destinations. An iPhone never does, even a large one held sideways at regular
+    /// width: there they would collapse into a stray "More" tab.
     @MainActor
+    static func hasSidebar(_ sizeClass: UserInterfaceSizeClass?) -> Bool {
+        isSideBySide(sizeClass)
+    }
+
     static func isSideBySide(_ sizeClass: UserInterfaceSizeClass?) -> Bool {
         #if os(iOS)
             UIDevice.current.userInterfaceIdiom != .phone && sizeClass != .compact
         #else
             true
         #endif
+    }
+}
+
+extension GlobeCamera {
+    /// This camera's direction at another's zoom. A drag that a pinch interrupted keeps
+    /// the pinch's zoom; rebuilding it from where the drag began would snap the zoom
+    /// back to what it was before the pinch.
+    func withZoom(of other: GlobeCamera) -> GlobeCamera {
+        GlobeCamera(centre: centre, zoom: other.zoom)
     }
 }

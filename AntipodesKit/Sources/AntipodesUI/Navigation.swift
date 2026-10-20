@@ -67,9 +67,6 @@ struct JourneyDetailView: View {
     var body: some View {
         if let journey = model.log.journeys.first(where: { $0.id == journeyID }) {
             JourneyEditor(existing: journey) { dismiss() }
-                .safeAreaInset(edge: .top, spacing: 0) {
-                    EmptyView()
-                }
                 .toolbar {
                     ToolbarItem(placement: .primaryAction) {
                         ShareLink(

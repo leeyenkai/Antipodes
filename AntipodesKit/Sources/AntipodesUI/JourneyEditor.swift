@@ -19,6 +19,16 @@ struct JourneyEditor: View {
     @State private var tripID: UUID?
     @State private var isConfirmingDelete = false
     @State private var saved = false
+    /// What the editor held when it opened, so it knows whether there is anything to
+    /// lose by leaving.
+    @State private var baseline: Fields
+
+    struct Fields: Equatable {
+        var legs: [LegDraft]
+        var title: String
+        var tripID: UUID?
+    }
+
     /// Which leg's end is being chosen. One picker for the whole form: a `.sheet` on a
     /// `Section` is applied to every row in it, and competing sheets tear down the
     /// sheet this editor is itself presented in.
@@ -55,6 +65,11 @@ struct JourneyEditor: View {
         _expandedLeg = State(initialValue: drafts.count == 1 ? drafts.first?.id : nil)
         _title = State(initialValue: existing?.title ?? "")
         _tripID = State(initialValue: existing?.tripID ?? tripID)
+        _baseline = State(initialValue: Fields(
+            legs: drafts,
+            title: existing?.title ?? "",
+            tripID: existing?.tripID ?? tripID
+        ))
     }
 
     var body: some View {
@@ -129,10 +144,13 @@ struct JourneyEditor: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button(existing == nil ? "Save" : "Done", systemImage: "checkmark", action: save)
-                    .buttonStyle(.glassProminent)
                     .disabled(legs.isEmpty || !legs.allSatisfy(\.isComplete))
             }
         }
+        .guardingUnsavedEdits(
+            Fields(legs: legs, title: title, tripID: tripID) != baseline && !saved,
+            discard: onDone
+        )
         .sensoryFeedback(.success, trigger: saved)
         .sheet(item: $picking) { request in
             endpointPicker(request)
@@ -189,10 +207,18 @@ struct JourneyEditor: View {
         return Array(places.prefix(8))
     }
 
+    /// Removes a leg once any field in it has let go of the keyboard. A text field still
+    /// editing a leg that has gone would write through a binding to an index that no
+    /// longer exists.
     private func remove(_ id: UUID) {
-        legs.removeAll { $0.id == id }
-        if expandedLeg == id {
-            expandedLeg = legs.last?.id
+        endEditing()
+        Task { @MainActor in
+            withAnimation {
+                legs.removeAll { $0.id == id }
+                if expandedLeg == id {
+                    expandedLeg = legs.last?.id
+                }
+            }
         }
     }
 
@@ -203,7 +229,7 @@ struct JourneyEditor: View {
             journey.legs = built
             journey.title = title.trimmedOrNil
             journey.tripID = tripID
-            model.updateJourney(journey)
+            guard model.updateJourney(journey) else { return }
         } else {
             do {
                 try model.logJourney(legs: built, tripID: tripID, title: title)

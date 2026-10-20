@@ -72,13 +72,25 @@ struct GlobeBesideStack<Root: View>: View {
 @MainActor
 @Observable
 final class GlobeBesideContext {
-    var path = NavigationPath()
+    /// Any change the user makes — Back, or a page pushed from the list — forgets what
+    /// the globe opened, so the globe's next tap never replaces the user's own page.
+    var path = NavigationPath() {
+        didSet {
+            if !isOpening {
+                depthAfterGlobeOpened = nil
+            }
+        }
+    }
+
     let tracker = GlobeFocusTracker()
     /// How deep the stack was after the globe last opened something, so the next tap
     /// replaces that record instead of piling another on top of it.
-    private var depthAfterGlobeOpened: Int?
+    @ObservationIgnored private var depthAfterGlobeOpened: Int?
+    @ObservationIgnored private var isOpening = false
 
     func open(_ route: LogRoute) {
+        isOpening = true
+        defer { isOpening = false }
         if let depth = depthAfterGlobeOpened, depth == path.count, !path.isEmpty {
             path.removeLast()
         }
@@ -298,9 +310,19 @@ private struct CompanionGlobe: View {
             log: model.log,
             rules: model.rules,
             filter: GlobeFilter(tripID: tripID),
-            wishlist: tripID == nil ? model.openWishlistPlaces : [],
+            wishlist: tripID == nil ? model.openWishlistPlaces + collectionStillToVisit : [],
             home: model.home
         )
+    }
+
+    /// A collection's members not visited yet, drawn like wishlist places so the globe
+    /// shows how much of it is left — the same points it is framed on.
+    private var collectionStillToVisit: [PlaceReference] {
+        guard case let .collection(id) = focus, let progress = collection(id) else { return [] }
+        let wished = Set(model.openWishlistPlaces.map(\.id))
+        return progress.members
+            .filter { !$0.isVisited && !wished.contains($0.place.id) }
+            .map(\.place)
     }
 
     /// The visits and legs that belong to what the list has open, by id.
@@ -347,8 +369,14 @@ private struct CompanionGlobe: View {
     private func frame() {
         framedFocus = focus
         guard let framed = GlobeCamera.framing(focusPoints, maximumZoom: 4) else { return }
+        // The first framing is instant; after that the globe turns to what was opened,
+        // so the eye can follow where it went.
+        if hasFramed {
+            withAnimation(.easeInOut(duration: 0.6)) { camera = framed }
+        } else {
+            camera = framed
+        }
         hasFramed = true
-        camera = framed
     }
 
     private func collection(_ id: String) -> CollectionProgress? {

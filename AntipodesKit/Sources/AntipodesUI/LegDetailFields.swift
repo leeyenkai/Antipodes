@@ -53,11 +53,7 @@ struct LegDetailFields: View {
         TextField("Notes", text: $draft.notes, axis: .vertical)
             .lineLimit(1 ... 6)
 
-        LabeledContent("Distance (\(model.rules.unitSystem.distanceUnitAbbreviation))") {
-            TextField("Calculated", text: distanceBinding)
-                .multilineTextAlignment(.trailing)
-                .decimalKeyboard()
-        }
+        DistanceOverrideField(kilometres: $draft.distanceOverrideKm, system: model.rules.unitSystem)
         DurationOverrideRow(minutes: $draft.durationOverrideMinutes)
     }
 
@@ -92,26 +88,6 @@ struct LegDetailFields: View {
                 LabeledContent("Arrival", value: Format.delay(minutes: Double(delay)))
             }
         }
-    }
-
-    /// The override is typed in the user's units and stored in kilometres.
-    private var distanceBinding: Binding<String> {
-        Binding(
-            get: {
-                guard let km = Double(draft.distanceOverride) else { return "" }
-                let value = model.rules.unitSystem.distance(fromKilometres: km)
-                return String(format: "%.0f", value)
-            },
-            set: { text in
-                guard let value = Double(text.replacingOccurrences(of: ",", with: ".")),
-                      value > 0 else {
-                    draft.distanceOverride = ""
-                    return
-                }
-                let km = model.rules.unitSystem == .metric ? value : value * 1.609_344
-                draft.distanceOverride = String(km)
-            }
-        )
     }
 }
 
@@ -162,14 +138,70 @@ private struct OptionalTimeRow: View {
     }
 }
 
+/// The user's own distance, typed in their units and stored in kilometres.
+///
+/// The text is the user's while they type: it is parsed, never rewritten, so "2." can
+/// become "2.5". Only a number above zero becomes an override; an empty field clears it.
+private struct DistanceOverrideField: View {
+    @Binding var kilometres: Double?
+    let system: UnitSystem
+    @State private var text: String
+
+    init(kilometres: Binding<Double?>, system: UnitSystem) {
+        _kilometres = kilometres
+        self.system = system
+        _text = State(initialValue: kilometres.wrappedValue.map {
+            system.distance(fromKilometres: $0)
+                .formatted(.number.precision(.fractionLength(0 ... 2)).grouping(.never))
+        } ?? "")
+    }
+
+    var body: some View {
+        LabeledContent("Distance (\(system.distanceUnitAbbreviation))") {
+            TextField("Calculated", text: $text)
+                .multilineTextAlignment(.trailing)
+                .decimalKeyboard()
+                .onChange(of: text) { _, new in
+                    let trimmed = new.trimmingCharacters(in: .whitespaces)
+                    if trimmed.isEmpty {
+                        kilometres = nil
+                    } else if let value = Double(trimmed.replacingOccurrences(of: ",", with: ".")),
+                              value > 0 {
+                        kilometres = system == .metric ? value : value * 1.609_344
+                    }
+                }
+        }
+    }
+}
+
 /// The user's own duration, in hours and minutes, which wins over the times.
 private struct DurationOverrideRow: View {
     @Binding var minutes: Int?
 
     var body: some View {
         if let minutes {
-            Stepper(value: Binding(get: { minutes }, set: { self.minutes = max(0, $0) }), step: 5) {
-                LabeledContent("Duration", value: Format.duration(minutes: minutes))
+            // Hours and minutes as two menus: a stepper took a hundred taps to reach a
+            // long-haul flight.
+            LabeledContent("Duration") {
+                HStack(spacing: 4) {
+                    Picker("Hours", selection: Binding(
+                        get: { minutes / 60 },
+                        set: { self.minutes = $0 * 60 + minutes % 60 }
+                    )) {
+                        ForEach(0 ... 99, id: \.self) { Text("\($0) h").tag($0) }
+                    }
+                    Picker("Minutes", selection: Binding(
+                        get: { minutes % 60 / 5 * 5 },
+                        set: { self.minutes = minutes / 60 * 60 + $0 }
+                    )) {
+                        ForEach(Array(stride(from: 0, to: 60, by: 5)), id: \.self) {
+                            Text("\($0) min").tag($0)
+                        }
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.menu)
+                .fixedSize()
             }
             Button("Clear duration", role: .destructive) { self.minutes = nil }
                 .font(.footnote)

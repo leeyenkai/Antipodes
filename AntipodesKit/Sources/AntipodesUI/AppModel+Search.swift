@@ -63,9 +63,22 @@ public extension AppModel {
         return zones.count == 1 ? zones.first : nil
     }
 
-    /// The 1:50m outlines, for pin lookup and share cards. Loaded once, on first use.
+    /// The 1:50m outlines, for pin lookup and share cards. Preloaded off the main thread
+    /// at launch (`preloadBorders`); loaded here on first use if that has not finished.
     var globeBorders: CountryBorders? {
         loadBorders()
+    }
+
+    /// Decodes the 1:50m outlines in the background, so the first dropped pin or share
+    /// card does not stall the screen for the ~70 ms it takes.
+    func preloadBorders() async {
+        guard borders == nil, let bordersURL else { return }
+        let loaded = await Task.detached(priority: .utility) {
+            try? CountryBorders.load(from: bordersURL)
+        }.value
+        if borders == nil {
+            borders = loaded
+        }
     }
 
     private func loadBorders() -> CountryBorders? {

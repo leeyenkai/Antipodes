@@ -10,6 +10,9 @@ struct TripDetailView: View {
 
     @State private var isEditing = false
     @State private var tripToDelete: Trip?
+    /// The trip's own statistics, worked out off the main thread whenever the log's
+    /// change, rather than twice on every redraw.
+    @State private var stats: TravelStatistics?
 
     var body: some View {
         if let trip = model.log.trip(id: tripID) {
@@ -20,13 +23,13 @@ struct TripDetailView: View {
     }
 
     private func content(_ trip: Trip) -> some View {
-        let stats = model.statistics(forTrip: tripID)
+        let tripStats = stats ?? model.emptyStatistics
         let visits = model.log.visits(inTrip: tripID).sorted { $0.date < $1.date }
         let journeys = model.log.journeys(inTrip: tripID).sorted { $0.date < $1.date }
 
         return List {
             Section {
-                TripHeader(trip: trip, stats: stats)
+                TripHeader(trip: trip, stats: tripStats)
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
             }
@@ -71,7 +74,7 @@ struct TripDetailView: View {
                 }
             }
 
-            TripStatsSection(stats: stats)
+            TripStatsSection(stats: tripStats)
         }
         .navigationTitle(trip.displayName(model: model))
         .toolbarTitleDisplayMode(.inline)
@@ -81,6 +84,9 @@ struct TripDetailView: View {
             TripEditor(trip: trip)
         }
         .deleteTripDialog(trip: $tripToDelete) { dismiss() }
+        .task(id: model.statisticsRevision) {
+            stats = await model.computeStatistics(forTrip: tripID)
+        }
     }
 
     @ToolbarContentBuilder
@@ -120,15 +126,10 @@ private struct TripHeader: View {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(trip.displayName(model: model))
                             .font(.title2.weight(.bold))
-                        if let span = model.dateSpan(ofTrip: trip.id) {
-                            Text(
-                                """
-                                \(Format.span(span.start, span.end)) · \
-                                \(span.start.days(to: span.end) + 1) days
-                                """
-                            )
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                        if let dates = model.dates(ofTrip: trip.id) {
+                            Text(dates.textWithLength)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
                     }
                     .padding(16)

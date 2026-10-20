@@ -104,11 +104,10 @@ extension ShareCardPayload {
                 log: model.log.restricted(toTrip: tripID),
                 rules: model.rules
             )
-            let span = model.dateSpan(ofTrip: tripID)
             self.init(
                 eyebrow: "Trip",
                 title: trip?.displayName(model: model) ?? "Trip",
-                subtitle: span.map { Format.span($0.start, $0.end) },
+                subtitle: model.dates(ofTrip: tripID)?.text,
                 metrics: [
                     Metric(label: "Countries", value: "\(stats.coverage.countriesVisited)"),
                     Metric(label: "Places", value: "\(model.log.visits(inTrip: tripID).count)"),

@@ -8,6 +8,7 @@ import SwiftUI
 struct VisitForm: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.deferredAdd) private var deferredAdd
 
     let place: PlaceReference
     /// The visit being edited, or `nil` for a new one.
@@ -22,6 +23,29 @@ struct VisitForm: View {
     @State private var notes: String
     @State private var isConfirmingDelete = false
     @State private var saved = false
+    /// What the form held when it opened, so it knows whether there is anything to lose.
+    @State private var baseline: Fields
+
+    /// Everything the user can change here, for comparing against `baseline`.
+    struct Fields: Equatable {
+        var name: String
+        var visitType: VisitType
+        var date: FlexibleDate
+        var tripID: UUID?
+        var rating: Int?
+        var notes: String
+    }
+
+    private var fields: Fields {
+        Fields(
+            name: name,
+            visitType: visitType,
+            date: date,
+            tripID: tripID,
+            rating: rating,
+            notes: notes
+        )
+    }
 
     init(
         place: PlaceReference,
@@ -38,6 +62,14 @@ struct VisitForm: View {
         _tripID = State(initialValue: existing?.tripID ?? tripID)
         _rating = State(initialValue: existing?.rating)
         _notes = State(initialValue: existing?.notes ?? "")
+        _baseline = State(initialValue: Fields(
+            name: existing?.place.name ?? place.name,
+            visitType: existing?.visitType ?? .stayed,
+            date: existing?.date ?? .day(.today()),
+            tripID: existing?.tripID ?? tripID,
+            rating: existing?.rating,
+            notes: existing?.notes ?? ""
+        ))
     }
 
     var body: some View {
@@ -97,10 +129,15 @@ struct VisitForm: View {
             if let existing {
                 Section {
                     Button("Log Another Visit Here", systemImage: "arrow.clockwise") {
-                        model.addRequest = AddRequest(
+                        let request = AddRequest(
                             start: .place(existing.place),
                             tripID: existing.tripID
                         )
+                        if let deferredAdd {
+                            deferredAdd(request)
+                        } else {
+                            model.addRequest = request
+                        }
                     }
                     Button("Delete Visit", systemImage: "trash", role: .destructive) {
                         isConfirmingDelete = true
@@ -113,10 +150,10 @@ struct VisitForm: View {
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
                 Button(existing == nil ? "Save" : "Done", systemImage: "checkmark", action: save)
-                    .buttonStyle(.glassProminent)
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
+        .guardingUnsavedEdits(fields != baseline && !saved, discard: onDone)
         .sensoryFeedback(.success, trigger: saved)
         .confirmationDialog(
             "Delete this visit?",
@@ -146,7 +183,9 @@ struct VisitForm: View {
             visit.tripID = tripID
             visit.rating = rating
             visit.notes = notes.trimmedOrNil
-            model.updateVisit(visit)
+            // A failed save keeps the form open with the edits in it; the app-wide
+            // alert says what went wrong.
+            guard model.updateVisit(visit) else { return }
             saved = true
             onDone()
             return

@@ -25,6 +25,13 @@ struct GlobeScreen: View {
     /// `nil` means the replay is off and the whole log is showing.
     @State private var replayIndex: Double?
     @State private var selection: GlobeSelection?
+    /// A tap that would replace a record with unsaved edits, held until the user says
+    /// to discard them.
+    @State private var pendingSelection: GlobeSelection??
+    @State private var inspectorHasEdits = false
+    /// An add request made from inside the selection sheet, opened once it has closed:
+    /// one sheet cannot open over another that is still leaving.
+    @State private var queuedAdd: AddRequest?
 
     private let palette = GlobePalette()
 
@@ -47,7 +54,6 @@ struct GlobeScreen: View {
                 .toolbarTitleDisplayMode(.inline)
                 .toolbar { toolbar }
                 .addToolbarButton()
-                .sheet(item: sheetSelection) { GlobeSelectionSheet(selection: $0) }
             // The globe is dark whatever the appearance, so this screen's chrome
             // follows it: a dark title over a near-black sky is unreadable.
             #if os(iOS)
@@ -56,11 +62,25 @@ struct GlobeScreen: View {
         }
         .environment(\.colorScheme, .dark)
         // Outside the dark override, so the record's form reads in the app's appearance.
+        .sheet(item: sheetSelection, onDismiss: openQueuedAdd) { selection in
+            GlobeSelectionSheet(selection: selection)
+                .environment(\.deferredAdd, DeferredAdd { request in
+                    queuedAdd = request
+                    self.selection = nil
+                })
+        }
         .inspector(isPresented: isInspecting) {
             if let selection {
                 GlobeSelectionInspector(selection: selection) { self.selection = nil }
                     .inspectorColumnWidth(min: 320, ideal: 380, max: 520)
+                    .onPreferenceChange(UnsavedEditsKey.self) { inspectorHasEdits = $0 }
             }
+        }
+        .confirmingDiscard(isPresented: isConfirmingSwitch) {
+            if let pending = pendingSelection {
+                selection = pending
+            }
+            pendingSelection = nil
         }
         .onChange(of: GlobeInputs(
             log: model.log,
@@ -76,8 +96,40 @@ struct GlobeScreen: View {
             }
         }
         // Changing a filter frames what is left. Without this, filtering to one year
-        // while zoomed in on the Atlantic leaves the user looking at empty ocean.
-        .onChange(of: filter) { frameScene(animated: true) }
+        // while zoomed in on the Atlantic leaves the user looking at empty ocean. The
+        // replay starts again too: its stops belong to the old filter.
+        .onChange(of: filter) {
+            replayIndex = nil
+            frameScene(animated: true)
+        }
+    }
+
+    /// Selects what was tapped — unless the inspector holds unsaved edits to something
+    /// else, in which case the user is asked first.
+    private func select(_ new: GlobeSelection?) {
+        if usesInspector, inspectorHasEdits, selection != nil, new?.id != selection?.id {
+            pendingSelection = .some(new)
+        } else {
+            selection = new
+        }
+    }
+
+    private var isConfirmingSwitch: Binding<Bool> {
+        Binding(
+            get: { pendingSelection != nil },
+            set: {
+                if !$0 {
+                    pendingSelection = nil
+                }
+            }
+        )
+    }
+
+    private func openQueuedAdd() {
+        if let queuedAdd {
+            model.addRequest = queuedAdd
+            self.queuedAdd = nil
+        }
     }
 
     // MARK: - The globe itself
@@ -88,7 +140,7 @@ struct GlobeScreen: View {
             camera: $camera,
             selection: selection,
             palette: palette,
-            onSelect: { selection = $0 },
+            onSelect: select,
             onDropPin: { model.addRequest = AddRequest(start: .pin($0)) }
         )
     }
@@ -204,10 +256,20 @@ struct GlobeScreen: View {
 
     /// Turns the globe to the newest thing the replay has reached. The zoom is the
     /// user's, so it is left alone.
+    ///
+    /// The scene is rebuilt first: the scrubber has only just moved, and the scene still
+    /// shows the stop before. The newest is by date, not by the order records were read.
     private func focusCameraIfNeeded() {
-        guard let latest = scene.pins.last(where: { $0.style.isTravel })?.coordinate
-            ?? scene.arcs.last?.path.last
-        else { return }
+        rebuild()
+        let newestPin = scene.pins.filter(\.style.isTravel).max { $0.date < $1.date }
+        let newestArc = scene.arcs.max { $0.date < $1.date }
+        let latest: Coordinate? = switch (newestPin, newestArc) {
+        case let (pin?, arc?): arc.date > pin.date ? arc.path.last : pin.coordinate
+        case let (pin?, nil): pin.coordinate
+        case let (nil, arc?): arc.path.last
+        case (nil, nil): nil
+        }
+        guard let latest else { return }
         withAnimation(.easeInOut(duration: 0.45)) {
             camera = camera.looking(at: latest)
         }
