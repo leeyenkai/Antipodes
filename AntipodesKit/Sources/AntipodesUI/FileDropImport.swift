@@ -174,6 +174,12 @@ extension View {
                 stay as they are.
                 """
             }
+            if additions.unfiled > 0 {
+                text += """
+                 \(Format.ordinalCount(additions.unfiled, "record")) belonged to a trip that \
+                isn't in the file, and will arrive unfiled.
+                """
+            }
             return text
         }
 

@@ -117,6 +117,7 @@ struct FlightImportView: View {
                 LabeledContent("Flights found", value: "\(candidates.count)")
                 let unmatched = candidates.count { $0.status == .needsAirport }
                 let duplicates = candidates.count { $0.status == .duplicate }
+                let cancelled = candidates.count { $0.status == .cancelled }
                 if unmatched > 0 {
                     Label(
                         "\(unmatched) need an airport chosen",
@@ -125,8 +126,18 @@ struct FlightImportView: View {
                     .foregroundStyle(Palette.warning)
                 }
                 if duplicates > 0 {
-                    Label("\(duplicates) already in your log, left out", systemImage: "doc.on.doc")
-                        .foregroundStyle(.secondary)
+                    Label(
+                        "\(Format.ordinalCount(duplicates, "flight")) already logged, left out",
+                        systemImage: "doc.on.doc"
+                    )
+                    .foregroundStyle(.secondary)
+                }
+                if cancelled > 0 {
+                    Label(
+                        "\(Format.ordinalCount(cancelled, "cancelled flight")), left out",
+                        systemImage: "xmark.circle"
+                    )
+                    .foregroundStyle(.secondary)
                 }
                 TripPicker(selection: $tripID)
             }
@@ -152,7 +163,7 @@ struct FlightImportView: View {
             let data = try Data(contentsOf: url)
             await match(data)
         } catch {
-            failure = String(describing: error)
+            failure = error.localizedDescription
         }
     }
 
@@ -165,7 +176,7 @@ struct FlightImportView: View {
             self.candidates = candidates
             failure = nil
         } catch {
-            failure = String(describing: error)
+            failure = error.localizedDescription
         }
     }
 
@@ -176,6 +187,7 @@ struct FlightImportView: View {
         case .destination: candidates[index].destination = place
         }
         candidates[index].include = candidates[index].leg != nil && !candidates[index].isDuplicate
+            && !candidates[index].row.isCancelled
     }
 
     private func importSelected() {
@@ -198,7 +210,7 @@ private struct CandidateRow: View {
         HStack(alignment: .top, spacing: 12) {
             Toggle("Include", isOn: $candidate.include)
                 .labelsHidden()
-                .disabled(candidate.leg == nil)
+                .disabled(candidate.leg == nil || candidate.row.isCancelled)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 6) {
                     endButton(
@@ -221,8 +233,21 @@ private struct CandidateRow: View {
                 .compactMap(\.self).joined(separator: " · "))
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                if candidate.status == .duplicate {
-                    Text("Already logged").font(.caption2).foregroundStyle(.secondary)
+                switch candidate.status {
+                case .duplicate:
+                    Label("Already logged", systemImage: "doc.on.doc")
+                        .font(.caption2).foregroundStyle(.secondary)
+                case .cancelled:
+                    Label("Cancelled — never flown", systemImage: "xmark.circle")
+                        .font(.caption2).foregroundStyle(.secondary)
+                case .needsAirport:
+                    Label(
+                        "Tap the orange code to choose the airport",
+                        systemImage: "exclamationmark.triangle"
+                    )
+                    .font(.caption2).foregroundStyle(Palette.warning)
+                case .ready:
+                    EmptyView()
                 }
                 ForEach(candidate.row.problems, id: \.self) { problem in
                     Text(problem).font(.caption2).foregroundStyle(Palette.warning)

@@ -57,7 +57,8 @@ public enum TravelLogExport {
             "visit_type", "date", "latitude", "longitude",
             "country_code", "country_name", "continent",
             "region_code", "city_name", "rating", "notes", "time_zone", "code",
-        ])
+            "region_name", "city_id", "created_at",
+        ], numericColumns: ["latitude", "longitude", "rating", "city_id"])
         for visit in log.visits.sorted(by: { ($0.date, $0.id.uuidString) < (
             $1.date,
             $1.id.uuidString
@@ -82,6 +83,9 @@ public enum TravelLogExport {
                 visit.notes,
                 place.timeZoneIdentifier,
                 place.code,
+                place.regionName,
+                place.cityID.map(String.init),
+                visit.createdAt.map(isoTimestamp),
             ])
         }
         return writer
@@ -90,7 +94,7 @@ public enum TravelLogExport {
     static func journeysCSV(_ log: TravelLog) -> CSVWriter {
         var writer = CSVWriter(header: [
             "journey_id", "trip_id", "title", "leg_count", "total_km", "date",
-        ])
+        ], numericColumns: ["leg_count", "total_km"])
         for journey in log.journeys.sorted(by: { $0.date < $1.date }) {
             writer.append([
                 journey.id.uuidString,
@@ -104,6 +108,9 @@ public enum TravelLogExport {
         return writer
     }
 
+    // One column per field, in header order; splitting it would split the header from
+    // the values it names.
+    // swiftlint:disable:next function_body_length
     static func legsCSV(_ log: TravelLog) -> CSVWriter {
         var writer = CSVWriter(header: [
             "leg_id", "journey_id", "sequence", "mode", "purpose", "date",
@@ -115,6 +122,11 @@ public enum TravelLogExport {
             "from_time_zone", "to_time_zone", "duration_minutes", "arrival_delay_minutes",
             "missed_connection", "route_id", "route_name", "registration",
             "from_country_code", "to_country_code",
+            "from_place_id", "to_place_id", "distance_override_km", "duration_override_minutes",
+        ], numericColumns: [
+            "sequence", "from_latitude", "from_longitude", "to_latitude", "to_longitude",
+            "distance_km", "rating", "duration_minutes", "arrival_delay_minutes", "route_id",
+            "distance_override_km", "duration_override_minutes",
         ])
         for journey in log.journeys.sorted(by: { $0.date < $1.date }) {
             for (index, leg) in journey.legs.enumerated() {
@@ -127,11 +139,11 @@ public enum TravelLogExport {
                     leg.purpose.rawValue,
                     leg.date.exportString,
                     leg.origin.name,
-                    leg.origin.id.description,
+                    leg.origin.code,
                     leg.origin.coordinate.map { String($0.latitude) },
                     leg.origin.coordinate.map { String($0.longitude) },
                     leg.destination.name,
-                    leg.destination.id.description,
+                    leg.destination.code,
                     leg.destination.coordinate.map { String($0.latitude) },
                     leg.destination.coordinate.map { String($0.longitude) },
                     String(format: "%.3f", kilometres),
@@ -157,6 +169,10 @@ public enum TravelLogExport {
                     leg.registration,
                     leg.origin.countryCode,
                     leg.destination.countryCode,
+                    leg.origin.id.description,
+                    leg.destination.id.description,
+                    leg.distanceKmOverride.map { String(format: "%.3f", $0) },
+                    leg.durationMinutesOverride.map(String.init),
                 ])
             }
         }
@@ -167,7 +183,7 @@ public enum TravelLogExport {
         var writer = CSVWriter(header: [
             "wishlist_id", "place_id", "place_kind", "place_name", "latitude", "longitude",
             "country_code", "route_id", "route_name", "notes", "created_at",
-        ])
+        ], numericColumns: ["latitude", "longitude", "route_id"])
         for item in log.wishlist.sorted(by: { $0.id.uuidString < $1.id.uuidString }) {
             writer.append([
                 item.id.uuidString,
@@ -198,15 +214,52 @@ public enum TravelLogExport {
         return try encoder.encode(Document(log: log))
     }
 
+    /// Why a file could not be restored, in words for the person holding it.
+    public enum ImportFailure: Error, Equatable, LocalizedError {
+        /// The file is not an Antipodes backup, or is damaged.
+        case notABackup
+        /// Made by a newer Antipodes, in a format this version cannot read safely.
+        case newerVersion(Int)
+
+        public var errorDescription: String? {
+            switch self {
+            case .notABackup:
+                "This file isn't an Antipodes backup, or it has been damaged."
+            case .newerVersion:
+                "This backup was made by a newer version of Antipodes. Update the app, "
+                    + "then restore it again."
+            }
+        }
+    }
+
+    /// The format version this build writes, and the newest it reads.
+    public static let currentFormatVersion = 2
+
     public static func importLog(fromJSON data: Data) throws -> TravelLog {
-        try JSONDecoder().decode(Document.self, from: data).log
+        struct Header: Decodable {
+            let formatVersion: Int?
+        }
+        let decoder = JSONDecoder()
+        guard let header = try? decoder.decode(Header.self, from: data) else {
+            throw ImportFailure.notABackup
+        }
+        // A newer file may hold things this build would silently drop; refusing is
+        // better than restoring half of it.
+        if let version = header.formatVersion, version > currentFormatVersion {
+            throw ImportFailure.newerVersion(version)
+        }
+        do {
+            return try decoder.decode(Document.self, from: data).log
+        } catch {
+            throw ImportFailure.notABackup
+        }
     }
 
     struct Document: Codable {
         /// Bumped whenever the shape changes. Version 2 added leg times, routes, the
         /// wishlist, time zones and short codes; every addition is optional on import, so
         /// a version 1 file still reads.
-        var formatVersion = 2
+        var formatVersion = TravelLogExport.currentFormatVersion
         var application = "Antipodes"
         var exportedAt: String
         var log: TravelLog

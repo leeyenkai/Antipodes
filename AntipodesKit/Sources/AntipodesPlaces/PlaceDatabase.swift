@@ -167,6 +167,9 @@ public actor PlaceDatabase {
 
     /// Finds an airport by IATA or ICAO code. Used by the flight importer and by
     /// typing a bare code into search.
+    ///
+    /// The search index carries only the IATA code, so a four-letter ICAO code is looked
+    /// up in the airport table itself. An IATA match wins if a code is somehow both.
     public func airport(code: String) throws -> PlaceSearchResult? {
         let normalised = code.trimmingCharacters(in: .whitespaces).uppercased()
         guard (3 ... 4).contains(normalised.count) else { return nil }
@@ -174,9 +177,14 @@ public actor PlaceDatabase {
             """
             SELECT \(Self.resultColumns)
             FROM place_index AS p
-            WHERE p.kind = 'airport' AND upper(COALESCE(p.code, '')) = ?
+            WHERE p.kind = 'airport' AND (
+                upper(COALESCE(p.code, '')) = ?
+                OR p.ref_id IN (SELECT id FROM airport WHERE upper(COALESCE(icao, '')) = ?)
+            )
+            ORDER BY upper(COALESCE(p.code, '')) = ? DESC
+            LIMIT 1
             """,
-            parameters: [.text(normalised)],
+            parameters: [.text(normalised), .text(normalised), .text(normalised)],
             row: Self.decodeSearchResult(_:)
         )
     }

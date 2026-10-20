@@ -225,6 +225,25 @@ is blocked.
 
 ### Fixed
 
+- **Flight imports** (R-LOG-8, D-16):
+  - Airports given by their four-letter ICAO code (`ENGM`) are matched; they had always
+    needed choosing by hand.
+  - A flight already logged without its number is recognised as the same flight as an
+    imported SK903 on that day and route, and a flight listed twice in one file is
+    imported once.
+  - Flighty's cancelled flights are shown in the review but not imported; a diverted
+    flight lands where it actually landed, with a note.
+  - 12-hour times (`8:35 PM`), times stamped with a zone (`08:35Z`), year-first dates
+    (`2024/06/12`), westbound flights that land two days later, a stated flight time,
+    a quoted field after a space, and UTF-16 "Unicode text" from Excel all read
+    correctly. In a name written all in capitals the code is taken from the end.
+  - Import errors read as sentences, not as Swift type names.
+- **Export** (R-LOG-9): text a spreadsheet would run as a formula is defused with a
+  leading apostrophe; `from_code`/`to_code` hold the airport's own code, with the
+  internal id in new `from_place_id`/`to_place_id` columns; the overrides, a visit's
+  region name, city id and logged date are exported too. A backup from a newer version
+  of the app is refused with a clear message rather than half-restored, and a backup
+  whose trips are missing says how many records will arrive unfiled.
 - **A trip across New Year no longer disappears.** A range such as 28 December to
   3 January had no year, so it fell out of every per-year view, the globe's year filter,
   Year in Review and carbon by year, while the Stats screen filed it under its first

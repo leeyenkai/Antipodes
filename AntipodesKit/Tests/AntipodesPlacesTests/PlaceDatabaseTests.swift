@@ -99,6 +99,11 @@ struct PlaceDatabaseTests {
         #expect(byIATA.coordinate != nil)
 
         #expect(try await database.airport(code: "osl") != nil) // case-insensitive
+
+        // ICAO is not in the search index; it has to come from the airport table.
+        let byICAO = try #require(try await database.airport(code: "ENGM"))
+        #expect(byICAO.id == byIATA.id)
+        #expect(try await database.airport(code: "egll")?.code == "LHR")
         #expect(try await database.airport(code: "ZZZ") == nil)
         #expect(try await database.airport(code: "X") == nil) // too short to be a code
     }

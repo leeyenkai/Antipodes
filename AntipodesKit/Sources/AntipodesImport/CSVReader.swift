@@ -3,13 +3,18 @@ import Foundation
 /// Reads RFC 4180 CSV, the counterpart of the exporter's `CSVWriter`.
 ///
 /// Handles quoted fields with embedded commas, quotes and line breaks, both CRLF and LF
-/// line endings, a UTF-8 byte-order mark, and the semicolon separator some spreadsheet
-/// exports use in locales where the comma is the decimal mark.
+/// line endings, UTF-8 with or without a byte-order mark, UTF-16 with one (what Excel
+/// writes as "Unicode text"), and the semicolon separator some spreadsheet exports use
+/// in locales where the comma is the decimal mark.
 public enum CSVReader {
-    public enum Failure: Error, Equatable, CustomStringConvertible {
+    public enum Failure: Error, Equatable, CustomStringConvertible, LocalizedError {
         case notText
         case empty
         case unterminatedQuote(line: Int)
+
+        public var errorDescription: String? {
+            description
+        }
 
         public var description: String {
             switch self {
@@ -23,7 +28,10 @@ public enum CSVReader {
 
     /// Parses `data` into rows of fields.
     public static func rows(from data: Data) throws -> [[String]] {
-        guard var text = String(data: data, encoding: .utf8)
+        let bytes = [UInt8](data.prefix(2))
+        let isUTF16 = bytes == [0xFF, 0xFE] || bytes == [0xFE, 0xFF]
+        guard var text = (isUTF16 ? String(data: data, encoding: .utf16) : nil)
+            ?? String(data: data, encoding: .utf8)
             ?? String(data: data, encoding: .isoLatin1)
         else { throw Failure.notText }
         if text.hasPrefix("\u{FEFF}") {
@@ -78,7 +86,10 @@ public enum CSVReader {
                 continue
             }
             switch scalar {
-            case "\"" where field.isEmpty:
+            case "\"" where field.allSatisfy(\.isWhitespace):
+                // `a, "b, c"`: the space after the separator is not part of the field,
+                // so the quote still opens it.
+                field = ""
                 inQuotes = true
                 quoteStartLine = line
             case separator:

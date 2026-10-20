@@ -23,9 +23,28 @@ public struct FlightImportRow: Hashable, Sendable, Identifiable {
     public var travelClass: String?
     public var purpose: TripPurpose?
     public var notes: String?
+    /// The times as the file wrote them. Where the file named a zone for one, its
+    /// offset is in `timeOffsets`, and the time is moved to the airport's own clock
+    /// once the airport is known.
     public var times: LegTimes
+    public var timeOffsets = LegTimeOffsets()
+    /// The flight time the file states, if it has a column for it.
+    public var durationMinutes: Int?
+    /// Flighty records cancelled flights; they were never flown, so they are shown in
+    /// the review but not imported.
+    public var isCancelled = false
     /// Anything about the row the user should look at before importing it.
     public var problems: [String]
+}
+
+/// The UTC offset, in minutes, written beside each of a row's times, where one was.
+public struct LegTimeOffsets: Hashable, Sendable {
+    public var scheduledDeparture: Int?
+    public var scheduledArrival: Int?
+    public var actualDeparture: Int?
+    public var actualArrival: Int?
+
+    public init() {}
 }
 
 /// The file formats the importer recognises by their header row (R-LOG-8, Q-8).
@@ -54,9 +73,13 @@ public enum FlightLogFormat: String, Sendable, CaseIterable {
 /// position, so a reordered or extended export still reads. Airports are matched by
 /// code against the bundled database afterwards; nothing here touches the network.
 public enum FlightLogImport {
-    public enum Failure: Error, Equatable, CustomStringConvertible {
+    public enum Failure: Error, Equatable, CustomStringConvertible, LocalizedError {
         case missingColumns([String])
         case noFlights
+
+        public var errorDescription: String? {
+            description
+        }
 
         public var description: String {
             switch self {
@@ -103,6 +126,9 @@ public enum FlightLogImport {
         "gatearrivalscheduled", "landingscheduled", "arrtime", "arrivaltime", "scheduledarrival",
     ]
     static let actualArrivalColumns = ["gatearrivalactual", "landingactual", "actualarrival"]
+    static let durationColumns = ["duration", "flighttime", "flightduration", "blocktime"]
+    static let cancelledColumns = ["canceled", "cancelled"]
+    static let divertedColumns = ["divertedto", "diverted", "diversion"]
 
     public static func detectFormat(_ table: CSVTable) -> FlightLogFormat {
         let names = Set(table.header.map(CSVTable.normalise))
@@ -147,11 +173,23 @@ public enum FlightLogImport {
         var rows: [FlightImportRow] = []
         for (index, raw) in table.rows.enumerated() {
             let originText = table.value(raw, fromColumn) ?? ""
-            let destinationText = table.value(raw, toColumn) ?? ""
-            if originText.isEmpty, destinationText.isEmpty {
+            let scheduledDestination = table.value(raw, toColumn) ?? ""
+            if originText.isEmpty, scheduledDestination.isEmpty {
                 continue
             }
             var problems: [String] = []
+            var notes = table.value(raw, table.column(notesColumns))
+
+            // A diverted flight landed somewhere else, and that is where the user went.
+            let diversion = table.value(raw, table.column(divertedColumns))
+                .flatMap { AirportCode.extract(from: $0) != nil ? $0 : nil }
+            let destinationText = diversion ?? scheduledDestination
+            if diversion != nil {
+                let note = "Diverted; scheduled to \(scheduledDestination)."
+                notes = notes.map { "\($0)\n\(note)" } ?? note
+            }
+            let isCancelled = table.value(raw, table.column(cancelledColumns))
+                .map(Self.isTrue) ?? false
             let dateText = table.value(raw, dateColumn)
             let parsedDate = dateText.flatMap { DateText.parse($0, dayFirst: resolvedDayFirst) }
             if dateText != nil, parsedDate == nil {
@@ -160,13 +198,22 @@ public enum FlightLogImport {
             let day = parsedDate?.day
             let date: FlexibleDate = parsedDate.map { .day($0.day) } ?? .unknown
 
-            func time(_ names: [String]) -> LocalDateTime? {
+            func time(_ names: [String]) -> StampedTime? {
                 table.value(raw, table.column(names)).flatMap { DateText.time(
                     $0,
                     on: day,
                     dayFirst: resolvedDayFirst
                 ) }
             }
+            let departure = time(departureColumns)
+            let arrival = time(arrivalColumns)
+            let actualDeparture = time(actualDepartureColumns)
+            let actualArrival = time(actualArrivalColumns)
+            var offsets = LegTimeOffsets()
+            offsets.scheduledDeparture = departure?.offsetMinutes
+            offsets.scheduledArrival = arrival?.offsetMinutes
+            offsets.actualDeparture = actualDeparture?.offsetMinutes
+            offsets.actualArrival = actualArrival?.offsetMinutes
 
             let originCode = AirportCode.extract(from: originText)
             let destinationCode = AirportCode.extract(from: destinationText)
@@ -195,13 +242,17 @@ public enum FlightLogImport {
                         format: format
                     ),
                     purpose: purpose(table.value(raw, table.column(reasonColumns))),
-                    notes: table.value(raw, table.column(notesColumns)),
+                    notes: notes,
                     times: LegTimes(
-                        scheduledDeparture: time(departureColumns),
-                        scheduledArrival: time(arrivalColumns),
-                        actualDeparture: time(actualDepartureColumns),
-                        actualArrival: time(actualArrivalColumns)
+                        scheduledDeparture: departure?.time,
+                        scheduledArrival: arrival?.time,
+                        actualDeparture: actualDeparture?.time,
+                        actualArrival: actualArrival?.time
                     ),
+                    timeOffsets: offsets,
+                    durationMinutes: table.value(raw, table.column(durationColumns))
+                        .flatMap(DateText.durationMinutes),
+                    isCancelled: isCancelled,
                     problems: problems
                 )
             )
@@ -245,6 +296,11 @@ public enum FlightLogImport {
 
     // swiftlint:enable cyclomatic_complexity
 
+    /// A yes in any of the ways a spreadsheet writes one.
+    static func isTrue(_ text: String) -> Bool {
+        ["true", "yes", "y", "1"].contains(text.trimmingCharacters(in: .whitespaces).lowercased())
+    }
+
     static func purpose(_ text: String?) -> TripPurpose? {
         guard let lowered = text?.lowercased() else { return nil }
         if lowered.hasPrefix("b") || lowered.contains("work") || lowered == "2" {
@@ -254,147 +310,5 @@ public enum FlightLogImport {
             return .leisure
         }
         return nil
-    }
-}
-
-/// A flight read from a file, matched to the bundled airports and ready to review.
-public struct FlightImportCandidate: Hashable, Sendable, Identifiable {
-    public enum Status: Hashable, Sendable {
-        case ready
-        /// One or both airports could not be matched; the user can pick them by hand.
-        case needsAirport
-        /// The same flight is already in the log.
-        case duplicate
-    }
-
-    public var id: Int {
-        row.line
-    }
-
-    public var row: FlightImportRow
-    public var origin: PlaceReference?
-    public var destination: PlaceReference?
-    public var include: Bool
-
-    public var status: Status {
-        if origin == nil || destination == nil {
-            return .needsAirport
-        }
-        return isDuplicate ? .duplicate : .ready
-    }
-
-    public var isDuplicate: Bool
-
-    public init(
-        row: FlightImportRow,
-        origin: PlaceReference?,
-        destination: PlaceReference?,
-        isDuplicate: Bool
-    ) {
-        self.row = row
-        self.origin = origin
-        self.destination = destination
-        self.isDuplicate = isDuplicate
-        include = origin != nil && destination != nil && !isDuplicate
-    }
-
-    /// The leg this candidate becomes, once both airports are known.
-    ///
-    /// Exports that give only a clock time for arrival leave an overnight flight landing
-    /// "before" it took off. Once both airports' zones are known that is detectable, and
-    /// the only reading that makes sense is the next day — no flight lands before it
-    /// leaves, and none takes a day — so the arrival moves forward one day.
-    public var leg: JourneyLeg? {
-        guard var leg = rawLeg else { return nil }
-        if case let .failure(failure) = leg.duration, failure.reason == .arrivesBeforeDeparture {
-            leg.times.scheduledArrival = leg.times.scheduledArrival?.nextDay
-            leg.times.actualArrival = leg.times.actualArrival?.nextDay
-        }
-        return leg
-    }
-
-    private var rawLeg: JourneyLeg? {
-        guard let origin, let destination else { return nil }
-        return JourneyLeg(
-            mode: .flight,
-            origin: origin,
-            destination: destination,
-            date: row.date,
-            purpose: row.purpose ?? .leisure,
-            times: row.times,
-            operatorName: row.airline,
-            serviceNumber: row.flightNumber,
-            vehicle: row.aircraft,
-            registration: row.registration,
-            travelClass: row.travelClass,
-            seat: row.seat,
-            notes: row.notes
-        )
-    }
-}
-
-public extension FlightLogImport {
-    /// Matches every row's airports by code, and flags flights already in the log.
-    ///
-    /// `airport` looks a code up in the bundled database; it is a parameter so this
-    /// stays testable without one.
-    static func match(
-        _ rows: [FlightImportRow],
-        existing: [JourneyLeg],
-        airport: @Sendable (String) async -> PlaceReference?
-    ) async -> [FlightImportCandidate] {
-        var cache: [String: PlaceReference?] = [:]
-        func lookUp(_ code: String?) async -> PlaceReference? {
-            guard let code else { return nil }
-            if let cached = cache[code] {
-                return cached
-            }
-            let found = await airport(code)
-            cache[code] = found
-            return found
-        }
-
-        let fingerprints = Set(existing.filter { $0.mode == .flight }.map(Fingerprint.init))
-        var candidates: [FlightImportCandidate] = []
-        for row in rows {
-            let origin = await lookUp(row.originCode)
-            let destination = await lookUp(row.destinationCode)
-            var duplicate = false
-            if let origin, let destination {
-                let probe = JourneyLeg(
-                    mode: .flight,
-                    origin: origin,
-                    destination: destination,
-                    date: row.date,
-                    serviceNumber: row.flightNumber
-                )
-                duplicate = fingerprints.contains(Fingerprint(probe))
-            }
-            candidates.append(
-                FlightImportCandidate(
-                    row: row,
-                    origin: origin,
-                    destination: destination,
-                    isDuplicate: duplicate
-                )
-            )
-        }
-        return candidates
-    }
-
-    /// What makes two flights the same flight: the day, both ends, and the flight
-    /// number where both sides have one.
-    internal struct Fingerprint: Hashable {
-        let date: FlexibleDate
-        let origin: PlaceID
-        let destination: PlaceID
-        let flightNumber: String?
-
-        init(_ leg: JourneyLeg) {
-            date = leg.date
-            origin = leg.origin.id
-            destination = leg.destination.id
-            flightNumber = leg.serviceNumber?.uppercased().filter { !$0.isWhitespace }
-        }
     }
 }
