@@ -225,6 +225,34 @@ is blocked.
 
 ### Fixed
 
+- **A trip across New Year no longer disappears.** A range such as 28 December to
+  3 January had no year, so it fell out of every per-year view, the globe's year filter,
+  Year in Review and carbon by year, while the Stats screen filed it under its first
+  year. It now belongs to the year it began everywhere (D-23).
+- **Capitals reached through a landmark count.** Logging only the Eiffel Tower counted
+  Paris as a city but not as a capital, because Paris's facts were never fetched.
+- **An airport no longer implies its city** (R-MODEL-6). A layover at Heathrow, with
+  layovers counted, had ticked off London, "European capitals" and the capitals badges.
+- Year in Review no longer calls a country new when an undated visit there might have
+  come first; it says such countries may be new instead.
+- Riding part of a catalogue route — Oslo to Finse on the Bergen Line — no longer
+  completes the route in collections and the wishlist, or claims its highest point.
+- Badges and collections show an earned or first-visited day only when the records
+  behind it are dated to the day, instead of 1 January for a visit dated "2019".
+- The "Round the world" badge and "× round the Earth" now use the same circumference
+  (the Equator's 40,075 km), so 1.00× and the badge arrive together.
+- A flight with no distance still counts as a flight; it is left out of the kilometres
+  and the average only. The trips badge ignores trips with nothing in them.
+- More stats say what they left out (R-CALC-5): places per year, longest since a
+  country, the busiest travel day, rail distance, the highest and lowest places, and
+  days away, which now also follows the visit-type rule and says how many visits were
+  at home. "% of the world" says when the country list could not be read.
+- A dropped pin in Chukotka or Fiji's eastern islands resolves to its country: rings
+  closed along the antimeridian are no longer turned inside out.
+- A selected wishlist pin stays selected when the globe redraws.
+- Date spans follow the device's day–month order.
+- The antipodes badge finds the closest pair with a dot product per pair instead of a
+  haversine — the same answer, a fraction of the work on a long log.
 - **A record held twice is counted once.** CloudKit cannot enforce a unique identity,
   so a backup restored on two devices before they synced left every record twice:
   totals doubled and *All records* crashed. The log is now read one record per

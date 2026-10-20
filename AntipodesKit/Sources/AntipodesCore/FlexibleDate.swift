@@ -61,10 +61,15 @@ public enum FlexibleDate: Hashable, Sendable, Codable {
 
     // MARK: - Derived components
 
+    /// The year a record is filed under, in every per-year statistic, filter and
+    /// Year in Review alike, so each record counts in exactly one year (D-23).
+    ///
+    /// A range that crosses New Year belongs to the year it began, as a trip does: a
+    /// 28 December to 3 January holiday is that year's holiday.
     public var year: Int? {
         switch self {
         case let .day(date): date.year
-        case let .range(start, end): start.year == end.year ? start.year : nil
+        case let .range(start, _): start.year
         case let .month(year, _): year
         case let .year(year): year
         case .unknown: nil
@@ -80,6 +85,30 @@ public enum FlexibleDate: Hashable, Sendable, Codable {
         case let .day(date): date.month
         case let .range(start, end):
             (start.year == end.year && start.month == end.month) ? start.month : nil
+        case let .month(_, month): month
+        case .year, .unknown: nil
+        }
+    }
+
+    /// The first day, where the date is known to the day — a day, or the start of a
+    /// range. `nil` for a month, a year or unknown.
+    ///
+    /// For anything that claims "on this day": a badge earned on 1 January 2019 because
+    /// a visit was dated only "2019" would be a made-up date.
+    public var exactStartDay: CalendarDate? {
+        switch self {
+        case let .day(date): date
+        case let .range(start, _): start
+        case .month, .year, .unknown: nil
+        }
+    }
+
+    /// The month a record is filed under for seasonality: the month itself, or the
+    /// month a range began in (D-23). `nil` for a year or unknown.
+    public var startMonth: Int? {
+        switch self {
+        case let .day(date): date.month
+        case let .range(start, _): start.month
         case let .month(_, month): month
         case .year, .unknown: nil
         }

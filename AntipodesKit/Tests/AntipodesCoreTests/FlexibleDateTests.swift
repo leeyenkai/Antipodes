@@ -132,7 +132,38 @@ struct FlexibleDateTests {
             #require(CalendarDate(iso: "2024-12-28")),
             #require(CalendarDate(iso: "2025-01-03"))
         )
-        #expect(acrossYears.year == nil)
+        #expect(acrossYears.month == nil)
+        #expect(acrossYears.startMonth == 12)
+    }
+
+    /// D-23: a record is filed under one year, so a New Year holiday is neither
+    /// dropped from every year nor counted in two. It belongs to the year it began.
+    @Test("A range across New Year is filed under the year it began")
+    func acrossNewYear() throws {
+        let holiday = try FlexibleDate.span(
+            #require(CalendarDate(iso: "2024-12-28")),
+            #require(CalendarDate(iso: "2025-01-03"))
+        )
+        #expect(holiday.year == 2024)
+        #expect(holiday.exactStartDay?.iso == "2024-12-28")
+
+        let place = PlaceReference(id: .custom(UUID()), kind: .custom, name: "Lapland")
+        let log = TravelLog(visits: [Visit(place: place, date: holiday)])
+        #expect(log.restricted(toYear: 2024).visits.count == 1)
+        #expect(log.restricted(toYear: 2025).visits.isEmpty)
+    }
+
+    /// A badge "earned on 1 January 2019" because a visit was dated only "2019" would
+    /// be a date nobody recorded.
+    @Test("Only a day or a range has an exact start day")
+    func exactStartDay() throws {
+        #expect(try FlexibleDate.day(#require(CalendarDate(iso: "2019-06-12"))).exactStartDay?.iso
+            == "2019-06-12")
+        #expect(FlexibleDate.month(year: 2019, month: 6).exactStartDay == nil)
+        #expect(FlexibleDate.year(2019).exactStartDay == nil)
+        #expect(FlexibleDate.unknown.exactStartDay == nil)
+        #expect(FlexibleDate.month(year: 2019, month: 6).startMonth == 6)
+        #expect(FlexibleDate.year(2019).startMonth == nil)
     }
 
     /// A month is not a claim to have been there all month, so it has no known day

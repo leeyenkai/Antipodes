@@ -123,7 +123,8 @@ public enum StatisticsEngine {
         let collections = CollectionProgress.compute(
             collections: context.collections,
             log: log,
-            rules: rules
+            rules: rules,
+            routes: context.routes
         )
         return TravelStatistics(
             coverage: CoverageStatistics.compute(for: log, rules: rules, gazetteer: gazetteer),
@@ -157,7 +158,7 @@ public enum StatisticsEngine {
                 factors: context.emissionFactors
             ),
             collections: collections,
-            wishlist: WishlistStatus.compute(log: log, rules: rules),
+            wishlist: WishlistStatus.compute(log: log, rules: rules, routes: context.routes),
             achievements: AchievementEngine.evaluate(
                 context.achievements,
                 log: log,

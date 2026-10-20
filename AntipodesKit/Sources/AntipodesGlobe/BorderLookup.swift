@@ -63,15 +63,25 @@ public extension CountryBorders {
         return best?.code
     }
 
+    /// Natural Earth closes a ring that reaches the antimeridian along longitude +180,
+    /// but `Coordinate` keeps longitudes in [-180, 180) and so stores that edge as -180,
+    /// on the far side of the map. A ring otherwise in the eastern hemisphere takes its
+    /// -180 vertices back to +180 here, or Chukotka and Fiji's eastern islands would
+    /// resolve to no country at all.
     static func ring(_ points: [Coordinate], contains coordinate: Coordinate) -> Bool {
         guard points.count > 2 else { return false }
         let x = coordinate.longitude
         let y = coordinate.latitude
+        let isEastern = points.contains { $0.longitude > 0 }
+            && points.contains { $0.longitude == -180 }
+        func longitude(of point: Coordinate) -> Double {
+            isEastern && point.longitude == -180 ? 180 : point.longitude
+        }
         var inside = false
         var previous = points[points.count - 1]
         for current in points {
-            let (xi, yi) = (current.longitude, current.latitude)
-            let (xj, yj) = (previous.longitude, previous.latitude)
+            let (xi, yi) = (longitude(of: current), current.latitude)
+            let (xj, yj) = (longitude(of: previous), previous.latitude)
             if (yi > y) != (yj > y), x < (xj - xi) * (y - yi) / (yj - yi) + xi {
                 inside.toggle()
             }

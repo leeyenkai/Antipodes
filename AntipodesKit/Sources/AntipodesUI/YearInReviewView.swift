@@ -57,6 +57,8 @@ struct YearInReviewView: View {
     private func countriesLine(_ review: YearInReview) -> String {
         let noun = review.countries.count == 1 ? "country" : "countries"
         switch review.newCountries.count {
+        case 0 where !review.possiblyNewCountries.isEmpty:
+            return "\(noun) this year — some may be new, if your undated visits came later"
         case 0: return "\(noun) this year, all of them old friends"
         case review.countries.count: return review.countries.count == 1
             ? "\(noun), and a first visit" : "\(noun), every one of them new to you"
@@ -97,7 +99,9 @@ struct YearInReviewView: View {
             eyebrow: "Distance",
             value: Format.distance(review.kilometres, system),
             title: """
-            \(Format.multiple(review.kilometres / GreatCircle.earthCircumferenceKm)) round the Earth
+            \(Format
+                .multiple(review.kilometres / GreatCircle
+                    .equatorialCircumferenceKm)) round the Earth
             """,
             detail: [
                 review.flights > 0 ? Format.ordinalCount(review.flights, "flight") : nil,

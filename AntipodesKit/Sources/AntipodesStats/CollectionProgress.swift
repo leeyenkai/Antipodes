@@ -9,7 +9,7 @@ public struct CollectionMemberStatus: Hashable, Sendable, Identifiable {
 
     public let place: PlaceReference
     public let isVisited: Bool
-    /// The earliest known day it was visited, where known.
+    /// The earliest day it was visited, where that is known to the day.
     public let firstVisited: CalendarDate?
     /// Whether it is on the user's wishlist.
     public let isWishlisted: Bool
@@ -52,14 +52,15 @@ public struct CollectionProgress: Hashable, Sendable, Identifiable {
     ///
     /// A member is ticked off by any visit that counts towards coverage and covers it —
     /// a landmark inside a member city ticks the city off (R-MODEL-6) — or, for a route,
-    /// by a leg that rode it. Passing through Oslo on a train does not tick off Oslo,
-    /// for the same reason it does not count towards coverage (R-CALC-1).
+    /// by a leg that rode all of it. Passing through Oslo on a train does not tick off
+    /// Oslo, for the same reason it does not count towards coverage (R-CALC-1).
     public static func compute(
         collections: [CollectionDefinition],
         log: TravelLog,
-        rules: CountingRules = .default
+        rules: CountingRules = .default,
+        routes: [RouteInfo] = []
     ) -> [CollectionProgress] {
-        let matcher = VisitMatcher(log: log, rules: rules)
+        let matcher = VisitMatcher(log: log, rules: rules, routes: routes)
         let wishlisted = Set(log.wishlist.compactMap { $0.place?.id })
         let wishlistedRoutes = Set(log.wishlist.compactMap(\.routeID))
 
@@ -100,9 +101,10 @@ public struct WishlistStatus: Hashable, Sendable, Identifiable {
     /// Nothing is stored: delete the visit and the entry is open again.
     public static func compute(
         log: TravelLog,
-        rules: CountingRules = .default
+        rules: CountingRules = .default,
+        routes: [RouteInfo] = []
     ) -> [WishlistStatus] {
-        let matcher = VisitMatcher(log: log, rules: rules)
+        let matcher = VisitMatcher(log: log, rules: rules, routes: routes)
         return log.wishlist.map { item in
             let match: VisitMatcher.Match =
                 if let place = item.place {
@@ -130,10 +132,15 @@ struct VisitMatcher {
 
     let visits: [Visit]
     let legs: [JourneyLeg]
+    let routes: [Int64: RouteInfo]
 
-    init(log: TravelLog, rules: CountingRules) {
+    init(log: TravelLog, rules: CountingRules, routes: [RouteInfo] = []) {
         visits = log.visits.filter { rules.countsTowardsCoverage($0.visitType) }
         legs = log.allLegs
+        self.routes = Dictionary(
+            routes.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
     }
 
     func firstMatch(for target: PlaceReference) -> Match {
@@ -143,15 +150,19 @@ struct VisitMatcher {
         let matching = visits.filter { $0.place.covers(target) }
         return Match(
             isVisited: !matching.isEmpty,
-            firstDay: matching.compactMap(\.date.sortDay).min()
+            firstDay: matching.compactMap(\.date.exactStartDay).min()
         )
     }
 
+    /// The first whole ride of a route. A route missing from the catalogue cannot say
+    /// where its ends are, so any ride of it counts.
     func firstRide(of routeID: Int64) -> Match {
-        let matching = legs.filter { $0.routeID == routeID }
+        let matching = legs.filter { leg in
+            routes[routeID].map { $0.isRiddenInFull(by: leg) } ?? (leg.routeID == routeID)
+        }
         return Match(
             isVisited: !matching.isEmpty,
-            firstDay: matching.compactMap(\.date.sortDay).min()
+            firstDay: matching.compactMap(\.date.exactStartDay).min()
         )
     }
 }

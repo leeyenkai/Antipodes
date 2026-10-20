@@ -96,7 +96,7 @@ public enum CountryList: String, Sendable, Codable, CaseIterable, Identifiable {
         switch self {
         case .unMembers: 193
         case .unMembersAndObservers: 195
-        case .allCountriesAndTerritories: 249
+        case .allCountriesAndTerritories: 252
         }
     }
 }

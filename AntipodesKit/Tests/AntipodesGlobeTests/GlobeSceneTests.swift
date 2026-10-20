@@ -422,8 +422,8 @@ struct GlobeSceneTests {
 
     // MARK: - The wishlist seam
 
-    /// The wishlist is a `[V1]` feature that does not exist yet. What exists is the
-    /// seam: pass places in and they are styled as wishlist pins rather than visits.
+    /// Wishlist places are passed in and styled as wishlist pins rather than visits
+    /// (R-GLOBE-4).
     @Test("Wishlist places are pinned in their own style and never shade a country")
     func wishlistPinsAreDistinct() throws {
         let scene = GlobeSceneBuilder.build(
@@ -438,5 +438,21 @@ struct GlobeSceneTests {
         #expect(wishlist.visitType == nil)
         // Wanting to go to Japan does not mean having been there.
         #expect(scene.shadedCountryCodes == ["NO"])
+    }
+
+    /// A selected wishlist pin must stay selected when the scene is rebuilt after an
+    /// unrelated edit, so its identity cannot be a fresh UUID each time.
+    @Test("A wishlist pin keeps its identity across rebuilds, and differs between places")
+    func wishlistPinIdentityIsStable() {
+        func wishlistPinIDs() -> [UUID] {
+            GlobeSceneBuilder.build(
+                log: .empty,
+                rules: .default,
+                wishlist: [GlobeFixtures.tokyo, GlobeFixtures.oslo]
+            ).pins.map(\.id)
+        }
+        let first = wishlistPinIDs()
+        #expect(first == wishlistPinIDs())
+        #expect(Set(first).count == 2)
     }
 }

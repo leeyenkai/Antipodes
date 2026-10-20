@@ -24,6 +24,8 @@ public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable
     case noEmissionFactor
     /// Not in a trip, for a stat that is about trips.
     case notInATrip
+    /// At the user's home, for a stat about being away from it.
+    case atHome
 
     public var explanation: String {
         switch self {
@@ -38,6 +40,7 @@ public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable
         case .timesUnavailable: "no usable times"
         case .noEmissionFactor: "no carbon factor for that mode"
         case .notInATrip: "not in a trip"
+        case .atHome: "at home"
         }
     }
 

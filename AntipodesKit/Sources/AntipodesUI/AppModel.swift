@@ -188,21 +188,12 @@ public final class AppModel {
         Task { await refreshFacts() }
     }
 
-    /// Fetches facts for any logged place the cache does not have yet.
+    /// Fetches facts for any logged place the cache does not have yet, including the
+    /// cities a landmark implies, so a capital reached only through its landmarks still
+    /// counts as one.
     private func refreshFacts() async {
         guard let places else { return }
-        let ids = Set(log.visits.map(\.place.id) + log.allLegs.flatMap { [
-            $0.origin.id,
-            $0.destination.id,
-        ] })
-        .filter { placeFacts[$0] == nil }
-        .filter {
-            if case .database = $0 {
-                true
-            } else {
-                false
-            }
-        }
+        let ids = log.referencedDatabasePlaceIDs.filter { placeFacts[$0] == nil }
         guard !ids.isEmpty else { return }
         if let found = try? await places.facts(for: ids) {
             placeFacts.merge(found) { _, new in new }

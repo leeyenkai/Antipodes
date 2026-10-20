@@ -126,21 +126,32 @@ enum Format {
         date.date()?.formatted(gmt(.dateTime.day().month(.abbreviated))) ?? date.iso
     }
 
+    /// A span of days in the reader's own order — "12–20 Jun 2024" or "Jun 12 – 20,
+    /// 2024" — sharing the month and year where they are the same.
     static func span(_ start: CalendarDate, _ end: CalendarDate) -> String {
-        if start == end {
+        guard start < end, let from = start.date(), let to = end.date() else {
             return day(start)
         }
-        if start.year == end.year {
-            if start.month == end.month {
-                return "\(start.day)–\(end.day) \(shortMonthName(start.month)) \(start.year)"
-            }
-            return "\(shortDay(start)) – \(shortDay(end)) \(start.year)"
-        }
-        return "\(day(start)) – \(day(end))"
+        return (from ..< to).formatted(
+            Date.IntervalFormatStyle(date: .abbreviated, time: .omitted, timeZone: .gmt)
+        )
     }
 
     static func ordinalCount(_ count: Int, _ singular: String, _ plural: String? = nil) -> String {
         "\(count.formatted()) \(count == 1 ? singular : plural ?? singular + "s")"
+    }
+
+    /// How long ago, in the largest unit that is at least one: "3 years", "5 months",
+    /// "12 days". Never "0 years".
+    static func elapsed(days: Int) -> String {
+        let days = max(0, days)
+        if days >= 365 {
+            return ordinalCount(days / 365, "year")
+        }
+        if days >= 31 {
+            return ordinalCount(days / 30, "month")
+        }
+        return ordinalCount(days, "day")
     }
 }
 

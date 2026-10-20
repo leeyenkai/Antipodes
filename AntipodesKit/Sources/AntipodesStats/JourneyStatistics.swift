@@ -11,6 +11,8 @@ public struct JourneyStatistics: Hashable, Sendable {
 
     /// The day with the most legs on it.
     public let busiestDay: BusiestDay?
+    /// Legs the busiest day could place: it needs the exact day.
+    public let dayInput: StatInputSummary
     /// The journey that used the most different modes.
     public let mostVariedJourney: Journey?
     /// Countries touched by the ends of surface legs.
@@ -36,6 +38,7 @@ public struct JourneyStatistics: Hashable, Sendable {
         var minutes: [TravelMode: Int] = [:]
         var durationInput = StatInputSummary()
         var legsByDay: [CalendarDate: Int] = [:]
+        var dayInput = StatInputSummary()
         var overland: Set<String> = []
         var borders = 0
 
@@ -51,7 +54,10 @@ public struct JourneyStatistics: Hashable, Sendable {
                 durationInput.exclude(.timesUnavailable)
             }
             if case let .day(day) = leg.date {
+                dayInput.include()
                 legsByDay[day, default: 0] += 1
+            } else {
+                dayInput.exclude(leg.date.isKnown ? .datePrecisionTooLow : .unknownDate)
             }
             if leg.mode != .flight {
                 for code in [leg.origin.countryCode, leg.destination.countryCode]
@@ -76,6 +82,7 @@ public struct JourneyStatistics: Hashable, Sendable {
             minutesByMode: minutes,
             durationInput: durationInput,
             busiestDay: busiest,
+            dayInput: dayInput,
             mostVariedJourney: counted
                 .filter { $0.modes.count > 1 }
                 .max { ($0.modes.count, $0.legs.count) < ($1.modes.count, $1.legs.count) },
@@ -105,6 +112,8 @@ public struct BusiestDay: Hashable, Sendable {
 public struct RailStatistics: Hashable, Sendable {
     public let legCount: Int
     public let kilometres: Double
+    /// Rail legs the kilometres could use: a leg with no distance adds nothing.
+    public let kilometreInput: StatInputSummary
     public let operators: Set<String>
     public let classes: Set<String>
     public let trainTypes: Set<String>
@@ -115,7 +124,8 @@ public struct RailStatistics: Hashable, Sendable {
     public let overnightLegs: Int
     public let countries: Set<String>
     public let bordersCrossed: Int
-    /// The highest point of any catalogue route ridden, where the catalogue has one.
+    /// The highest point of any catalogue route ridden in full, where the catalogue has
+    /// one. A section of a route may not pass its summit.
     public let highestPointM: Double?
     public let input: StatInputSummary
 
@@ -138,7 +148,11 @@ public struct RailStatistics: Hashable, Sendable {
         var borders = 0
         var highest: Double?
         var input = StatInputSummary()
-        let routesByID = Dictionary(uniqueKeysWithValues: routes.map { ($0.id, $0) })
+        var kilometreInput = StatInputSummary()
+        let routesByID = Dictionary(
+            routes.map { ($0.id, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
 
         for leg in log.allLegs where leg.mode == .rail {
             guard rules.countsInStats(leg.purpose) else {
@@ -148,7 +162,10 @@ public struct RailStatistics: Hashable, Sendable {
             input.include()
             legCount += 1
             if leg.distanceSource != .unavailable {
+                kilometreInput.include()
                 kilometres += leg.distanceKm
+            } else {
+                kilometreInput.exclude(.distanceUnavailable)
             }
             if let value = leg.operatorName?.nonEmpty {
                 operators.insert(value)
@@ -163,6 +180,7 @@ public struct RailStatistics: Hashable, Sendable {
                 named.insert(name)
             }
             if let route = leg.routeID.flatMap({ routesByID[$0] }),
+               route.isRiddenInFull(by: leg),
                let point = route.highestPointM {
                 highest = max(highest ?? point, point)
             }
@@ -182,6 +200,7 @@ public struct RailStatistics: Hashable, Sendable {
         return RailStatistics(
             legCount: legCount,
             kilometres: kilometres,
+            kilometreInput: kilometreInput,
             operators: operators,
             classes: classes,
             trainTypes: types,

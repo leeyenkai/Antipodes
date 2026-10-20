@@ -39,6 +39,10 @@ public struct CoverageStatistics: Hashable, Sendable {
     /// How many countries "% of the world" measures against (Q-4).
     public let worldCountryCount: Int
     public let countryList: CountryList
+    /// Whether the chosen list could be read from the place database. When it could
+    /// not, every visited code is counted and "% of the world" is only approximate,
+    /// which the screen must say.
+    public let isCountryListAvailable: Bool
 
     public let input: StatInputSummary
 
@@ -217,6 +221,7 @@ public struct CoverageStatistics: Hashable, Sendable {
             firstDayByCountry: firstDayByCountry,
             worldCountryCount: rules.worldCountryCount,
             countryList: rules.countryList,
+            isCountryListAvailable: !gazetteer.countries.isEmpty,
             input: input
         )
     }
@@ -241,6 +246,9 @@ public struct ExtremePoints: Hashable, Sendable {
     public let highest: ElevatedVisit?
     public let lowest: ElevatedVisit?
     public let input: StatInputSummary
+    /// Located visits the highest and lowest could use: the database has no elevation
+    /// for countries, regions or custom pins, and not for every city.
+    public let elevationInput: StatInputSummary
 
     /// The point on exactly the other side of the globe from home — the stat the app is
     /// named after.
@@ -286,8 +294,14 @@ public struct ExtremePoints: Hashable, Sendable {
                 .max { $0.1 < $1.1 }
         }
 
+        var elevationInput = StatInputSummary()
         let elevations = located.compactMap { visit, _ -> (Visit, Double)? in
-            gazetteer.facts(for: visit.place.id)?.elevationM.map { (visit, $0) }
+            guard let elevation = gazetteer.facts(for: visit.place.id)?.elevationM else {
+                elevationInput.exclude(.attributeUnknown)
+                return nil
+            }
+            elevationInput.include()
+            return (visit, elevation)
         }
 
         return ExtremePoints(
@@ -302,6 +316,7 @@ public struct ExtremePoints: Hashable, Sendable {
             lowest: elevations.min { $0.1 < $1.1 }
                 .map { ElevatedVisit(visit: $0.0, elevationM: $0.1) },
             input: input,
+            elevationInput: elevationInput,
             antipodeOfHome: antipode,
             nearestToAntipodeOfHome: nearest?.0,
             nearestToAntipodeKm: nearest?.1,

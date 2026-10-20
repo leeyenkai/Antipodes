@@ -258,6 +258,30 @@ public struct TravelLog: Hashable, Sendable {
         trips.isEmpty && visits.isEmpty && journeys.isEmpty
     }
 
+    /// Every bundled place the log refers to — visited, at either end of a leg, or
+    /// implied as a landmark's city (R-MODEL-6) — which is what the attribute and
+    /// capital statistics need facts for. Logging only the Eiffel Tower still makes
+    /// Paris a capital visited.
+    public var referencedDatabasePlaceIDs: Set<PlaceID> {
+        var ids: Set<PlaceID> = []
+        func add(_ place: PlaceReference) {
+            if case .database = place.id {
+                ids.insert(place.id)
+            }
+            if let city = place.impliedCityID {
+                ids.insert(.database(.city, city))
+            }
+        }
+        for visit in visits {
+            add(visit.place)
+        }
+        for leg in allLegs {
+            add(leg.origin)
+            add(leg.destination)
+        }
+        return ids
+    }
+
     public func visits(inTrip tripID: UUID) -> [Visit] {
         visits.filter { $0.tripID == tripID }
     }
@@ -279,8 +303,8 @@ public struct TravelLog: Hashable, Sendable {
         )
     }
 
-    /// The part of the log dated within one calendar year. A visit or leg counts for a
-    /// year when its date falls entirely inside it; undated records belong to no year.
+    /// The part of the log filed under one calendar year (D-23): a range belongs to the
+    /// year it began. Undated records belong to no year.
     public func restricted(toYear year: Int) -> TravelLog {
         TravelLog(
             trips: trips,

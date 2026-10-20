@@ -51,10 +51,12 @@ public struct OnThisDayEntry: Hashable, Sendable, Identifiable {
 /// for seasonality. A stat that needs a date skips undated records and says so
 /// (R-DATE-2); one that needs a day also skips month-only and year-only dates.
 public struct TimeStatistics: Hashable, Sendable {
-    /// Counted visits per year.
+    /// Counted visits per year, by the year each is filed under (D-23).
     public let visitsByYear: [Int: Int]
     /// Countries visited for the first time, per year.
     public let newCountriesByYear: [Int: [String]]
+    /// What the per-year counts could use: undated and uncounted visits are left out.
+    public let yearInput: StatInputSummary
     /// Distinct days with a dated visit or leg away from home, per year.
     public let daysAwayByYear: [Int: Int]
     public let daysAwayInput: StatInputSummary
@@ -75,6 +77,7 @@ public struct TimeStatistics: Hashable, Sendable {
 
     /// Countries by how long it has been, longest first.
     public let countryGaps: [CountryGap]
+    public let gapInput: StatInputSummary
 
     public let onThisDay: [OnThisDayEntry]
     public let today: CalendarDate
@@ -98,12 +101,21 @@ public struct TimeStatistics: Hashable, Sendable {
         today: CalendarDate
     ) -> TimeStatistics {
         let counted = log.visits.filter { rules.countsTowardsCoverage($0.visitType) }
+        let uncounted = log.visits.count - counted.count
 
         // Visits per year, and the year each country was first seen.
         var visitsByYear: [Int: Int] = [:]
         var firstYearByCountry: [String: Int] = [:]
+        var yearInput = StatInputSummary()
+        for _ in 0 ..< uncounted {
+            yearInput.exclude(.visitTypeNotCounted)
+        }
         for visit in counted {
-            guard let year = visit.date.sortDay?.year else { continue }
+            guard let year = visit.date.year else {
+                yearInput.exclude(.unknownDate)
+                continue
+            }
+            yearInput.include()
             visitsByYear[year, default: 0] += 1
             if let code = visit.place.countryCode {
                 firstYearByCountry[code] = min(firstYearByCountry[code] ?? year, year)
@@ -120,10 +132,12 @@ public struct TimeStatistics: Hashable, Sendable {
         let (daysAway, daysInput) = daysAway(log: log, rules: rules, home: home)
         let (tripsByYear, spans, tripInput) = trips(log: log)
         let (byMonth, monthInput, busiest) = seasonality(counted)
+        let (gaps, gapInput) = countryGaps(counted, today: today)
 
         return TimeStatistics(
             visitsByYear: visitsByYear,
             newCountriesByYear: newCountriesByYear,
+            yearInput: yearInput,
             daysAwayByYear: daysAway,
             daysAwayInput: daysInput,
             tripsByYear: tripsByYear,
@@ -133,7 +147,8 @@ public struct TimeStatistics: Hashable, Sendable {
             monthInput: monthInput,
             busiestMonth: busiest,
             repeatVisits: repeatVisits(counted),
-            countryGaps: countryGaps(counted, today: today),
+            countryGaps: gaps,
+            gapInput: gapInput,
             onThisDay: onThisDay(log: log, today: today),
             today: today
         )
@@ -141,9 +156,9 @@ public struct TimeStatistics: Hashable, Sendable {
 
     // MARK: - Parts
 
-    /// Distinct days away per year. A day is away if a visit outside the home city
-    /// covers it, or a leg was travelled on it. Each day counts once however much
-    /// happened on it.
+    /// Distinct days away per year. A day is away if a counted visit outside the home
+    /// city covers it, or a leg was travelled on it. Each day counts once however much
+    /// happened on it. A layover still puts its day in, through the flight's leg.
     static func daysAway(
         log: TravelLog,
         rules: CountingRules,
@@ -174,7 +189,12 @@ public struct TimeStatistics: Hashable, Sendable {
         }
 
         for visit in log.visits {
+            guard rules.countsTowardsCoverage(visit.visitType) else {
+                input.exclude(.visitTypeNotCounted)
+                continue
+            }
             if let home, visit.place.covers(home) || home.covers(visit.place) {
+                input.exclude(.atHome)
                 continue
             }
             guard visit.date.isKnown else {
@@ -243,7 +263,9 @@ public struct TimeStatistics: Hashable, Sendable {
         var byYearMonth: [YearMonth: Int] = [:]
         var input = StatInputSummary()
         for visit in visits {
-            guard let month = visit.date.month, let year = visit.date.year else {
+            // A range is filed under the month it began, as it is under the year it
+            // began (D-23); only a bare year has no month at all.
+            guard let month = visit.date.startMonth, let year = visit.date.year else {
                 input.exclude(visit.date.isKnown ? .datePrecisionTooLow : .unknownDate)
                 continue
             }
@@ -269,16 +291,27 @@ public struct TimeStatistics: Hashable, Sendable {
             .sorted { ($0.visitCount, $1.place.name) > ($1.visitCount, $0.place.name) }
     }
 
-    static func countryGaps(_ visits: [Visit], today: CalendarDate) -> [CountryGap] {
+    static func countryGaps(
+        _ visits: [Visit],
+        today: CalendarDate
+    ) -> ([CountryGap], StatInputSummary) {
         var last: [String: (CalendarDate, String)] = [:]
+        var input = StatInputSummary()
         for visit in visits {
-            guard let code = visit.place.countryCode,
-                  let day = visit.date.latestDay else { continue }
+            guard let code = visit.place.countryCode else {
+                input.exclude(.missingCountry)
+                continue
+            }
+            guard let day = visit.date.latestDay else {
+                input.exclude(.unknownDate)
+                continue
+            }
+            input.include()
             if last[code].map({ day > $0.0 }) ?? true {
                 last[code] = (day, visit.place.countryName ?? code)
             }
         }
-        return last
+        let gaps = last
             .map { code, entry in
                 CountryGap(
                     countryCode: code,
@@ -288,6 +321,7 @@ public struct TimeStatistics: Hashable, Sendable {
                 )
             }
             .sorted { ($0.daysSince, $1.countryName) > ($1.daysSince, $0.countryName) }
+        return (gaps, input)
     }
 
     /// Visits and legs on today's month and day in an earlier year. A range counts when

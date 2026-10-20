@@ -119,6 +119,9 @@ struct PatternsSection: View {
                         values: time.visitsByYear.mapValues(Double.init),
                         tint: Palette.visited
                     )
+                    if let caveat = time.yearInput.caveat(counting: "visits") {
+                        CaveatLabel(text: caveat)
+                    }
                 }
                 .card()
             }
@@ -182,10 +185,11 @@ struct PatternsSection: View {
                         "Longest since",
                         "\(Format.flag(gap.countryCode)) \(gap.countryName)",
                         symbol: "hourglass.bottomhalf.filled",
-                        detail: """
-                        \(Format.ordinalCount(gap.daysSince / 365, "year")) — last there \
-                        \(Format.day(gap.lastVisited))
-                        """,
+                        detail: [
+                            "\(Format.elapsed(days: gap.daysSince)) — last there "
+                                + Format.day(gap.lastVisited),
+                            time.gapInput.caveat(counting: "visits"),
+                        ].compactMap(\.self).joined(separator: "\n"),
                         route: .gaps
                     )
                 }

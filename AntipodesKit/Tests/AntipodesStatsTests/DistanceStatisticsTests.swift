@@ -22,14 +22,15 @@ struct DistanceStatisticsTests {
         #expect(distance.input.isComplete)
     }
 
-    /// 40,075 km is one circumference, so 80,150 km is 2.0 times round.
-    @Test("Times round the Earth divides by the polar circumference")
+    /// Once round the Equator is 40,075.017 km (WGS-84), the same figure the "Round the
+    /// world" badge is earned at, so 80,150.034 km is exactly twice round.
+    @Test("Times round the Earth divides by the equatorial circumference")
     func timesRoundTheEarth() {
         let leg = JourneyLeg(
             mode: .flight,
             origin: Fixtures.osl,
             destination: Fixtures.jfk,
-            distanceKmOverride: GreatCircle.earthCircumferenceKm * 2
+            distanceKmOverride: 80150.034
         )
         let distance = DistanceStatistics.compute(for: TravelLog(journeys: [
             Journey(legs: [leg]),

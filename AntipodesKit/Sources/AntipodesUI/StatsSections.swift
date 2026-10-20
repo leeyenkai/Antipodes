@@ -76,7 +76,10 @@ struct CoverageSection: View {
                         "Highest",
                         Format.elevation(highest.elevationM, system),
                         symbol: "mountain.2",
-                        detail: highest.visit.place.name
+                        detail: [
+                            highest.visit.place.name,
+                            extremes.elevationInput.caveat(counting: "places"),
+                        ].compactMap(\.self).joined(separator: "\n")
                     )
                 }
                 if let lowest = extremes.lowest, lowest.visit != extremes.highest?.visit {
@@ -225,7 +228,10 @@ struct DistanceSection: View {
                         "Most legs in a day",
                         "\(busiest.legs)",
                         symbol: "calendar",
-                        detail: Format.day(busiest.day)
+                        detail: [
+                            Format.day(busiest.day),
+                            journeys.dayInput.caveat(counting: "legs"),
+                        ].compactMap(\.self).joined(separator: "\n")
                     )
                 }
                 if let varied = journeys.mostVariedJourney {
@@ -285,7 +291,8 @@ struct DistanceSection: View {
                     StatRow(
                         "Average flight",
                         Format.distance(flights.averageFlightKm, system),
-                        symbol: "divide"
+                        symbol: "divide",
+                        detail: flights.input.caveat(counting: "flights")
                     )
                 }
             }
@@ -352,7 +359,8 @@ struct JourneyDetailSection: View {
                         StatRow(
                             "Rail distance",
                             Format.distance(rail.kilometres, model.rules.unitSystem),
-                            symbol: "ruler"
+                            symbol: "ruler",
+                            detail: rail.kilometreInput.caveat(counting: "rail legs")
                         )
                         StatRow("Stations", "\(rail.stations.count)", symbol: "signpost.right")
                         StatRow(

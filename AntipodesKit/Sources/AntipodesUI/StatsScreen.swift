@@ -311,6 +311,15 @@ private struct HeadlineGrid: View {
     @Environment(AppModel.self) private var model
     let share: (ShareCard) -> Void
 
+    /// "24.4% of 193", or a plain warning when the list it measures against could not
+    /// be read and every visited code had to be counted.
+    private func worldShare(_ coverage: CoverageStatistics) -> String {
+        let share = Format.percent(coverage.worldFraction)
+        return coverage.isCountryListAvailable
+            ? "\(share) of \(coverage.worldCountryCount)"
+            : "About \(share) — country list unavailable"
+    }
+
     var body: some View {
         let statistics = model.statistics
         let coverage = statistics.coverage
@@ -319,9 +328,7 @@ private struct HeadlineGrid: View {
                 StatCard(
                     title: "Countries",
                     value: "\(coverage.listedCountriesVisited)",
-                    detail: """
-                    \(Format.percent(coverage.worldFraction)) of \(coverage.worldCountryCount)
-                    """,
+                    detail: worldShare(coverage),
                     symbol: "flag.fill",
                     tint: Palette.visited
                 )

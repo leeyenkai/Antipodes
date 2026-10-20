@@ -61,6 +61,33 @@ public struct GlobePin: Identifiable, Sendable {
     /// `nil` for a wishlist pin, which is not a visit.
     public let visitType: VisitType?
     public let date: FlexibleDate
+
+    /// An identity for a pin that is not a record of its own, such as a wishlist place,
+    /// made from the place so it is the same every time the scene is rebuilt.
+    ///
+    /// FNV-1a over the place's identity, twice with different offsets, filling the 128
+    /// bits of a UUID. Deterministic across launches, unlike `Hasher`.
+    public static func stableID(for place: PlaceID) -> UUID {
+        func fnv(_ offset: UInt64) -> UInt64 {
+            var hash = offset
+            for byte in "wishlist:\(place.description)".utf8 {
+                hash ^= UInt64(byte)
+                hash = hash &* 0x0000_0100_0000_01B3
+            }
+            return hash
+        }
+        let high = fnv(0xCBF2_9CE4_8422_2325)
+        let low = fnv(0x6C62_272E_07BB_0142)
+        var bytes = [UInt8](repeating: 0, count: 16)
+        for index in 0 ..< 8 {
+            bytes[index] = UInt8(truncatingIfNeeded: high >> (8 * index))
+            bytes[index + 8] = UInt8(truncatingIfNeeded: low >> (8 * index))
+        }
+        return UUID(uuid: (
+            bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6], bytes[7],
+            bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13], bytes[14], bytes[15]
+        ))
+    }
 }
 
 public struct GlobeArc: Identifiable, Sendable {
@@ -250,7 +277,9 @@ public enum GlobeSceneBuilder {
             result.pinSummary.include()
             result.pins.append(
                 GlobePin(
-                    id: UUID(),
+                    // Derived from the place, so the same wishlist pin keeps its identity
+                    // — and its selection — across every rebuild of the scene.
+                    id: GlobePin.stableID(for: place.id),
                     coordinate: coordinate,
                     place: place,
                     style: .wishlist,

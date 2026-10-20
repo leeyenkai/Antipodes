@@ -51,6 +51,17 @@ public struct Coordinate: Hashable, Sendable, Codable {
         Coordinate(latitude: -latitude, longitude: longitude + 180)
     }
 
+    /// The point as a unit vector from the Earth's centre, for comparing directions
+    /// without trigonometry: two points are further apart the smaller their dot product.
+    public var unitVector: (x: Double, y: Double, z: Double) {
+        let cosLatitude = cos(latitudeRadians)
+        return (
+            cosLatitude * cos(longitudeRadians),
+            cosLatitude * sin(longitudeRadians),
+            sin(latitudeRadians)
+        )
+    }
+
     public var hemisphere: Hemisphere {
         latitude >= 0 ? .northern : .southern
     }

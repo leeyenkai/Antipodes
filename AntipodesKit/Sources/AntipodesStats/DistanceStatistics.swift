@@ -21,7 +21,7 @@ public struct DistanceStatistics: Hashable, Sendable {
 
     /// Total distance as a multiple of the Earth's circumference.
     public var timesRoundTheEarth: Double {
-        totalKm / GreatCircle.earthCircumferenceKm
+        totalKm / GreatCircle.equatorialCircumferenceKm
     }
 
     public var legCount: Int {
@@ -99,7 +99,11 @@ public struct DistanceStatistics: Hashable, Sendable {
 
 /// Flight-specific totals, the part of the distance family that lands in M1.
 public struct FlightStatistics: Hashable, Sendable {
+    /// Every flight counted in stats, with or without a distance — the same flights
+    /// the "Flights" badges count.
     public let flightCount: Int
+    /// Flights the distance figures could use.
+    public let measuredFlightCount: Int
     public let totalKm: Double
     public let airportIDs: Set<PlaceID>
     public let airlineNames: Set<String>
@@ -112,7 +116,7 @@ public struct FlightStatistics: Hashable, Sendable {
     }
 
     public var averageFlightKm: Double {
-        flightCount == 0 ? 0 : totalKm / Double(flightCount)
+        measuredFlightCount == 0 ? 0 : totalKm / Double(measuredFlightCount)
     }
 
     public static func compute(
@@ -120,6 +124,7 @@ public struct FlightStatistics: Hashable, Sendable {
         rules: CountingRules = .default
     ) -> FlightStatistics {
         var flightCount = 0
+        var measuredFlightCount = 0
         var totalKm = 0.0
         var airportIDs: Set<PlaceID> = []
         var airlineNames: Set<String> = []
@@ -132,15 +137,7 @@ public struct FlightStatistics: Hashable, Sendable {
                 input.exclude(.commuteExcluded)
                 continue
             }
-            let (kilometres, source) = leg.distance
-            guard source != .unavailable else {
-                input.exclude(.distanceUnavailable)
-                continue
-            }
-            input.include()
-
             flightCount += 1
-            totalKm += kilometres
             if leg.origin.kind == .airport {
                 airportIDs.insert(leg.origin.id)
             }
@@ -153,6 +150,14 @@ public struct FlightStatistics: Hashable, Sendable {
             if let aircraft = leg.vehicle, !aircraft.isEmpty {
                 aircraftTypes.insert(aircraft)
             }
+            let (kilometres, source) = leg.distance
+            guard source != .unavailable else {
+                input.exclude(.distanceUnavailable)
+                continue
+            }
+            input.include()
+            measuredFlightCount += 1
+            totalKm += kilometres
             if kilometres > (longestFlight?.distanceKm ?? -1) {
                 longestFlight = leg
             }
@@ -160,6 +165,7 @@ public struct FlightStatistics: Hashable, Sendable {
 
         return FlightStatistics(
             flightCount: flightCount,
+            measuredFlightCount: measuredFlightCount,
             totalKm: totalKm,
             airportIDs: airportIDs,
             airlineNames: airlineNames,

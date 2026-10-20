@@ -23,7 +23,7 @@ public struct AchievementStatus: Hashable, Sendable, Identifiable {
     public let target: Double
     public let isEarned: Bool
     /// The day the threshold was crossed, where every record that got it there is
-    /// dated to the day or better.
+    /// dated to the day. A visit dated only "2019" cannot say which day of 2019.
     public let earnedOn: CalendarDate?
 
     /// Progress in 0...1, for a ring.
@@ -131,7 +131,7 @@ public enum AchievementEngine {
                 }
                 return counting(definition, target, events: counted.compactMap { visit in
                     visit.place.countryCode.flatMap { listed($0) ? Event(
-                        day: visit.date.sortDay,
+                        day: visit.date.exactStartDay,
                         key: $0
                     ) : nil }
                 })
@@ -139,43 +139,49 @@ public enum AchievementEngine {
                 return counting(definition, target, events: counted.compactMap { visit in
                     let continent = visit.place.continent ?? gazetteer
                         .country(visit.place.countryCode)?.continent
-                    return continent.map { Event(day: visit.date.sortDay, key: $0.rawValue) }
+                    return continent.map { Event(day: visit.date.exactStartDay, key: $0.rawValue) }
                 })
             case .regions:
                 return counting(definition, target, events: counted.compactMap { visit in
-                    visit.place.qualifiedRegionCode.map { Event(day: visit.date.sortDay, key: $0) }
+                    visit.place.qualifiedRegionCode.map { Event(
+                        day: visit.date.exactStartDay,
+                        key: $0
+                    ) }
                 })
             case .cities:
                 return counting(definition, target, events: counted.compactMap { visit in
                     visit.place.impliedCityID
-                        .map { Event(day: visit.date.sortDay, key: String($0)) }
+                        .map { Event(day: visit.date.exactStartDay, key: String($0)) }
                 })
             case .capitals:
                 return counting(definition, target, events: counted.compactMap { visit in
                     guard let city = visit.place.impliedCityID,
                           gazetteer.facts(for: .database(.city, city))?.isCapital == true
                     else { return nil }
-                    return Event(day: visit.date.sortDay, key: String(city))
+                    return Event(day: visit.date.exactStartDay, key: String(city))
                 })
             case .landmarks:
                 return counting(definition, target, events: counted.compactMap { visit in
                     visit.place.kind == .landmark
-                        ? Event(day: visit.date.sortDay, key: visit.place.id.description) : nil
+                        ? Event(day: visit.date.exactStartDay, key: visit.place.id.description) :
+                        nil
                 })
             case .unesco:
                 return counting(definition, target, events: counted.compactMap { visit in
                     gazetteer.facts(for: visit.place.id)?.isUNESCO == true
-                        ? Event(day: visit.date.sortDay, key: visit.place.id.description) : nil
+                        ? Event(day: visit.date.exactStartDay, key: visit.place.id.description) :
+                        nil
                 })
             case .airports:
                 let fromVisits = counted.compactMap { visit in
                     visit.place.kind == .airport
-                        ? Event(day: visit.date.sortDay, key: visit.place.id.description) : nil
+                        ? Event(day: visit.date.exactStartDay, key: visit.place.id.description) :
+                        nil
                 }
                 let fromLegs = statsLegs.filter { $0.mode == .flight }.flatMap { leg in
                     [leg.origin, leg.destination]
                         .filter { $0.kind == .airport }
-                        .map { Event(day: leg.date.sortDay, key: $0.id.description) }
+                        .map { Event(day: leg.date.exactStartDay, key: $0.id.description) }
                 }
                 return counting(definition, target, events: fromVisits + fromLegs)
             case .flights:
@@ -183,18 +189,22 @@ public enum AchievementEngine {
                     definition,
                     target,
                     events: statsLegs.filter { $0.mode == .flight }.map {
-                        Event(day: $0.date.sortDay, key: $0.id.uuidString)
+                        Event(day: $0.date.exactStartDay, key: $0.id.uuidString)
                     }
                 )
             case .trips:
-                return counting(definition, target, events: log.trips.map { trip in
-                    let days = log.visits(inTrip: trip.id).compactMap(\.date.sortDay)
-                        + log.journeys(inTrip: trip.id).compactMap(\.date.sortDay)
+                // A trip with nothing in it yet is a folder, not a trip taken.
+                return counting(definition, target, events: log.trips.compactMap { trip in
+                    let visits = log.visits(inTrip: trip.id)
+                    let journeys = log.journeys(inTrip: trip.id)
+                    guard !visits.isEmpty || !journeys.isEmpty else { return nil }
+                    let days = visits.compactMap(\.date.exactStartDay)
+                        + journeys.compactMap(\.date.exactStartDay)
                     return Event(day: days.min(), key: trip.id.uuidString)
                 })
             case .modes:
                 return counting(definition, target, events: statsLegs.map {
-                    Event(day: $0.date.sortDay, key: $0.mode.rawValue)
+                    Event(day: $0.date.exactStartDay, key: $0.mode.rawValue)
                 })
             case .distance:
                 return distance(definition, target)
@@ -207,7 +217,7 @@ public enum AchievementEngine {
                     definition,
                     target,
                     events: statsLegs.filter { $0.mode == .rail && $0.isOvernight }.map {
-                        Event(day: $0.date.sortDay, key: $0.id.uuidString)
+                        Event(day: $0.date.exactStartDay, key: $0.id.uuidString)
                     }
                 )
             case .crossedEquator, .arcticCircle, .antarcticCircle:
@@ -245,11 +255,11 @@ public enum AchievementEngine {
             var earnedOn: CalendarDate?
             if total >= target {
                 var running = 0.0
-                for leg in legs.filter({ $0.date.sortDay != nil })
+                for leg in legs.filter({ $0.date.exactStartDay != nil })
                     .sorted(by: { $0.date < $1.date }) {
                     running += leg.distanceKm
                     if running >= target {
-                        earnedOn = leg.date.sortDay
+                        earnedOn = leg.date.exactStartDay
                         break
                     }
                 }
@@ -325,11 +335,14 @@ public enum AchievementEngine {
         /// Every point the user has demonstrably been at: counted visits and the ends of
         /// legs, with the day each happened.
         private var points: [(Coordinate, CalendarDate?)] {
-            counted.compactMap { visit in visit.place.coordinate.map { ($0, visit.date.sortDay) } }
+            counted
+                .compactMap { visit in
+                    visit.place.coordinate.map { ($0, visit.date.exactStartDay) }
+                }
                 + statsLegs.flatMap { leg in
                     [leg.origin.coordinate, leg.destination.coordinate]
                         .compactMap(\.self)
-                        .map { ($0, leg.date.sortDay) }
+                        .map { ($0, leg.date.exactStartDay) }
                 }
         }
 
@@ -369,8 +382,14 @@ public enum AchievementEngine {
         }
 
         /// The closest any two places the user has been come to being exactly opposite
-        /// each other. Coordinates are rounded to a tenth of a degree first, which keeps
-        /// the pairwise search small without moving the answer by more than ~11 km.
+        /// each other. Coordinates are rounded to a tenth of a degree first, which moves
+        /// the answer by no more than ~11 km.
+        ///
+        /// Two places are closest to antipodal when the angle between them is largest,
+        /// which is when the dot product of their unit vectors is smallest. So the pair
+        /// is found with three multiplications per pair rather than a haversine, and
+        /// only that one pair's distance is measured — by `GreatCircle`, like every
+        /// other distance (AGENTS.md §7).
         private func antipodes(
             _ definition: AchievementDefinition,
             _ target: Double
@@ -382,13 +401,23 @@ public enum AchievementEngine {
                 unique[key] = coordinate
             }
             let coordinates = unique.keys.sorted().compactMap { unique[$0] }
-            var best = Double.infinity
-            for (index, first) in coordinates.enumerated() {
-                let opposite = first.antipode
-                for second in coordinates[(index + 1)...] {
-                    best = min(best, GreatCircle.distanceKm(from: opposite, to: second))
+            let vectors = coordinates.map(\.unitVector)
+            var bestPair: (Int, Int)?
+            var lowestDot = Double.infinity
+            for first in vectors.indices {
+                let a = vectors[first]
+                for second in vectors.indices where second > first {
+                    let b = vectors[second]
+                    let dot = a.x * b.x + a.y * b.y + a.z * b.z
+                    if dot < lowestDot {
+                        lowestDot = dot
+                        bestPair = (first, second)
+                    }
                 }
             }
+            let best = bestPair.map { first, second in
+                GreatCircle.distanceKm(from: coordinates[first].antipode, to: coordinates[second])
+            } ?? .infinity
             return AchievementStatus(
                 definition: definition,
                 measure: .antipodalGapKilometres,

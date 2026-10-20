@@ -32,6 +32,27 @@ struct RingContainmentTests {
         #expect(!CountryBorders.ring(square, contains: Coordinate(latitude: 15, longitude: 5)))
         #expect(!CountryBorders.ring(square, contains: Coordinate(latitude: 5, longitude: -1)))
     }
+
+    /// A ring closed along +180, as Natural Earth draws eastern Russia. `Coordinate`
+    /// stores that edge at -180, which must not turn the ring inside out.
+    @Test("A ring that ends on the antimeridian still contains the points inside it")
+    func antimeridian() {
+        let chukotka = [(64.0, 170.0), (64, 180), (70, 180), (70, 170)].map { Coordinate(
+            latitude: $0.0,
+            longitude: $0.1
+        ) }
+        #expect(chukotka[1].longitude == -180) // the premise: +180 is stored as -180
+        #expect(CountryBorders.ring(chukotka, contains: Coordinate(latitude: 67, longitude: 175)))
+        #expect(!CountryBorders.ring(chukotka, contains: Coordinate(latitude: 67, longitude: 160)))
+        #expect(!CountryBorders.ring(chukotka, contains: Coordinate(latitude: 67, longitude: -175)))
+
+        // The western half of the same split polygon really is at -180, and stays there.
+        let west = [(64.0, -180.0), (64, -170), (70, -170), (70, -180)].map { Coordinate(
+            latitude: $0.0,
+            longitude: $0.1
+        ) }
+        #expect(CountryBorders.ring(west, contains: Coordinate(latitude: 67, longitude: -175)))
+    }
 }
 
 @Suite("Country lookup from bundled borders", .enabled(if: BorderFixture.exists))
@@ -52,6 +73,8 @@ struct BorderLookupTests {
             .countryCode(at: Coordinate(latitude: -26.2, longitude: 28.04)) == "ZA") // Johannesburg
         #expect(borders
             .countryCode(at: Coordinate(latitude: 30, longitude: -40)) == nil) // mid-Atlantic
+        #expect(borders
+            .countryCode(at: Coordinate(latitude: 66.0, longitude: 179.0)) == "RU") // Chukotka
     }
 
     @Test("A pin just off a generalised coastline snaps to the nearest country within tolerance")

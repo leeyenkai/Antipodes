@@ -153,13 +153,17 @@ public struct PlaceReference: Hashable, Sendable, Codable, Identifiable {
         }
     }
 
-    /// Every city this place implies, as database identity. A city implies itself; a
-    /// landmark or airport implies its parent city (R-MODEL-6).
+    /// The city this place implies, as database identity. A city implies itself and a
+    /// landmark its parent city (R-MODEL-6).
+    ///
+    /// An airport implies none, though it records the city it serves: R-MODEL-6 does
+    /// not chain through airports, and a layover at Heathrow is not a visit to London.
     public var impliedCityID: Int64? {
-        if case let .database(.city, row) = id {
-            return row
+        switch id {
+        case let .database(.city, row): row
+        case .database(.airport, _): nil
+        default: cityID
         }
-        return cityID
     }
 
     /// A region identity namespaced by country, so `CA` in Canada and California never

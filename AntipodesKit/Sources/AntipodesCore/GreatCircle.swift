@@ -12,8 +12,13 @@ public enum GreatCircle {
     /// distances.
     public static let earthRadiusKm = 6371.0088
 
-    /// Circumference through the poles, used by the "times round the Earth" stat.
+    /// Circumference of the mean sphere, whose half is the furthest two places can be
+    /// apart — an antipodal pair.
     public static let earthCircumferenceKm = 2 * Double.pi * earthRadiusKm
+
+    /// Once round the Equator (WGS-84), the yardstick for "times round the Earth" and
+    /// the "Round the world" badge, so the two agree on when the user has gone round.
+    public static let equatorialCircumferenceKm = 40075.017
 
     /// Great-circle distance in kilometres, by the haversine formula.
     ///

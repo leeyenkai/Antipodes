@@ -134,6 +134,19 @@ public struct RouteInfo: Hashable, Sendable, Codable, Identifiable {
     public let typicalDurationMinutes: Int?
     public let highestPointM: Double?
 
+    /// Whether a leg rode this whole route rather than a section of it (R-JLOG-3), in
+    /// either direction.
+    ///
+    /// Only a whole ride ticks the route off in a collection or a wishlist, or claims its
+    /// highest point: Oslo to Finse is not the Bergen Line. Where an end of the route is
+    /// not a bundled place, the user had to pick something else for it, so the ride is
+    /// taken at their word.
+    public func isRiddenInFull(by leg: JourneyLeg) -> Bool {
+        guard leg.routeID == id else { return false }
+        guard let start, let end else { return true }
+        return Set([leg.origin.id, leg.destination.id]) == Set([start.id, end.id])
+    }
+
     public init(
         id: Int64,
         name: String,
