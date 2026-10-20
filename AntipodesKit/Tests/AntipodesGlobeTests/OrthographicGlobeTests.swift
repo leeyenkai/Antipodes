@@ -221,6 +221,49 @@ struct OrthographicGlobeTests {
         #expect(onLimb.count >= 3)
     }
 
+    /// A ring that only just shows over the edge, with the hidden part fanning out to
+    /// either side behind it. Its sliver must be closed by the short arc of the limb
+    /// between where it went out of view and where it came back. Taking the long way
+    /// round fills the whole face of the globe in the country's colour: this is what
+    /// turned the ocean the colour of Italy, Libya and Mexico whenever the globe was
+    /// centred on Japan.
+    @Test("A ring barely over the limb closes the short way round")
+    func ringBarelyOverTheLimbClosesTheShortWay() {
+        let globe = Self.globe()
+        let ring = [
+            Coordinate(latitude: -2, longitude: 88),
+            Coordinate(latitude: 2, longitude: 88),
+            Coordinate(latitude: 2, longitude: 92),
+            Coordinate(latitude: 40, longitude: 100),
+            Coordinate(latitude: 40, longitude: 140),
+            Coordinate(latitude: -40, longitude: 140),
+            Coordinate(latitude: -40, longitude: 100),
+            Coordinate(latitude: -2, longitude: 92),
+        ]
+        let clipped = globe.clippedRing(ring)
+
+        #expect(clipped.count > 2)
+        // The visible sliver spans 2° of longitude by 4° of latitude at the limb: a
+        // tiny fraction of the disc. The long way round would cover nearly all of it.
+        let disc = Double.pi * Self.radius * Self.radius
+        #expect(Self.area(of: clipped) < disc * 0.01)
+        // Every point stays on the eastern edge, where the sliver is.
+        for point in clipped {
+            #expect(point.x > globe.centre.x + Self.radius * 0.99)
+        }
+    }
+
+    /// Shoelace formula, unsigned.
+    static func area(of polygon: [GlobePoint]) -> Double {
+        var sum = 0.0
+        for index in polygon.indices {
+            let current = polygon[index]
+            let next = polygon[(index + 1) % polygon.count]
+            sum += current.x * next.y - next.x * current.y
+        }
+        return abs(sum) / 2
+    }
+
     @Test("A ring round the pole keeps a sane, non-degenerate shape")
     func ringAroundThePole() {
         let globe = Self.globe(latitude: 60, longitude: 0)

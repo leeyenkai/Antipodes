@@ -7,11 +7,14 @@ import SwiftUI
 /// Four destinations — Globe, Trips, Stats, Collections — with Settings reached from
 /// Stats and Collections (§9). `.sidebarAdaptable` gives a tab bar on iPhone and a
 /// sidebar on iPad and Mac from one declaration (R-PLAT-2, R-NAV-1), with the bulk
-/// editing table and Settings added to the sidebar there.
+/// editing table and Settings added to the sidebar there. Where the window is wide
+/// enough, the globe stays beside the lists (`GlobeBesideStack`) and opens records in an
+/// inspector rather than a sheet.
 ///
 /// Logging is reachable from anywhere in one movement: on iPhone a search-first bar
 /// sits above the tab bar, within thumb reach (R-PLAT-1); with a sidebar it is a
-/// toolbar button and ⌘N.
+/// toolbar button and ⌘N. On the Mac, a flight log or a backup can be dropped on the
+/// window to import it (R-NAV-2).
 public struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -55,7 +58,7 @@ public struct RootView: View {
                 }
                 .tabPlacement(.sidebarOnly)
                 Tab("Settings", systemImage: "gearshape", value: .settings) {
-                    SettingsScreen()
+                    SettingsScreen(isDestination: true)
                 }
                 .tabPlacement(.sidebarOnly)
             }
@@ -66,6 +69,7 @@ public struct RootView: View {
                     .settings))
             .tabBarMinimizeBehavior(.onScrollDown)
         #endif
+            .fileDropImport()
             .environment(borderStore)
             .tint(.accentColor)
             .preferredColorScheme(model.appearance.colorScheme)
@@ -99,6 +103,12 @@ public struct RootView: View {
                     await model.seedSampleDataIfRequested()
                 #endif
             }
+        #if os(macOS)
+            // Outermost, so sheets inherit it too. On the Mac the default lays a long
+            // form out in columns that do not scroll, which cut Settings off at both
+            // ends; iOS forms are grouped already.
+            .formStyle(.grouped)
+        #endif
     }
 
     /// Onboarding shows until the user finishes it once.

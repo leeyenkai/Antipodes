@@ -11,6 +11,10 @@ struct SettingsScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
+    /// In the iPad and Mac sidebar, Settings is a destination of its own rather than a
+    /// sheet, so there is nothing for a Done button to close.
+    var isDestination = false
+
     @State private var isConfirmingDelete = false
     @State private var isPickingHome = false
     @State private var exportedJSON: ExportDocument?
@@ -38,8 +42,10 @@ struct SettingsScreen: View {
             .navigationTitle("Settings")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                if !isDestination {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { dismiss() }
+                    }
                 }
             }
             .alert("Delete everything?", isPresented: $isConfirmingDelete) {
@@ -212,9 +218,18 @@ struct SettingsScreen: View {
             Text("""
             Flight lists from Flighty, myFlightradar24, OpenFlights or any CSV with date, from \
             and to columns. Photos are read on this device for their date and place; nothing \
-            is uploaded or copied.
+            is uploaded or copied.\(dropHint)
             """)
         }
+    }
+
+    /// On the Mac, either file can also be dropped on the window (R-NAV-2).
+    private var dropHint: String {
+        #if os(macOS)
+            " You can also drop a flight list or a backup anywhere on the window."
+        #else
+            ""
+        #endif
     }
 
     private var exportSection: some View {

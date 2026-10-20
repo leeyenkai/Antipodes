@@ -390,8 +390,19 @@ public final class AppModel {
 
     /// Restores an Antipodes JSON export, adding only what is not already here.
     public func importBackup(_ data: Data) throws -> ImportCounts {
+        try importBackup(previewBackup(data))
+    }
+
+    /// Reads an Antipodes JSON export and works out what restoring it would add, writing
+    /// nothing, so the user can be asked first (R-NAV-2).
+    public func previewBackup(_ data: Data) throws -> BackupPreview {
         let imported = try TravelLogExport.importLog(fromJSON: data)
-        let counts = try store.merge(imported)
+        return try BackupPreview(log: imported, additions: store.mergePreview(imported))
+    }
+
+    /// Restores a backup the user has already seen the preview of.
+    public func importBackup(_ preview: BackupPreview) throws -> ImportCounts {
+        let counts = try store.merge(preview.log)
         reload()
         return counts
     }
@@ -449,6 +460,22 @@ public final class AppModel {
 
     public func exportCSVFiles() -> [String: Data] {
         TravelLogExport.csvFiles(for: log)
+    }
+}
+
+/// A backup read but not yet restored: what is in the file, and how much of it is new.
+public struct BackupPreview: Sendable {
+    public let log: TravelLog
+    public let additions: ImportCounts
+
+    /// Trips, places, journeys and wishlist entries in the file.
+    public var recordCount: Int {
+        log.trips.count + log.visits.count + log.journeys.count + log.wishlist.count
+    }
+
+    /// Records in the file that are already in the log, so restoring leaves them alone.
+    public var alreadyInLog: Int {
+        recordCount - additions.total
     }
 }
 

@@ -7,13 +7,14 @@ import SwiftUI
 /// not yet filed under a trip (§9).
 struct TripsScreen: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var searchText = ""
     @State private var isCreatingTrip = false
     @State private var newTripName = ""
     @State private var tripToDelete: Trip?
 
     var body: some View {
-        NavigationStack {
+        GlobeBesideStack {
             List {
                 if model.log.isEmpty {
                     EmptyStateView(
@@ -56,9 +57,12 @@ struct TripsScreen: View {
                         Button("Log a Journey", systemImage: "airplane") {
                             model.addRequest = AddRequest(start: .journey(nil))
                         }
-                        Divider()
-                        NavigationLink(value: LogRoute.allVisits) {
-                            Label("All Records", systemImage: "tablecells")
+                        // With a sidebar, All Records is a destination of its own.
+                        if sizeClass == .compact {
+                            Divider()
+                            NavigationLink(value: LogRoute.allVisits) {
+                                Label("All Records", systemImage: "tablecells")
+                            }
                         }
                     } label: {
                         Label("Add", systemImage: "plus")

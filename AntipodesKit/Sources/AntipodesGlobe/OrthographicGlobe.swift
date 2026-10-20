@@ -199,8 +199,8 @@ public struct OrthographicGlobe: Sendable {
                 from: points[(reentry + count - 1) % count],
                 to: points[reentry]
             )
-            let midHidden = points[(firstHidden + hiddenLength / 2) % count]
-            result.append(contentsOf: limbArc(from: exit, to: entry, passing: midHidden))
+            let hidden = (0 ..< hiddenLength).map { points[(firstHidden + $0) % count] }
+            result.append(contentsOf: limbArc(from: exit, to: entry, following: hidden))
 
             index += length + hiddenLength
         }
@@ -242,22 +242,30 @@ public struct OrthographicGlobe: Sendable {
     /// The arc of the limb between two points on it, going the way round that the
     /// hidden part of the ring went.
     ///
-    /// `passing` is a point from the hidden stretch. Its direction from the centre says
-    /// which of the two possible arcs is the right one — without it, a country wrapped
-    /// round the far side would be filled inside out.
+    /// The way round is found by following the hidden vertices' bearings from the
+    /// centre and adding up how far they turn, so the arc winds exactly as the hidden
+    /// stretch did. Judging it from a single hidden vertex goes wrong when the hidden
+    /// part fans out wider than the gap it left on the limb: a country just over the
+    /// edge is then closed the long way round and floods the whole face of the globe.
     private func limbArc(
         from start: GlobePoint,
         to end: GlobePoint,
-        passing: Vector3
+        following hidden: [Vector3]
     ) -> [GlobePoint] {
         let startAngle = angle(of: start)
-        let endAngle = angle(of: end)
-        let hiddenAngle = atan2(passing.dot(north), passing.dot(east))
-
-        let anticlockwiseSweep = normalisedAngle(endAngle - startAngle)
-        let hiddenOffset = normalisedAngle(hiddenAngle - startAngle)
-        let goesAnticlockwise = hiddenOffset <= anticlockwiseSweep
-        let sweep = goesAnticlockwise ? anticlockwiseSweep : anticlockwiseSweep - 2 * .pi
+        var bearing = startAngle
+        var sweep = 0.0
+        for point in hidden {
+            let unitX = point.dot(east)
+            let unitY = point.dot(north)
+            // A point straight behind the centre has no bearing; skip it rather than
+            // let it pretend to be due east.
+            guard unitX * unitX + unitY * unitY > 1e-12 else { continue }
+            let next = atan2(unitY, unitX)
+            sweep += signedAngle(next - bearing)
+            bearing = next
+        }
+        sweep += signedAngle(angle(of: end) - bearing)
 
         // One segment per couple of degrees: enough that the edge reads as a circle.
         let steps = max(1, Int(abs(sweep) / (.pi / 90)))
@@ -274,10 +282,15 @@ public struct OrthographicGlobe: Sendable {
         atan2(centre.y - point.y, point.x - centre.x)
     }
 
-    /// An angle moved into [0, 2π).
-    private func normalisedAngle(_ angle: Double) -> Double {
-        let remainder = angle.truncatingRemainder(dividingBy: 2 * .pi)
-        return remainder < 0 ? remainder + 2 * .pi : remainder
+    /// An angle moved into (−π, π]: the shorter turn between two bearings.
+    private func signedAngle(_ angle: Double) -> Double {
+        var remainder = angle.truncatingRemainder(dividingBy: 2 * .pi)
+        if remainder > .pi {
+            remainder -= 2 * .pi
+        } else if remainder <= -.pi {
+            remainder += 2 * .pi
+        }
+        return remainder
     }
 
     // MARK: - Culling

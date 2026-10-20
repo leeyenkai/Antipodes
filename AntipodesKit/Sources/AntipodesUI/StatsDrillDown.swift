@@ -110,6 +110,7 @@ struct CountryDetailView: View {
         }
         .navigationTitle(facts?.name ?? countryCode)
         .toolbarTitleDisplayMode(.inline)
+        .globeFocus(.country(countryCode))
     }
 }
 

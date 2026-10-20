@@ -55,6 +55,17 @@ is blocked.
 - **Mac and iPad**: a sidebar on iPad and Mac (R-NAV-1), an *All records* table for
   editing the type, date or trip of many visits at once (R-PLAT-3, R-NAV-2), and menu
   commands with keyboard shortcuts for logging.
+- **The globe beside the lists on iPad and Mac** (R-NAV-1, R-PLAT-2, D-22): Trips and
+  Collections keep the globe in view beside the list and every page opened from it.
+  The globe frames whatever is open — a trip on its own, a visit, a journey, a country,
+  a collection's members — and a tap on a pin or an arc opens that record in the list.
+  On the Globe tab, what is tapped opens in an inspector beside the globe instead of a
+  sheet. iPhone is unchanged.
+- **Drag-and-drop import on the Mac** (R-NAV-2, R-PLAT-3): drop a flight-log CSV or an
+  Antipodes JSON backup anywhere on the window. A flight log opens the same review as
+  Settings ▸ Import; a backup says how many trips, places, journeys and wishlist
+  entries it would add, and how many are already in the log, before anything is
+  written.
 - Onboarding: what the app does, what it never does with your data, and where home is.
 - Settings: appearance, home, counting rules, units, a JSON backup that can be restored,
   CSV export, imports, a plain-language account of how things are counted, and the data
@@ -193,6 +204,8 @@ is blocked.
 
 ### Changed
 
+- Forms use the grouped style on the Mac too, where the default laid them out in
+  columns; Settings in the sidebar has no Done button, since it is not a sheet there.
 - **Dark appearance by default**, with Light and System in Settings, and a dark launch
   screen to match (D-20).
 - The app's identifiers are `com.leeyenkai.antipodes`, with app group
@@ -209,6 +222,12 @@ is blocked.
 
 ### Fixed
 
+- A shaded country lying just past the edge of the globe could be filled across the
+  whole visible face, turning the ocean green or grey whenever the globe faced Japan.
+  The edge of a clipped outline now follows the hidden part of the outline round the
+  limb instead of guessing the direction from one point of it.
+- Settings on the Mac did not scroll: the top and bottom of it were cut off.
+- The Collections section picker showed a stray "Section" label on the Mac.
 - Collections, badges and carbon could stay empty after launch until the next edit,
   when the log's place facts arrived before the database catalogue had loaded.
 - The globe's summary counted every country while Stats counted only those on the

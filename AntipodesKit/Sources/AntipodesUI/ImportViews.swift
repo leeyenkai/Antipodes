@@ -8,11 +8,16 @@ import UniformTypeIdentifiers
 
 /// Imports another app's flight history with a review step for anything that did not
 /// match (R-LOG-8, R-JLOG-7).
+///
+/// Either asks for a file, or — when one was dropped on the Mac window (R-NAV-2) — starts
+/// from that file. Nothing is written until the user taps Import.
 struct FlightImportView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
 
-    @State private var isChoosingFile = true
+    private let droppedFile: Data?
+
+    @State private var isChoosingFile: Bool
     @State private var format: FlightLogFormat?
     @State private var candidates: [FlightImportCandidate] = []
     @State private var isReading = false
@@ -32,6 +37,11 @@ struct FlightImportView: View {
         var id: String {
             "\(line)-\(end)"
         }
+    }
+
+    init(file: Data? = nil) {
+        droppedFile = file
+        _isChoosingFile = State(initialValue: file == nil)
     }
 
     var body: some View {
@@ -83,7 +93,15 @@ struct FlightImportView: View {
                     apply(place, to: fix)
                 }
             }
+            .task {
+                if let droppedFile, candidates.isEmpty {
+                    await match(droppedFile)
+                }
+            }
         }
+        #if os(macOS)
+        .frame(minWidth: 520, idealWidth: 600, minHeight: 480, idealHeight: 640)
+        #endif
     }
 
     private var includedCount: Int {
@@ -132,7 +150,16 @@ struct FlightImportView: View {
                 }
             }
             let data = try Data(contentsOf: url)
-            isReading = true
+            await match(data)
+        } catch {
+            failure = String(describing: error)
+        }
+    }
+
+    private func match(_ data: Data) async {
+        isReading = true
+        defer { isReading = false }
+        do {
             let (format, candidates) = try await model.readFlightLog(data)
             self.format = format
             self.candidates = candidates
@@ -140,7 +167,6 @@ struct FlightImportView: View {
         } catch {
             failure = String(describing: error)
         }
-        isReading = false
     }
 
     private func apply(_ place: PlaceReference, to fix: Fix) {

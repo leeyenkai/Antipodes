@@ -13,6 +13,7 @@ import SwiftUI
 struct GlobeScreen: View {
     @Environment(AppModel.self) private var model
     @Environment(GlobeBorderStore.self) private var borderStore
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     @State private var camera = GlobeCamera.default
     @State private var filter = GlobeFilter.none
@@ -25,16 +26,12 @@ struct GlobeScreen: View {
     @State private var replayIndex: Double?
     @State private var selection: GlobeSelection?
 
-    @GestureState private var dragTranslation: CGSize = .zero
-    @State private var gestureStartCamera: GlobeCamera?
-    @State private var zoomStart: Double?
-
     private let palette = GlobePalette()
 
     var body: some View {
         NavigationStack {
             globe
-                .background(backdrop)
+                .background(GlobeBackdrop())
                 .overlay(alignment: .top) {
                     if !model.log.isEmpty {
                         GlobeSummaryBar(scene: scene)
@@ -50,7 +47,7 @@ struct GlobeScreen: View {
                 .toolbarTitleDisplayMode(.inline)
                 .toolbar { toolbar }
                 .addToolbarButton()
-                .sheet(item: $selection) { GlobeSelectionSheet(selection: $0) }
+                .sheet(item: sheetSelection) { GlobeSelectionSheet(selection: $0) }
             // The globe is dark whatever the appearance, so this screen's chrome
             // follows it: a dark title over a near-black sky is unreadable.
             #if os(iOS)
@@ -58,6 +55,13 @@ struct GlobeScreen: View {
             #endif
         }
         .environment(\.colorScheme, .dark)
+        // Outside the dark override, so the record's form reads in the app's appearance.
+        .inspector(isPresented: isInspecting) {
+            if let selection {
+                GlobeSelectionInspector(selection: selection) { self.selection = nil }
+                    .inspectorColumnWidth(min: 320, ideal: 380, max: 520)
+            }
+        }
         .onChange(of: GlobeInputs(
             log: model.log,
             rules: model.rules,
@@ -79,31 +83,38 @@ struct GlobeScreen: View {
     // MARK: - The globe itself
 
     private var globe: some View {
-        GeometryReader { proxy in
-            GlobeCanvas(
-                scene: scene,
-                borders: borderStore.borders(forZoom: camera.zoom),
-                camera: liveCamera(in: proxy.size),
-                selection: selection,
-                palette: palette
-            )
-            .contentShape(.rect)
-            .gesture(rotation(in: proxy.size))
-            .simultaneousGesture(zoom)
-            .simultaneousGesture(dropPin(in: proxy.size))
-            .onTapGesture { location in handleTap(at: location, in: proxy.size) }
-        }
+        GlobeSurface(
+            scene: scene,
+            camera: $camera,
+            selection: selection,
+            palette: palette,
+            onSelect: { selection = $0 },
+            onDropPin: { model.addRequest = AddRequest(start: .pin($0)) }
+        )
     }
 
-    /// Space behind the globe: near-black in every appearance so the arcs stay legible.
-    private var backdrop: some View {
-        RadialGradient(
-            colors: [Color(red: 0.05, green: 0.08, blue: 0.14), Palette.space],
-            center: .center,
-            startRadius: 40,
-            endRadius: 520
+    /// What was tapped opens beside the globe on iPad and Mac, so the globe stays in
+    /// view while the record is edited (R-PLAT-2, R-NAV-1), and in a sheet on iPhone.
+    private var usesInspector: Bool {
+        DeviceLayout.isSideBySide(sizeClass)
+    }
+
+    private var sheetSelection: Binding<GlobeSelection?> {
+        Binding(
+            get: { usesInspector ? nil : selection },
+            set: { selection = $0 }
         )
-        .ignoresSafeArea()
+    }
+
+    private var isInspecting: Binding<Bool> {
+        Binding(
+            get: { usesInspector && selection != nil },
+            set: {
+                if !$0 {
+                    selection = nil
+                }
+            }
+        )
     }
 
     private var emptyPrompt: some View {
@@ -124,79 +135,6 @@ struct GlobeScreen: View {
         .padding(24)
         .glassEffect(.regular, in: .rect(cornerRadius: 28))
         .padding(32)
-    }
-
-    /// The camera including the drag in progress, so rotation tracks the finger without
-    /// writing to state on every frame.
-    private func liveCamera(in size: CGSize) -> GlobeCamera {
-        guard dragTranslation != .zero else { return camera }
-        return (gestureStartCamera ?? camera).dragged(
-            dx: dragTranslation.width,
-            dy: dragTranslation.height,
-            in: GlobeSize(width: size.width, height: size.height)
-        )
-    }
-
-    private func rotation(in size: CGSize) -> some Gesture {
-        DragGesture(minimumDistance: 2)
-            .updating($dragTranslation) { value, state, _ in state = value.translation }
-            .onChanged { _ in
-                if gestureStartCamera == nil {
-                    gestureStartCamera = camera
-                }
-            }
-            .onEnded { value in
-                camera = (gestureStartCamera ?? camera).dragged(
-                    dx: value.translation.width,
-                    dy: value.translation.height,
-                    in: GlobeSize(width: size.width, height: size.height)
-                )
-                gestureStartCamera = nil
-            }
-    }
-
-    private var zoom: some Gesture {
-        MagnifyGesture()
-            .onChanged { value in
-                // Captured when the pinch starts, so a pinch always scales from where
-                // the globe actually is.
-                let base = zoomStart ?? camera.zoom
-                zoomStart = base
-                camera = GlobeCamera(centre: camera.centre, zoom: base * value.magnification)
-            }
-            .onEnded { _ in zoomStart = nil }
-    }
-
-    /// Touch and hold to drop a pin where the finger is (R-LOG-5).
-    private func dropPin(in size: CGSize) -> some Gesture {
-        LongPressGesture(minimumDuration: 0.5)
-            .sequenced(before: DragGesture(minimumDistance: 0))
-            .onEnded { value in
-                guard case let .second(true, drag?) = value,
-                      hypot(drag.translation.width, drag.translation.height) < 12
-                else { return }
-                let globe = OrthographicGlobe(
-                    camera: camera,
-                    size: GlobeSize(width: size.width, height: size.height)
-                )
-                if let coordinate = globe.coordinate(at: GlobePoint(
-                    x: drag.location.x,
-                    y: drag.location.y
-                )) {
-                    model.addRequest = AddRequest(start: .pin(coordinate))
-                }
-            }
-    }
-
-    private func handleTap(at location: CGPoint, in size: CGSize) {
-        let globe = OrthographicGlobe(
-            camera: camera,
-            size: GlobeSize(width: size.width, height: size.height)
-        )
-        selection = scene.selection(
-            at: GlobePoint(x: location.x, y: location.y),
-            globe: globe
-        )
     }
 
     // MARK: - Controls

@@ -213,15 +213,15 @@ struct GlobeFilterMenu: View {
     }
 }
 
-/// What a tap on a pin or an arc opens (§9): the record itself, ready to edit.
+/// What a tap on a pin or an arc opens on iPhone (§9): the record in a sheet over the
+/// globe.
 struct GlobeSelectionSheet: View {
     let selection: GlobeSelection
     @Environment(\.dismiss) private var dismiss
-    @Environment(AppModel.self) private var model
 
     var body: some View {
         NavigationStack {
-            content
+            GlobeSelectionDetail(selection: selection) { dismiss() }
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { dismiss() }
@@ -231,15 +231,44 @@ struct GlobeSelectionSheet: View {
         }
         .presentationDetents([.medium, .large])
     }
+}
 
-    @ViewBuilder
-    private var content: some View {
+/// The same, on iPad and Mac: in an inspector beside the globe, which stays in view and
+/// can be turned while the record is open (R-PLAT-2, R-NAV-1).
+struct GlobeSelectionInspector: View {
+    let selection: GlobeSelection
+    let close: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            GlobeSelectionDetail(selection: selection, close: close)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close", systemImage: "xmark", action: close)
+                    }
+                }
+                .logDestinations()
+        }
+        // A new tap is a new record: start its form afresh rather than carrying over
+        // the last one's edits.
+        .id(selection.id)
+    }
+}
+
+/// The record a tap landed on, ready to edit.
+struct GlobeSelectionDetail: View {
+    let selection: GlobeSelection
+    /// Closes whatever is showing this: the sheet, or the inspector.
+    let close: () -> Void
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
         switch selection {
         case let .pin(pin):
             switch pin.style {
             case .visited, .notCounted:
                 if let visit = model.log.visits.first(where: { $0.id == pin.id }) {
-                    VisitForm(place: visit.place, existing: visit) { dismiss() }
+                    VisitForm(place: visit.place, existing: visit, onDone: close)
                 } else {
                     markerDetail(pin)
                 }
@@ -249,7 +278,7 @@ struct GlobeSelectionSheet: View {
         case let .arc(arc):
             if let journey = model.log.journeys
                 .first(where: { $0.legs.contains { $0.id == arc.id } }) {
-                JourneyEditor(existing: journey) { dismiss() }
+                JourneyEditor(existing: journey, onDone: close)
             } else {
                 ContentUnavailableView("Journey not found", systemImage: "questionmark")
             }
@@ -265,12 +294,12 @@ struct GlobeSelectionSheet: View {
             case .wishlist:
                 Section {
                     Button("Log a Visit", systemImage: "plus") {
-                        dismiss()
+                        close()
                         model.addRequest = AddRequest(start: .place(pin.place))
                     }
                     Button("Remove from Wishlist", systemImage: "star.slash", role: .destructive) {
                         model.removeFromWishlist(place: pin.place)
-                        dismiss()
+                        close()
                     }
                 } footer: {
                     Text("On your wishlist. It ticks itself off when you log a visit here.")

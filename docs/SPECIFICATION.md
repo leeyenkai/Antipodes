@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Draft |
-| **Spec version** | 0.4.0 |
+| **Spec version** | 0.4.1 |
 | **Last updated** | 2026-10-20 |
 | **Owner** | Lee Yen Kai |
 | **Source** | Derived from *Antipodes — Spec Sheet (Draft v0.1)* (2026-10-15) |
@@ -72,8 +72,8 @@ adapted layouts.
 | ID | Requirement |
 |---|---|
 | R-PLAT-1 | iPhone is primary. Every flow MUST be usable one-handed. `[M1]` |
-| R-PLAT-2 | iPad MUST use sidebar navigation with a large globe and an inspector panel side by side. `[V1]` |
-| R-PLAT-3 | Mac MUST support bulk work: file import, editing dates across many visits, browsing stats on a large screen. `[V1]` |
+| R-PLAT-2 | iPad MUST use sidebar navigation with a large globe and an inspector panel side by side. `[V1]` Built (D-22). |
+| R-PLAT-3 | Mac MUST support bulk work: file import, editing dates across many visits, browsing stats on a large screen. `[V1]` Built. |
 | R-PLAT-4 | Distribution is the App Store, free, with no monetisation at launch. `[V1]` |
 | R-PLAT-5 | One multiplatform codebase; no per-platform forks. `[M1]` |
 
@@ -419,8 +419,8 @@ no network (D-5).
 
 | ID | Requirement |
 |---|---|
-| R-NAV-1 | Sidebar with the same destinations; the globe stays visible beside lists and detail views where space allows. `[V1]` |
-| R-NAV-2 | Mac adds drag-and-drop file import, a table view for editing many visits at once, and keyboard shortcuts. `[V1]` |
+| R-NAV-1 | Sidebar with the same destinations; the globe stays visible beside lists and detail views where space allows. `[V1]` Built (D-22). |
+| R-NAV-2 | Mac adds drag-and-drop file import, a table view for editing many visits at once, and keyboard shortcuts. `[V1]` Built. |
 
 ---
 
@@ -498,6 +498,7 @@ taken during the M1 build, D-12 onwards during the V1 build.
 | D-19 | **Widgets read a snapshot, never the log.** After every change the app writes a small JSON summary and a rendered globe image into the shared app-group container (`group.com.leeyenkai.antipodes`); the widget extension depends only on `AntipodesCore`. Widgets are iPhone and iPad only. | A widget process has a tight memory budget and must not open SwiftData or the 40 MB place database. A snapshot also means the widget shows exactly what the app last computed, so the two can never disagree. |
 | D-20 | **Dark appearance is the default**, with Light and System available in Settings. The launch screen is dark to match. | The globe is a night-side globe and the palette is designed around it; a light default would show the app at its weakest first. |
 | D-21 | **Identifiers and entitlements.** Bundle `com.leeyenkai.antipodes` (widgets `.widgets`), app group `group.com.leeyenkai.antipodes`, iCloud container `iCloud.com.leeyenkai.antipodes`. The Mac app is sandboxed through build settings with user-selected file access and Photos. The app-group entitlement is wired for iOS; the iCloud entitlement is documented in `App/Antipodes/Antipodes.entitlements` and enabled from Signing & Capabilities once a team is set. | Simulator builds run unsigned-but-entitled with no account; a device or Mac build needs the owner's team, at which point automatic signing registers the group and container. |
+| D-22 | **The globe stands beside the lists, built differently on iPad and Mac (R-NAV-1, R-PLAT-2).** On the Globe tab a tapped pin or arc opens in an inspector beside the globe on iPad and Mac, and in a sheet on iPhone as before. Trips and Collections keep the globe beside the list and every page pushed from it; the globe frames what is open (a trip alone, a visit, a journey, a country, a collection's members) and a tap on it opens that record in the list. On iPad that is a split view with the list in the floating column. On the Mac each page carries the globe beside itself. Below 720 points of width, and on iPhone, it is the plain list. Stats and All Records stay full width. | On iPad a list laid beside the globe by hand sat under the floating tab bar, which hid its toolbar; the split view is the layout the system keeps clear of it. On the Mac a navigation stack nested in a sidebar tab hands its pushes to the window, which replaces anything beside it, a split view styled the list as a second sidebar, and an inspector made AppKit resize the window and once throw on a layout loop. Charts and a table want the room. |
 
 ### 12.2 Module layout
 
@@ -562,7 +563,7 @@ checked in the simulator.
 | Globe: wishlist pins, filters, replay (R-GLOBE-4 to 6) | Built |
 | Photo import, flight-log import (R-LOG-7, R-LOG-8, R-JLOG-7 for flights) | Built (D-16, D-17); rail-log import is not |
 | Share cards, widgets, Year in Review (R-SHARE-*) | Built; Year in Review exports images, not video |
-| iPad and Mac (R-PLAT-2, R-PLAT-3, R-NAV-*) | Sidebar navigation, a bulk-edit table and keyboard shortcuts are built; the iPad inspector panel and Mac drag-and-drop import are not |
+| iPad and Mac (R-PLAT-2, R-PLAT-3, R-NAV-*) | Built (D-22): sidebar navigation; the globe beside Trips, Collections and their detail views, following what is open; a record tapped on the globe opening in an inspector beside it; a bulk-edit table; keyboard shortcuts; and on the Mac, a flight-log CSV or a JSON backup dropped on the window, reviewed before anything is written. Stats and All Records stay full width |
 | City transit lines and packs, path snapping and path-derived stats (R-TRAN-*, R-JLOG-5, R-PATH-1, 2, 5, 6, 7) | **Blocked**: needs OpenStreetMap-derived packs, which D-8 keeps out of the bundled database. City transit legs are logged between two places with the line as text; surface legs are straight lines marked approximate (R-PATH-3) |
 | Database updates from a static host (R-DB-5) | **Blocked**: needs a host. Achievements and collections are already read from the database (R-DB-6), and D-12 makes the log survive a replaced file |
 | Temperature in the month visited (R-CALC-2) | **Blocked**: needs a licence-reviewed climate-normals source. The stats screen says so |
@@ -620,3 +621,4 @@ M1 is done when, on a device or simulator (all met as of 2026-10-20; V1 status i
 | 2026-10-18 | 0.2.0 | The place database is built from real open data. Completed the licence review behind R-DB-7 and rewrote §6's source table to what is actually used. Resolved Q-4 (a choice of three country lists) and Q-5 (48 MB budget, cities above 5,000) as D-6 and D-7, and recorded D-8 to D-11: no OpenStreetMap data in the bundled database, fetching split from building, curated landmark identity with sourced facts, and a single cross-kind search prominence scale. |
 | 2026-10-18 | 0.3.0 | Resolved Q-3 as D-5: the globe is drawn by the app over bundled Natural Earth borders rather than fetched through MapKit, after measuring what MapKit actually requests when it cannot reach its service. Added §9.1 (R-GLOBE-1 to R-GLOBE-7) and the pure `AntipodesGlobe` module in §12.2. |
 | 2026-10-20 | 0.4.0 | The V1 scope is built (D-18); §13.1 records what is done and what is blocked. Recorded D-12 to D-21: upstream row ids, per-place time zones, DESNZ carbon factors, the personality rules, the first import formats, storing nothing about photos, widgets reading a snapshot, dark by default, and the app's identifiers and entitlements. Resolved Q-7, Q-8, Q-9 and Q-16; gave working answers to Q-10, Q-14 and Q-15. Sharpened R-LOG-7, R-PERS-3 and R-PRIV-4. Added `AntipodesImport` and the widget extension to §12.2. |
+| 2026-10-20 | 0.4.1 | The iPad and Mac layout is built: recorded D-22 (the globe beside the lists, and the inspector for what is tapped on it) and marked R-PLAT-2, R-PLAT-3, R-NAV-1 and R-NAV-2 built in §13.1. |

@@ -76,6 +76,7 @@ struct TripDetailView: View {
         .navigationTitle(trip.displayName(model: model))
         .toolbarTitleDisplayMode(.inline)
         .toolbar { toolbar(trip) }
+        .globeFocus(.trip(tripID))
         .sheet(isPresented: $isEditing) {
             TripEditor(trip: trip)
         }

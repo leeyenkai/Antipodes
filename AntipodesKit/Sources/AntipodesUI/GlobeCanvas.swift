@@ -12,6 +12,9 @@ struct GlobeCanvas: View {
     let borders: CountryBorders?
     let camera: GlobeCamera
     let selection: GlobeSelection?
+    /// Pins and arcs drawn as if selected, by visit or leg id: everything belonging to
+    /// what the screen beside the globe is showing (R-NAV-1).
+    var emphasised: Set<UUID> = []
     let palette: GlobePalette
     /// Off the main thread on screen, so dragging stays smooth; on the main thread for
     /// `ImageRenderer`, which needs the drawing finished when it returns.
@@ -170,7 +173,7 @@ struct GlobeCanvas: View {
             append(globe.clippedPolyline(arc.path), to: &path)
             guard !path.isEmpty else { continue }
 
-            let isSelected = selectedArcID == arc.id
+            let isSelected = selectedArcID == arc.id || emphasised.contains(arc.id)
             let colour = palette.colour(for: arc.mode)
 
             // A soft wide pass under a crisp thin one: the arcs need to read over both
@@ -200,7 +203,7 @@ struct GlobeCanvas: View {
             let projected = globe.project(pin.coordinate)
             guard projected.isVisible else { continue }
 
-            let isSelected = selectedPinID == pin.id
+            let isSelected = selectedPinID == pin.id || emphasised.contains(pin.id)
             let radius: Double = isSelected ? 7 : 4.5
             let centre = CGPoint(x: projected.point.x, y: projected.point.y)
             let dot = Path(

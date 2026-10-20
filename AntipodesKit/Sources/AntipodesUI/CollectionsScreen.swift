@@ -27,7 +27,7 @@ struct CollectionsScreen: View {
     }
 
     var body: some View {
-        NavigationStack {
+        GlobeBesideStack {
             Group {
                 switch section {
                 case .collections: CollectionsList()
@@ -40,6 +40,7 @@ struct CollectionsScreen: View {
                     ForEach(Section.allCases) { Text($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
                 .padding(.horizontal)
                 .padding(.bottom, 8)
             }
@@ -169,6 +170,7 @@ struct CollectionDetailView: View {
             }
             .navigationTitle(progress.definition.name)
             .toolbarTitleDisplayMode(.inline)
+            .globeFocus(.collection(collectionID))
         } else {
             ContentUnavailableView(
                 "Collection not found",
@@ -426,6 +428,7 @@ private struct WishlistView: View {
                 }
             }
         }
+        .globeFocus(.wishlist)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
                 Button("Add to Wishlist", systemImage: "plus") { isAdding = true }
