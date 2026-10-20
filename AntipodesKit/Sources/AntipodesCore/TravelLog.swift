@@ -230,6 +230,28 @@ public struct TravelLog: Hashable, Sendable {
         journeys.flatMap(\.legs)
     }
 
+    /// One record per identity, keeping the first of each, and one leg per identity
+    /// within each journey.
+    ///
+    /// Synced storage cannot promise that an identity is held once, and a record held
+    /// twice must not count twice in any statistic (R-CALC-5).
+    public func deduplicated() -> TravelLog {
+        func firstOfEach<Item: Identifiable>(_ items: [Item]) -> [Item] {
+            var seen = Set<Item.ID>()
+            return items.filter { seen.insert($0.id).inserted }
+        }
+        return TravelLog(
+            trips: firstOfEach(trips),
+            visits: firstOfEach(visits),
+            journeys: firstOfEach(journeys).map { journey in
+                var copy = journey
+                copy.legs = firstOfEach(journey.legs)
+                return copy
+            },
+            wishlist: firstOfEach(wishlist)
+        )
+    }
+
     /// Whether anything has been *logged*. A wishlist on its own is somewhere the user
     /// has not been yet, so it does not make the log non-empty.
     public var isEmpty: Bool {

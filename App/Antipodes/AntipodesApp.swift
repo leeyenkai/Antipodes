@@ -9,53 +9,50 @@ import SwiftUI
 /// app's assets and entitlements (decision D-3).
 @main
 struct AntipodesApp: App {
-    @State private var model: AppModel
+    @State private var opening: Result<AppModel, any Error>
 
     init() {
-        model = AppModel(
-            store: Self.makeStore(),
-            placeDatabaseURL: Bundle.main.url(forResource: "places", withExtension: "sqlite"),
-            bordersURL: Bundle.main.url(forResource: "borders-50m", withExtension: "antborders")
-        )
+        _opening = State(initialValue: Self.open())
     }
 
     var body: some Scene {
         WindowGroup {
-            RootView()
-                .environment(model)
+            switch opening {
+            case let .success(model):
+                RootView()
+                    .environment(model)
+            case let .failure(error):
+                StoreUnavailableView(error: error) { opening = Self.open() }
+            }
         }
         #if os(macOS)
         .defaultSize(width: 1200, height: 800)
         #endif
         .commands {
-            CommandGroup(replacing: .newItem) {
-                Button("Log a Place…") { model.addRequest = AddRequest() }
-                    .keyboardShortcut("n", modifiers: .command)
-                Button("Log a Journey…") { model.addRequest = AddRequest(start: .journey(nil)) }
-                    .keyboardShortcut("n", modifiers: [.command, .shift])
-                Button("Drop a Pin…") { model.addRequest = AddRequest(start: .pin(nil)) }
-                    .keyboardShortcut("p", modifiers: [.command, .shift])
+            if case let .success(model) = opening {
+                CommandGroup(replacing: .newItem) {
+                    Button("Log a Place…") { model.addRequest = AddRequest() }
+                        .keyboardShortcut("n", modifiers: .command)
+                    Button("Log a Journey…") { model.addRequest = AddRequest(start: .journey(nil)) }
+                        .keyboardShortcut("n", modifiers: [.command, .shift])
+                    Button("Drop a Pin…") { model.addRequest = AddRequest(start: .pin(nil)) }
+                        .keyboardShortcut("p", modifiers: [.command, .shift])
+                }
             }
         }
     }
 
-    /// Opens the on-disk store, falling back to memory if that is impossible.
+    /// Opens the on-disk store and the model around it.
     ///
-    /// A failure here is almost always a missing or mismatched iCloud entitlement in a
-    /// development build. Falling back keeps the app usable and loses nothing that was
-    /// already saved, because the on-disk store is left untouched. It is the wrong
-    /// behaviour for a release build, where silently not persisting would be worse
-    /// than refusing to start — hence the assertion.
-    private static func makeStore() -> TravelLogStore {
-        do {
-            return try TravelLogStore()
-        } catch {
-            assertionFailure("Could not open the travel log store: \(error)")
-            do {
-                return try TravelLogStore(inMemory: true)
-            } catch {
-                fatalError("Could not create even an in-memory store: \(error)")
-            }
+    /// A failure is shown rather than papered over with an in-memory store: carrying
+    /// on would look fine and then lose everything logged at the next launch.
+    private static func open() -> Result<AppModel, any Error> {
+        Result {
+            try AppModel(
+                store: TravelLogStore(),
+                placeDatabaseURL: Bundle.main.url(forResource: "places", withExtension: "sqlite"),
+                bordersURL: Bundle.main.url(forResource: "borders-50m", withExtension: "antborders")
+            )
         }
     }
 }

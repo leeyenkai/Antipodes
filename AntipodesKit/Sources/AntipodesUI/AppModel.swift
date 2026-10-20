@@ -118,13 +118,10 @@ public final class AppModel {
             do {
                 places = try PlaceDatabase(path: placeDatabaseURL.path(percentEncoded: false))
             } catch {
-                placesError = String(describing: error)
+                placesError = Self.placesUnavailable(because: error)
             }
         } else {
-            placesError = """
-            The bundled place database is missing. Run scripts/build-placedb.sh and \
-            rebuild the app.
-            """
+            placesError = Self.placesUnavailable(because: nil)
         }
 
         reload()
@@ -147,7 +144,7 @@ public final class AppModel {
                 countries: places.countryFacts()
             )
         } catch {
-            placesError = String(describing: error)
+            placesError = Self.placesUnavailable(because: error)
         }
         // The denominator for "% of the world" comes from the database rather than a
         // constant, because which places count as a country is the user's choice
@@ -159,6 +156,21 @@ public final class AppModel {
         // carbon would stay empty until the next edit.
         recompute()
         await refreshFacts()
+    }
+
+    /// What the user is told when the bundled place database cannot be read. It ships
+    /// inside the app, so the only real remedy is reinstalling; the underlying error is
+    /// kept for debug builds, where it is the developer reading.
+    private static func placesUnavailable(because error: (any Error)?) -> String {
+        var message = """
+        The built-in list of places could not be opened, so searching and place \
+        details are unavailable. Your log is safe. Reinstalling Antipodes should fix this.
+        """
+        #if DEBUG
+            message += "\n\n" + (error.map { String(describing: $0) }
+                ?? "places.sqlite is not in the bundle: run scripts/build-placedb.sh and rebuild.")
+        #endif
+        return message
     }
 
     /// Re-reads the log and recomputes every statistic.
@@ -285,13 +297,9 @@ public final class AppModel {
         perform { try store.updateVisit(visit) }
     }
 
-    /// Writes many edited visits, reloading once at the end.
+    /// Writes many edited visits in one save, reloading once at the end.
     public func updateVisits(_ visits: [Visit]) {
-        perform {
-            for visit in visits {
-                try store.updateVisit(visit)
-            }
-        }
+        perform { try store.updateVisits(visits) }
     }
 
     public func deleteVisits(_ ids: [UUID]) {
@@ -419,36 +427,35 @@ public final class AppModel {
         return (format, candidates)
     }
 
-    /// Logs every included candidate as its own one-leg journey.
+    /// Logs every included candidate as its own one-leg journey, in one save: an import
+    /// lands whole or not at all.
     public func importFlights(_ candidates: [FlightImportCandidate], tripID: UUID?) throws -> Int {
+        let legs = candidates.filter(\.include).compactMap(\.leg)
+        defer { reload() }
         let trip = try tripID.flatMap { try store.trip(id: $0) }
-        var count = 0
-        for candidate in candidates where candidate.include {
-            guard let leg = candidate.leg else { continue }
-            try store.logJourney(legs: [leg], trip: trip)
-            count += 1
-        }
-        reload()
-        return count
+        try store.logJourneys(legs.map { [$0] }, trip: trip)
+        return legs.count
     }
 
-    /// Logs the confirmed photo suggestions as visits (R-LOG-7).
+    /// Logs the confirmed photo suggestions as visits (R-LOG-7), in one save.
     public func importSuggestions(_ suggestions: [VisitSuggestion], tripID: UUID?) throws -> Int {
+        defer { reload() }
         let trip = try tripID.flatMap { try store.trip(id: $0) }
-        for suggestion in suggestions {
-            try store.logVisit(
-                place: suggestion.place,
-                visitType: suggestion.suggestedType,
-                date: suggestion.date,
-                trip: trip
-            )
-        }
-        reload()
+        try store.logVisits(
+            suggestions.map { (place: $0.place, visitType: $0.suggestedType, date: $0.date) },
+            trip: trip
+        )
         return suggestions.count
     }
 
+    /// Erases the log and everything personal kept beside it (R-PRIV-6).
+    ///
+    /// Home is the user's own location, so it goes too; clearing it also redraws the
+    /// widgets' globe without it. Appearance and counting rules are settings, not
+    /// data, and stay.
     public func deleteEverything() throws {
         try store.deleteEverything()
+        home = nil
         reload()
     }
 

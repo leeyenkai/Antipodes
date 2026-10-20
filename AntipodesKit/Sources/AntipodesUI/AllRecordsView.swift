@@ -137,10 +137,10 @@ struct AllRecordsView: View {
 
     private var rows: [Row] {
         let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
-        let trips = Dictionary(uniqueKeysWithValues: model.log.trips.map { (
-            $0.id,
-            $0.displayName(model: model)
-        ) })
+        let trips = Dictionary(
+            model.log.trips.map { ($0.id, $0.displayName(model: model)) },
+            uniquingKeysWith: { first, _ in first }
+        )
         return model.log.visits
             .filter { visit in
                 query.isEmpty || visit.place.name.lowercased().contains(query)

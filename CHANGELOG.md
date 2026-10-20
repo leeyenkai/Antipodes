@@ -204,6 +204,9 @@ is blocked.
 
 ### Changed
 
+- The SwiftData schema is versioned from the first release (`AntipodesSchemaV1` with an
+  empty migration plan), so a later change that is not purely additive has somewhere
+  to put its migration.
 - Forms use the grouped style on the Mac too, where the default laid them out in
   columns; Settings in the sidebar has no Done button, since it is not a sheet there.
 - **Dark appearance by default**, with Light and System in Settings, and a dark launch
@@ -222,6 +225,18 @@ is blocked.
 
 ### Fixed
 
+- **A record held twice is counted once.** CloudKit cannot enforce a unique identity,
+  so a backup restored on two devices before they synced left every record twice:
+  totals doubled and *All records* crashed. The log is now read one record per
+  identity, and every edit and delete reaches all copies so they never drift apart
+  (R-CALC-5, R-PRIV-6).
+- A flight or photo import lands whole or not at all; a failure part-way no longer
+  leaves half of it in the log. A failed save is rolled back rather than left pending.
+- *Delete everything* also forgets the home place, and the widgets' globe is redrawn
+  without it (R-PRIV-6).
+- If the travel log cannot be opened, the app says so and offers to try again, instead
+  of quietly running on an empty log in memory that would be lost at the next launch.
+- A missing place database no longer tells the user to run a developer script.
 - A shaded country lying just past the edge of the globe could be filled across the
   whole visible face, turning the ocean green or grey whenever the globe faced Japan.
   The edge of a clipped outline now follows the hidden part of the outline round the

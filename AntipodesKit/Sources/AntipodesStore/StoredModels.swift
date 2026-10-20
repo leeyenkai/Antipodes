@@ -18,6 +18,39 @@ import SwiftData
 // optional or defaulted. SwiftData migrates that lightweight on first launch with no
 // migration plan, and CloudKit accepts the new fields as additive schema changes. No
 // release has shipped, so no store in the field predates them.
+//
+// From the first release on, the schema is versioned: `AntipodesSchemaV1` below is
+// what ships. A later change that is not purely additive gets a `V2` and a stage in
+// `AntipodesMigrationPlan`, written in the same commit as the change.
+
+/// The schema the first release ships with.
+public enum AntipodesSchemaV1: VersionedSchema {
+    public static var versionIdentifier: Schema.Version {
+        Schema.Version(1, 0, 0)
+    }
+
+    public static var models: [any PersistentModel.Type] {
+        [
+            StoredTrip.self,
+            StoredVisit.self,
+            StoredJourney.self,
+            StoredLeg.self,
+            StoredWishlistItem.self,
+        ]
+    }
+}
+
+/// How a store on an older schema is brought up to date. One version so far, so there
+/// is nothing to migrate yet.
+public enum AntipodesMigrationPlan: SchemaMigrationPlan {
+    public static var schemas: [any VersionedSchema.Type] {
+        [AntipodesSchemaV1.self]
+    }
+
+    public static var stages: [MigrationStage] {
+        []
+    }
+}
 
 @Model
 public final class StoredTrip {
