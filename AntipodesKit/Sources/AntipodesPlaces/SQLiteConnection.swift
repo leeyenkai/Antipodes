@@ -188,4 +188,10 @@ struct SQLiteRow {
     func double(_ column: Int32) -> Double? {
         isNull(column) ? nil : sqlite3_column_double(statement, column)
     }
+
+    /// The bytes of a blob, copied out before the statement moves on.
+    func blob(_ column: Int32) -> Data? {
+        guard let pointer = sqlite3_column_blob(statement, column) else { return nil }
+        return Data(bytes: pointer, count: Int(sqlite3_column_bytes(statement, column)))
+    }
 }

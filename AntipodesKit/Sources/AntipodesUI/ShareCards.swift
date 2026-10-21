@@ -71,7 +71,7 @@ extension ShareCardPayload {
         let borders = model.globeBorders
         switch card {
         case let .stat(title, value, detail, symbol):
-            let scene = GlobeSceneBuilder.build(log: model.log, rules: model.rules, arcSegments: 32)
+            let scene = model.globeScene(of: model.log, arcSegments: 32)
             self.init(
                 eyebrow: "My travels",
                 title: title,
@@ -83,7 +83,7 @@ extension ShareCardPayload {
                 borders: borders
             )
         case .globe:
-            let scene = GlobeSceneBuilder.build(log: model.log, rules: model.rules, arcSegments: 32)
+            let scene = model.globeScene(of: model.log, arcSegments: 32)
             self.init(
                 eyebrow: "My travels",
                 title: "\(statistics.coverage.listedCountriesVisited) countries",
@@ -103,10 +103,7 @@ extension ShareCardPayload {
         case let .trip(tripID):
             let trip = model.log.trip(id: tripID)
             let stats = model.statistics(forTrip: tripID)
-            let scene = GlobeSceneBuilder.build(
-                log: model.log.restricted(toTrip: tripID),
-                rules: model.rules
-            )
+            let scene = model.globeScene(of: model.log.restricted(toTrip: tripID))
             self.init(
                 eyebrow: "Trip",
                 title: trip?.displayName(model: model) ?? "Trip",
@@ -130,10 +127,7 @@ extension ShareCardPayload {
             self.init(collected: card, model: model)
         case let .year(year):
             let review = model.yearInReview(year)
-            let scene = GlobeSceneBuilder.build(
-                log: model.log.restricted(toYear: year),
-                rules: model.rules
-            )
+            let scene = model.globeScene(of: model.log.restricted(toYear: year))
             self.init(
                 eyebrow: "Year in Review",
                 title: String(year),
@@ -154,10 +148,7 @@ extension ShareCardPayload {
 
     @MainActor
     private init(journey: Journey, model: AppModel) {
-        let scene = GlobeSceneBuilder.build(
-            log: TravelLog(journeys: [journey]),
-            rules: model.rules
-        )
+        let scene = model.globeScene(of: TravelLog(journeys: [journey]))
         var metrics = [
             Metric(
                 label: "Distance",

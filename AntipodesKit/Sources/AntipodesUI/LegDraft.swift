@@ -145,6 +145,10 @@ struct LegDraft: Identifiable, Equatable {
             storedPathLengthKm = nil
         } else {
             storedPathLengthKm = route.lengthKm
+            // The catalogue's own length again, not one the railway map measured.
+            if transitLineID == nil {
+                networkVersion = nil
+            }
         }
     }
 

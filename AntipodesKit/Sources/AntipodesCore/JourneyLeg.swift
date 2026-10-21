@@ -27,7 +27,8 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
     /// stops, so the stops passed through can be worked out (R-TRAN-3).
     public var transitLineID: Int64?
     /// The network the ride was logged against, kept so a later network does not
-    /// rewrite it (R-TRAN-4).
+    /// rewrite it (R-TRAN-4): a transit pack, or for a rail leg with no line, the
+    /// railway map its length was measured on (D-30).
     public var networkVersion: String?
     public var operatorName: String?
     public var serviceNumber: String?
@@ -91,6 +92,21 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
 
     /// Distance and where it came from, resolved in one place so every caller agrees.
     ///
+    /// A rail leg with no length of its own, which the railway network can measure
+    /// (R-PATH-2, D-30). A catalogue route's length, a transit line's and the user's own
+    /// figure all come first.
+    public var needsRailMeasurement: Bool {
+        mode == .rail && transitLineID == nil && distanceKmOverride == nil
+            && storedPathLengthKm == nil
+    }
+
+    /// Its length was measured along the railway network rather than taken from a
+    /// catalogue route.
+    public var isMeasuredAlongRailway: Bool {
+        mode == .rail && transitLineID == nil && networkVersion != nil
+            && storedPathLengthKm != nil
+    }
+
     /// Order: the user's override, then a real stored path, then the great circle —
     /// exact for a flight, flagged approximate for anything that should have followed
     /// the ground (R-PATH-5).

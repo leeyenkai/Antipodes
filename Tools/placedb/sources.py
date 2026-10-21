@@ -159,12 +159,20 @@ NATURAL_EARTH = Source(
     # unnecessary." Credited anyway, because a user looking at the Settings screen
     # deserves to know where their country list came from.
     attribution=None,
-    used_for="Country list, ISO codes, continents and sovereignty classification",
+    used_for=(
+        "Country list, ISO codes, continents and sovereignty classification; "
+        "the railway network rail legs are measured along"
+    ),
     files=(
         RemoteFile(
             "ne_110m_admin_0_countries.geojson",
             f"{NATURAL_EARTH_BASE}/ne_110m_admin_0_countries.geojson",
             sha256="6866c877d39cba9c357620878839b336d569f8c662d3cfab4cb1dbe2d39c977f",
+        ),
+        RemoteFile(
+            "ne_10m_railroads.geojson",
+            f"{NATURAL_EARTH_BASE}/ne_10m_railroads.geojson",
+            sha256="a0962d7866060ae3e24df255f6d662389ac9ba7e0df40cf329c2281190b861e6",
         ),
     ),
 )

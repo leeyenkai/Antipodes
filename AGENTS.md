@@ -171,7 +171,7 @@ The place database is built from open data, and the licences differ:
 
 | Source | Licence | Obligation | In use |
 |---|---|---|---|
-| Natural Earth | Public domain | None | Yes — country list, ISO codes, sovereignty |
+| Natural Earth | Public domain | None | Yes — country list, ISO codes, sovereignty, the railway network (D-30) |
 | GeoNames | **CC BY 4.0** | **Attribution, and say it was modified** | Yes — cities, regions, elevations, time zones |
 | OurAirports | Public domain | None | Yes — airports and codes |
 | Wikidata | CC0 | None | Yes — landmark facts, UNESCO status, UN membership, city transit lines and stops (D-29) |

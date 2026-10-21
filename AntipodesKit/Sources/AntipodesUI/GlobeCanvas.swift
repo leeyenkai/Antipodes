@@ -293,16 +293,16 @@ struct GlobeCanvas: View {
                     lineWidth: isSelected ? 5 : 3
                 )
             }
-            // A surface leg is drawn along the great circle too, which is not the road
-            // or track it took, so it is dashed: approximate, as its distance is marked
-            // (R-PATH-3).
+            // A surface leg drawn along the great circle, which is not the road or
+            // track it took, is dashed: approximate, as its distance is marked
+            // (R-PATH-3). One measured along the railway is drawn solid.
             context.stroke(
                 path,
                 with: .color(colour),
                 style: StrokeStyle(
                     lineWidth: isSelected ? 2.4 : 1.3,
                     lineCap: .round,
-                    dash: arc.mode.greatCircleIsExact ? [] : [5, 4]
+                    dash: arc.isApproximate ? [5, 4] : []
                 )
             )
         }

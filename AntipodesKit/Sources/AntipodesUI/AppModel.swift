@@ -78,6 +78,12 @@ public final class AppModel {
         scene: GlobeScene
     )] = [:]
     @ObservationIgnored var borders: CountryBorders?
+    /// The railway network rail legs are measured along, once loaded (D-30).
+    @ObservationIgnored var railNetwork: RailNetwork?
+    /// The track each rail leg is drawn along, by leg, and the ends it was found for.
+    var railPaths: [UUID: [Coordinate]] = [:]
+    @ObservationIgnored var railPathEnds: [UUID: [Coordinate]] = [:]
+    @ObservationIgnored var railCountries: [UUID: [String]] = [:]
     #if os(iOS)
         @ObservationIgnored var widgetGlobeSignature: Int?
         @ObservationIgnored var widgetWrite: Task<Void, Never>?
@@ -255,6 +261,7 @@ public final class AppModel {
         if changed {
             recompute()
         }
+        await refreshRailways()
     }
 
     public var gazetteer: Gazetteer {
@@ -271,13 +278,14 @@ public final class AppModel {
             collections: catalogue.collections,
             achievements: catalogue.achievements,
             routes: catalogue.routes,
-            transit: transitNetwork
+            transit: transitNetwork,
+            countriesAlongLegs: railCountries
         )
     }
 
     /// Recomputes off the main actor. A newer request supersedes an older one still
     /// running, so a burst of edits settles on the last.
-    private func recompute() {
+    func recompute() {
         computeGeneration += 1
         let generation = computeGeneration
         let log = log

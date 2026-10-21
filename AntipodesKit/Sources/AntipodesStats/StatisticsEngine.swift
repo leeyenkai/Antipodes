@@ -16,6 +16,9 @@ public struct StatisticsContext: Sendable {
     public var routes: [RouteInfo]
     /// The transit systems the log rides, for the city transit stats (R-TRAN-2).
     public var transit: TransitNetwork
+    /// The countries each rail leg's track runs through, in order, by leg (R-PATH-6).
+    /// A leg without an entry counts the countries of its two ends.
+    public var countriesAlongLegs: [UUID: [String]]
 
     public init(
         rules: CountingRules = .default,
@@ -26,7 +29,8 @@ public struct StatisticsContext: Sendable {
         collections: [CollectionDefinition] = [],
         achievements: [AchievementDefinition] = [],
         routes: [RouteInfo] = [],
-        transit: TransitNetwork = .empty
+        transit: TransitNetwork = .empty,
+        countriesAlongLegs: [UUID: [String]] = [:]
     ) {
         self.rules = rules
         self.gazetteer = gazetteer
@@ -37,6 +41,7 @@ public struct StatisticsContext: Sendable {
         self.achievements = achievements
         self.routes = routes
         self.transit = transit
+        self.countriesAlongLegs = countriesAlongLegs
     }
 }
 
@@ -157,8 +162,8 @@ public enum StatisticsEngine {
                 today: context.today
             ),
             themes: ThemeStatistics.compute(for: log, rules: rules, gazetteer: gazetteer),
-            journeys: JourneyStatistics.compute(for: log, rules: rules, routes: context.routes),
-            rail: RailStatistics.compute(for: log, rules: rules, routes: context.routes),
+            journeys: JourneyStatistics.compute(for: log, rules: rules, context: context),
+            rail: RailStatistics.compute(for: log, rules: rules, context: context),
             roadAndSea: RoadAndSeaStatistics.compute(for: log, rules: rules, gazetteer: gazetteer),
             transit: TransitStatistics.compute(for: log, rules: rules, network: context.transit),
             punctuality: PunctualityStatistics.compute(for: log, rules: rules),
@@ -194,6 +199,36 @@ public enum StatisticsEngine {
                     PlaceReference(id: .custom(UUID()), kind: .custom, name: "Home", coordinate: $0)
                 }
             )
+        )
+    }
+}
+
+extension JourneyStatistics {
+    static func compute(
+        for log: TravelLog,
+        rules: CountingRules,
+        context: StatisticsContext
+    ) -> JourneyStatistics {
+        compute(
+            for: log,
+            rules: rules,
+            routes: context.routes,
+            countriesAlong: context.countriesAlongLegs
+        )
+    }
+}
+
+extension RailStatistics {
+    static func compute(
+        for log: TravelLog,
+        rules: CountingRules,
+        context: StatisticsContext
+    ) -> RailStatistics {
+        compute(
+            for: log,
+            rules: rules,
+            routes: context.routes,
+            countriesAlong: context.countriesAlongLegs
         )
     }
 }

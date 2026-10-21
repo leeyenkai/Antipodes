@@ -249,6 +249,7 @@ struct JourneyEditor: View {
                 }
                 legs[index].leaveTransitLine()
                 legs[index].endpointChanged(route: legs[index].routeID.flatMap(model.route(id:)))
+                legs[index].measureAlongRailways(model.railNetwork)
             }
         }
     }
@@ -420,6 +421,7 @@ private struct LegSection: View {
                 Label(mode.displayName, systemImage: mode.symbolName).tag(mode)
             }
         }
+        .onChange(of: draft.mode) { draft.measureAlongRailways(model.railNetwork) }
 
         if draft.mode == .cityTransit {
             TransitLineButton(lineID: draft.transitLineID, action: pickTransit)

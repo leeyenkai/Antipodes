@@ -15,11 +15,13 @@ public struct JourneyStatistics: Hashable, Sendable {
     public let dayInput: StatInputSummary
     /// The journey that used the most different modes.
     public let mostVariedJourney: Journey?
-    /// Countries reached overland: the ends of surface legs, and every country a
+    /// Countries reached overland: the ends of surface legs, every country a
     /// catalogue route ridden in full runs through — the Trans-Siberian crosses Russia
-    /// and Mongolia whichever two cities it is logged between.
+    /// and Mongolia whichever two cities it is logged between — and every country a
+    /// rail leg's track runs through (R-PATH-6).
     public let countriesOverland: Set<String>
-    /// Surface legs whose two ends are in different countries.
+    /// Borders crossed on the ground: each change of country along a rail leg's track,
+    /// or one for any other surface leg whose ends are in different countries.
     public let bordersCrossedOverland: Int
     /// Journeys with more than one leg, and how many connections were missed.
     public let multiLegJourneys: Int
@@ -36,7 +38,8 @@ public struct JourneyStatistics: Hashable, Sendable {
     public static func compute(
         for log: TravelLog,
         rules: CountingRules = .default,
-        routes: [RouteInfo] = []
+        routes: [RouteInfo] = [],
+        countriesAlong: [UUID: [String]] = [:]
     ) -> JourneyStatistics {
         let routesByID = routes.byID
         var minutes: [TravelMode: Int] = [:]
@@ -72,10 +75,7 @@ public struct JourneyStatistics: Hashable, Sendable {
                    route.isRiddenInFull(by: leg) {
                     overland.formUnion(route.countryCodes)
                 }
-                if let from = leg.origin.countryCode, let to = leg.destination.countryCode,
-                   from != to {
-                    borders += 1
-                }
+                borders += crossings(of: leg, along: countriesAlong, into: &overland)
             }
         }
 
@@ -112,11 +112,32 @@ public struct BusiestDay: Hashable, Sendable {
     }
 }
 
+extension JourneyStatistics {
+    /// The borders a surface leg crossed, adding the countries it ran through: each
+    /// change of country along its track where the railway map gave it one (R-PATH-6),
+    /// or one border when its two ends are in different countries.
+    static func crossings(
+        of leg: JourneyLeg,
+        along countries: [UUID: [String]],
+        into set: inout Set<String>
+    ) -> Int {
+        if let along = countries[leg.id], !along.isEmpty {
+            set.formUnion(along)
+            return along.count - 1
+        }
+        if let from = leg.origin.countryCode, let to = leg.destination.countryCode, from != to {
+            return 1
+        }
+        return 0
+    }
+}
+
 /// The rail group of the journey stats (§5.7, "Rail").
 ///
-/// Stations are the ends of rail legs as logged — cities or custom pins today, since
-/// the bundled database has no station list (D-8). Stations passed through and network
-/// completion need route geometry and are not attempted.
+/// Stations are the ends of rail legs as logged — cities or custom pins, since the
+/// bundled database has no list of main-line stations (D-8). The railway map (D-30)
+/// has track but no stations, so stations passed through are not attempted; it does
+/// say which countries a leg's track runs through (R-PATH-6).
 public struct RailStatistics: Hashable, Sendable {
     public let legCount: Int
     public let kilometres: Double
@@ -130,6 +151,7 @@ public struct RailStatistics: Hashable, Sendable {
     public let stations: Set<PlaceID>
     /// Rail legs that were sleepers or ran overnight.
     public let overnightLegs: Int
+    /// The ends' countries, a full catalogue route's, and those along the track.
     public let countries: Set<String>
     public let bordersCrossed: Int
     /// The highest point of any catalogue route ridden in full, where the catalogue has
@@ -142,7 +164,8 @@ public struct RailStatistics: Hashable, Sendable {
     public static func compute(
         for log: TravelLog,
         rules: CountingRules = .default,
-        routes: [RouteInfo] = []
+        routes: [RouteInfo] = [],
+        countriesAlong: [UUID: [String]] = [:]
     ) -> RailStatistics {
         var legCount = 0
         var kilometres = 0.0
@@ -200,9 +223,7 @@ public struct RailStatistics: Hashable, Sendable {
             if let route = leg.routeID.flatMap({ routesByID[$0] }), route.isRiddenInFull(by: leg) {
                 countries.formUnion(route.countryCodes)
             }
-            if let from = leg.origin.countryCode, let to = leg.destination.countryCode, from != to {
-                borders += 1
-            }
+            borders += JourneyStatistics.crossings(of: leg, along: countriesAlong, into: &countries)
         }
 
         return RailStatistics(

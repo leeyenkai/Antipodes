@@ -311,6 +311,25 @@ CREATE TABLE transit_segment (
 
 CREATE INDEX idx_transit_line_system ON transit_line (system_id);
 
+-- The railway network rail legs are measured along (R-PATH-2, R-PATH-5, D-30), from
+-- Natural Earth's 1:10m railroads (public domain). Nodes are junctions and line ends;
+-- an edge is the track between two of them, its length measured on the full geometry
+-- and `points` its simplified line: little-endian int32 pairs, latitude then
+-- longitude, in 1/100,000 of a degree, from node_a to node_b with both ends.
+CREATE TABLE rail_node (
+    id        INTEGER PRIMARY KEY,
+    latitude  REAL NOT NULL,
+    longitude REAL NOT NULL
+);
+
+CREATE TABLE rail_edge (
+    id       INTEGER PRIMARY KEY,
+    node_a   INTEGER NOT NULL REFERENCES rail_node (id),
+    node_b   INTEGER NOT NULL REFERENCES rail_node (id),
+    length_m INTEGER NOT NULL,
+    points   BLOB NOT NULL
+);
+
 -- Everything searchable, flattened.
 --
 -- Two ranking columns, because they answer different questions (R-LOG-1).

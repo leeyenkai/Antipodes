@@ -123,6 +123,13 @@ is blocked.
   is one ride dated across its months, with the purpose Commute (R-JLOG-6). Systems
   outside the set are still logged between two places. The leg's distance says it runs
   along the line rather than calling it a catalogue route.
+- **Trains follow the tracks** (R-PATH-2, R-PATH-5, R-PATH-6, D-30): a rail leg is
+  measured along the railway between its two ends, and the globe draws it there, solid
+  instead of dashed. London to Edinburgh is 633 km rather than 534 as the crow flies;
+  the length is saved with the leg along with the map it came from, and the editor says
+  so. The countries a train passes through count as reached overland — Paris to
+  Amsterdam crosses Belgium — and each change of country is a border crossed. A leg the
+  map cannot join keeps its straight line, marked approximate.
 - **Eras for undated landmarks** (R-DB-3): a landmark Wikidata knows only to the century
   or millennium — the Parthenon, 5th century BC — carries that era instead of a made-up
   year, and joins the era spread where the era lies within one period.
@@ -263,6 +270,10 @@ is blocked.
   90 km from their city and applies `curation/transit_line_fixes.csv`, and has its own
   tests. Legs gain `transit_line_id` and `network_version` in the store and the CSV
   export (R-TRAN-4).
+- **Schema version 6**: `rail_node` and `rail_edge`, a routable network of 20,455
+  junctions and 24,531 stretches of track from Natural Earth's 1:10m railroads (public
+  domain, v5.1.2, pinned by digest), about 4 MB. `railways.py` builds it and has its
+  own tests; `meta.rail_network_version` names it.
 - The satellite globe's picture: NASA Blue Marble Next Generation (August 2004, with
   topography and bathymetry), public domain, fetched once by `scripts/fetch-imagery.sh`,
   digest-verified and scaled to 4096 × 2048. Recorded in `Tools/placedb/SOURCES.md` and

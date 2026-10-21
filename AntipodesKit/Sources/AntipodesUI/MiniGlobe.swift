@@ -41,11 +41,7 @@ extension MiniGlobe {
            cached.revision == model.logRevision, cached.rules == model.rules {
             scene = cached.scene
         } else {
-            scene = GlobeSceneBuilder.build(
-                log: model.log.restricted(toTrip: tripID),
-                rules: model.rules,
-                arcSegments: 24
-            )
+            scene = model.globeScene(of: model.log.restricted(toTrip: tripID), arcSegments: 24)
             model.tripSceneCache[tripID] = (model.logRevision, model.rules, scene)
         }
         // Framed on the places, not the flights there: a trip to Japan is about Japan,
@@ -66,9 +62,6 @@ extension MiniGlobe {
     /// One journey's arcs.
     @MainActor
     static func journey(_ journey: Journey, model: AppModel) -> MiniGlobe {
-        MiniGlobe(scene: GlobeSceneBuilder.build(
-            log: TravelLog(journeys: [journey]),
-            rules: model.rules
-        ))
+        MiniGlobe(scene: model.globeScene(of: TravelLog(journeys: [journey])))
     }
 }

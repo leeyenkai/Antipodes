@@ -90,36 +90,6 @@ public struct GlobePin: Identifiable, Sendable {
     }
 }
 
-public struct GlobeArc: Identifiable, Sendable {
-    public let id: UUID
-    public let mode: TravelMode
-    public let origin: PlaceReference
-    public let destination: PlaceReference
-    /// The sampled great circle, straight from `AntipodesCore`. The globe never works
-    /// out a path of its own, so the line drawn is the line the distance was measured
-    /// along (R-PATH-4, AGENTS.md §7).
-    public let path: [Coordinate]
-    public let date: FlexibleDate
-
-    public var title: String {
-        "\(origin.name) → \(destination.name)"
-    }
-}
-
-/// A catalogue route on the wishlist, drawn as a dashed line between its two ends
-/// (R-WISH-1). Not a journey: it adds nothing to any count or distance.
-public struct GlobeWishlistRoute: Identifiable, Hashable, Sendable {
-    public let id: UUID
-    public let name: String
-    public let path: [Coordinate]
-
-    public init(id: UUID, name: String, from start: Coordinate, to end: Coordinate) {
-        self.id = id
-        self.name = name
-        path = GreatCircle.arc(from: start, to: end, segments: 32)
-    }
-}
-
 /// Everything the globe draws, worked out once per change rather than per frame.
 public struct GlobeScene: Sendable {
     public let pins: [GlobePin]
@@ -175,10 +145,17 @@ public enum GlobeSceneBuilder {
         wishlist: [PlaceReference] = [],
         wishlistRoutes: [GlobeWishlistRoute] = [],
         home: PlaceReference? = nil,
-        arcSegments: Int = defaultArcSegments
+        arcSegments: Int = defaultArcSegments,
+        paths: [UUID: [Coordinate]] = [:]
     ) -> GlobeScene {
         let places = buildPins(log: log, rules: rules, filter: filter, wishlist: wishlist)
-        let journeys = buildArcs(log: log, rules: rules, filter: filter, segments: arcSegments)
+        let journeys = buildArcs(
+            log: log,
+            rules: rules,
+            filter: filter,
+            segments: arcSegments,
+            paths: paths
+        )
 
         // Home and its antipode are drawn as markers, outside the bookkeeping: they are
         // not records, so they are neither drawn nor excluded as travel.
@@ -310,11 +287,14 @@ public enum GlobeSceneBuilder {
         return result
     }
 
+    /// `paths` are the tracks legs were measured along, by leg; the rest are drawn on
+    /// their great circles.
     private static func buildArcs(
         log: TravelLog,
         rules: CountingRules,
         filter: GlobeFilter,
-        segments: Int
+        segments: Int,
+        paths: [UUID: [Coordinate]]
     ) -> Journeys {
         var result = Journeys()
 
@@ -335,7 +315,8 @@ public enum GlobeSceneBuilder {
                     continue
                 }
 
-                let path = leg.pathForDisplay(segments: segments)
+                let track = paths[leg.id].flatMap { $0.count > 1 ? $0 : nil }
+                let path = track ?? leg.pathForDisplay(segments: segments)
                 guard path.count > 1 else {
                     result.summary.exclude(.missingCoordinate)
                     continue
@@ -352,7 +333,8 @@ public enum GlobeSceneBuilder {
                         origin: leg.origin,
                         destination: leg.destination,
                         path: path,
-                        date: leg.date
+                        date: leg.date,
+                        isApproximate: track == nil && !leg.mode.greatCircleIsExact
                     )
                 )
             }
