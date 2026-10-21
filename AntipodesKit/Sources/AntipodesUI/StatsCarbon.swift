@@ -48,10 +48,10 @@ struct CarbonSection: View {
                             mode.displayName,
                             Format.carbon(kilograms: kilograms),
                             symbol: mode.symbolName,
-                            route: .legs(mode)
+                            route: .carbon(mode)
                         )
                     }
-                    StatRow("Every leg", "", symbol: "list.bullet", route: .carbon)
+                    StatRow("Every leg", "", symbol: "list.bullet", route: .carbon(nil))
                 }
             }
         }

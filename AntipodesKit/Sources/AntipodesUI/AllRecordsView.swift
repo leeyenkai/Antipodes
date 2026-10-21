@@ -52,7 +52,23 @@ struct AllRecordsView: View {
                 }
             }
         }
+        .overlay {
+            if rows.isEmpty {
+                if searchText.trimmingCharacters(in: .whitespaces).isEmpty {
+                    ContentUnavailableView(
+                        "No places logged",
+                        systemImage: "tablecells",
+                        description: Text(
+                            "Every place you log appears here, ready to edit in bulk."
+                        )
+                    )
+                } else {
+                    ContentUnavailableView.search(text: searchText)
+                }
+            }
+        }
         .searchable(text: $searchText, prompt: "Filter by place or country")
+        .deleteSelectionCommand(isEnabled: !selection.isEmpty) { isConfirmingDelete = true }
         .navigationDestination(item: $openedVisit) { VisitDetailView(visitID: $0) }
         .navigationTitle("All Records")
         .toolbar {
@@ -160,5 +176,18 @@ struct AllRecordsView: View {
                 )
             }
             .sorted(using: sortOrder)
+    }
+}
+
+extension View {
+    /// ⌫ on the Mac deletes the selected rows, after asking, as the menu does. iOS has
+    /// no delete command; the menu and swipe actions cover it there.
+    @ViewBuilder
+    func deleteSelectionCommand(isEnabled: Bool, perform: @escaping () -> Void) -> some View {
+        #if os(macOS)
+            onDeleteCommand(perform: isEnabled ? perform : nil)
+        #else
+            self
+        #endif
     }
 }

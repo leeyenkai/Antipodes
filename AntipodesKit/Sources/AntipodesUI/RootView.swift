@@ -57,10 +57,13 @@ public struct RootView: View {
                     }
                 }
                 .tabPlacement(.sidebarOnly)
-                Tab("Settings", systemImage: "gearshape", value: .settings) {
-                    SettingsScreen(isDestination: true)
-                }
-                .tabPlacement(.sidebarOnly)
+                #if !os(macOS)
+                    // The Mac keeps settings in their own window (⌘,), not the sidebar.
+                    Tab("Settings", systemImage: "gearshape", value: .settings) {
+                        SettingsScreen(isDestination: true)
+                    }
+                    .tabPlacement(.sidebarOnly)
+                #endif
             }
         }
         .tabViewStyle(.sidebarAdaptable)
@@ -76,6 +79,18 @@ public struct RootView: View {
                     selection = selection == .records ? .trips : .stats
                 }
             }
+            .overlay(alignment: .bottom) {
+                UndoToast()
+                    .padding(.bottom, sizeClass == .compact ? 120 : 24)
+            }
+            .focusedSceneValue(\.selectSection, SectionSelector { section in
+                selection = switch section {
+                case .globe: .globe
+                case .trips: .trips
+                case .stats: .stats
+                case .collections: .collections
+                }
+            })
             .onOpenURL { url in
                 if let link = DeepLink(url: url) {
                     open(link)

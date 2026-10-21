@@ -33,7 +33,15 @@ public extension AppModel {
     }
 
     func removeFromWishlist(_ ids: [UUID]) {
-        perform { try store.removeFromWishlist(ids) }
+        let removed = log.wishlist.filter { ids.contains($0.id) }
+        if perform({ try store.removeFromWishlist(ids) }), !removed.isEmpty {
+            offerUndo(Deletion(
+                message: removed.count == 1
+                    ? "Removed \(removed[0].title) from your wishlist"
+                    : "Removed \(removed.count) from your wishlist",
+                records: TravelLog(wishlist: removed)
+            ))
+        }
     }
 
     /// Adds the place, or takes it off if it is there already. Says which it did.

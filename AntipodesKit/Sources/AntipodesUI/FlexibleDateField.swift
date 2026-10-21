@@ -17,15 +17,15 @@ struct FlexibleDateField: View {
 
     var body: some View {
         Group {
-            Picker("Precision", selection: $precision) {
-                Text("Day").tag(FlexibleDate.Precision.day)
-                Text("Range").tag(FlexibleDate.Precision.range)
-                Text("Month").tag(FlexibleDate.Precision.month)
-                Text("Year").tag(FlexibleDate.Precision.year)
-                Text("Unknown").tag(FlexibleDate.Precision.unknown)
+            // Five segments where they fit; a menu on a narrow screen or at a large text
+            // size, where the segments would be squeezed past reading.
+            ViewThatFits(in: .horizontal) {
+                precisionPicker
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                precisionPicker
+                    .pickerStyle(.menu)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
 
             switch precision {
             case .day:
@@ -64,10 +64,24 @@ struct FlexibleDateField: View {
         .onAppear(perform: load)
     }
 
-    private var yearStepper: some View {
-        Stepper(value: $year, in: 1900 ... 2100) {
-            LabeledContent("Year", value: String(year))
+    private var precisionPicker: some View {
+        Picker("Precision", selection: $precision) {
+            Text("Day").tag(FlexibleDate.Precision.day)
+            Text("Range").tag(FlexibleDate.Precision.range)
+            Text("Month").tag(FlexibleDate.Precision.month)
+            Text("Year").tag(FlexibleDate.Precision.year)
+            Text("Unknown").tag(FlexibleDate.Precision.unknown)
         }
+    }
+
+    /// A menu of years, newest first: a stepper took dozens of taps to go back decades.
+    private var yearStepper: some View {
+        Picker("Year", selection: $year) {
+            ForEach(Array((1900 ... max(year, CalendarDate.today().year)).reversed()), id: \.self) {
+                Text(String($0)).tag($0)
+            }
+        }
+        .pickerStyle(.menu)
     }
 
     /// Starts the controls from the date being edited, so editing a visit dated

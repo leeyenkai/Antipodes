@@ -10,8 +10,10 @@ public enum UnitSystem: String, Sendable, Codable, CaseIterable, Identifiable {
 
     public var displayName: String {
         switch self {
-        case .metric: "Kilometres and °C"
-        case .imperial: "Miles and °F"
+        // What the app shows today: distances and heights. Temperatures will follow the
+        // same choice when the climate statistics arrive (R-CALC-2, R-CALC-4).
+        case .metric: "Kilometres and metres"
+        case .imperial: "Miles and feet"
         }
     }
 

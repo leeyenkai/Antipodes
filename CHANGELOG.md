@@ -226,6 +226,38 @@ is blocked.
 
 ### Changed
 
+- **Faster journeys** (R-JLOG-1): choosing a mode opens the search for where the leg
+  started, and choosing that opens the search for where it ended — a flight is mode,
+  from, to, save. A connecting leg opens straight on its destination.
+- **Undo**: deleting a place, a journey, a trip or a wishlist entry shows "Undo" for a
+  few seconds, and puts the records back by their own identity — a trip gets its
+  places back. Swipe to delete stays one gesture; the delete buttons in forms say the
+  deletion can be undone. "Ride Again" no longer logs a journey on a full swipe.
+- **Every number opens what it rests on** (§7): continents, the world share, the round
+  the Earth and Moon figures, flight hours, airlines, aircraft, every rail and
+  punctuality row, the highest and lowest places, every place attribute, days away,
+  trips, average trip, the busiest month, places returned to, and carbon by mode. A
+  place visited more than once opens all its visits rather than the first.
+- Year is chosen from a menu rather than a stepper, and the date's precision becomes a
+  menu where five segments will not fit.
+- Empty states: a search that finds nothing in Trips or All Records says so; a
+  collection with nothing left says "Every one ticked off"; badges say why they are
+  missing if the place list could not be read.
+- **Liquid Glass**: the globe's summary and its caveat, and the replay bar with its
+  warning, are each one glass container; buttons in the content layer are bordered
+  rather than glass; toolbar confirm buttons take the system's own prominent style.
+- **Accessibility**: VoiceOver can turn the globe east, west, north and south, zoom by
+  swiping up and down, and open any of the ten places nearest the middle of the view;
+  the globe says which way it faces. The replay button is a full-size target. The
+  globe's summary and the theme and Year in Review tiles grow with the text size, and a
+  badge's detail scrolls. Photo suggestions report whether they are selected.
+- Haptics when a pin is dropped, a wishlist place toggled, and the replay steps.
+- On iPad and Mac, the Trips menu and the wishlist's add button no longer show a second
+  "+" beside the Log button.
+- **Mac**: Settings open in their own window with ⌘, (and leave the sidebar); ⌘1 to ⌘4
+  switch between Globe, Trips, Stats and Collections; ⌫ deletes the selected rows of
+  All Records after asking. The menu commands live in the package (`AppCommands`).
+- Units read "Kilometres and metres" or "Miles and feet" — what the app shows today.
 - The SwiftData schema is versioned from the first release (`AntipodesSchemaV1` with an
   empty migration plan), so a later change that is not purely additive has somewhere
   to put its migration.

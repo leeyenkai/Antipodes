@@ -44,6 +44,11 @@ struct TripsScreen: View {
 
                 UnfiledSection(searchText: searchText)
             }
+            .overlay {
+                if hasNoMatches {
+                    ContentUnavailableView.search(text: searchText)
+                }
+            }
             .navigationTitle("Trips")
             .addToolbarButton()
             .searchable(text: $searchText, prompt: "Trips and places")
@@ -65,7 +70,13 @@ struct TripsScreen: View {
                             }
                         }
                     } label: {
-                        Label("Add", systemImage: "plus")
+                        // Beside the Log button a sidebar layout has, a second "+" would look
+                        // like the same action twice.
+                        Label(
+                            "Add",
+                            systemImage: DeviceLayout
+                                .hasSidebar(sizeClass) ? "ellipsis.circle" : "plus"
+                        )
                     }
                 }
             }
@@ -86,6 +97,20 @@ struct TripsScreen: View {
             }
             .deleteTripDialog(trip: $tripToDelete)
         }
+    }
+
+    /// A search that found no trip and nothing unfiled says so, rather than showing a
+    /// blank list.
+    private var hasNoMatches: Bool {
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        guard !query.isEmpty, filteredTrips.isEmpty else { return false }
+        let unfiledVisit = model.log.visits.contains {
+            $0.tripID == nil && $0.place.name.lowercased().contains(query)
+        }
+        let unfiledJourney = model.log.journeys.contains {
+            $0.tripID == nil && $0.displayTitle.lowercased().contains(query)
+        }
+        return !unfiledVisit && !unfiledJourney
     }
 
     private var filteredTrips: [Trip] {

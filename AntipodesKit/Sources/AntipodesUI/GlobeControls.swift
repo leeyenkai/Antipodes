@@ -13,30 +13,49 @@ struct GlobeSummaryBar: View {
     let scene: GlobeScene
 
     var body: some View {
-        VStack(spacing: 8) {
-            // Every number here is the scene's own, so the bar describes what is on
-            // the globe. Scrub the replay back and these follow it; they are not the
-            // whole-log figures from the Stats screen, which would quietly disagree
-            // with the picture underneath them.
-            HStack(spacing: 18) {
-                item("\(countries)", label: countries == 1 ? "country" : "countries")
-                item(distance, label: "travelled")
-                item("\(places)", label: places == 1 ? "place" : "places")
-                item("\(scene.arcs.count)", label: scene.arcs.count == 1 ? "leg" : "legs")
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
-            .glassEffect(.regular, in: .capsule)
+        // One container, so the bar and its caveat are one piece of glass that merges
+        // and separates as the caveat comes and goes.
+        GlassEffectContainer(spacing: 8) {
+            VStack(spacing: 8) {
+                // Every number here is the scene's own, so the bar describes what is on
+                // the globe. Scrub the replay back and these follow it; they are not the
+                // whole-log figures from the Stats screen, which would quietly disagree
+                // with the picture underneath them.
+                // Four across where they fit; two by two at large text sizes.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 18) { items }
+                    Grid(horizontalSpacing: 18, verticalSpacing: 6) {
+                        GridRow { items.prefix }
+                        GridRow { items.suffix }
+                    }
+                }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
+                .glassEffect(.regular, in: .rect(cornerRadius: 26))
 
-            if let caveat {
-                CaveatLabel(text: caveat)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 6)
-                    .glassEffect(.regular, in: .rect(cornerRadius: 12))
-                    .padding(.horizontal, 24)
+                if let caveat {
+                    CaveatLabel(text: caveat)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .glassEffect(.regular, in: .rect(cornerRadius: 12))
+                        .padding(.horizontal, 24)
+                }
             }
         }
         .padding(.top, 8)
+    }
+
+    private var items: SummaryItems {
+        SummaryItems(
+            first: [
+                (value: "\(countries)", label: countries == 1 ? "country" : "countries"),
+                (value: distance, label: "travelled"),
+            ],
+            second: [
+                (value: "\(places)", label: places == 1 ? "place" : "places"),
+                (value: "\(scene.arcs.count)", label: scene.arcs.count == 1 ? "leg" : "legs"),
+            ]
+        )
     }
 
     /// Shaded countries on the list the user counts (Q-4), so this agrees with the
@@ -57,14 +76,36 @@ struct GlobeSummaryBar: View {
         Format.distance(scene.totalDistanceKm, model.rules.unitSystem)
     }
 
-    private func item(_ value: String, label: String) -> some View {
-        VStack(spacing: 0) {
-            Text(value)
-                .font(.system(.subheadline, design: .rounded, weight: .bold).monospacedDigit())
-                .contentTransition(.numericText())
-            Text(label).font(.caption2).foregroundStyle(.secondary)
+    /// The four figures, in two halves so a narrow screen can stack them two by two.
+    private struct SummaryItems: View {
+        let first: [(value: String, label: String)]
+        let second: [(value: String, label: String)]
+
+        var body: some View {
+            row(first)
+            row(second)
         }
-        .accessibilityElement(children: .combine)
+
+        var prefix: some View {
+            row(first)
+        }
+
+        var suffix: some View {
+            row(second)
+        }
+
+        private func row(_ figures: [(value: String, label: String)]) -> some View {
+            ForEach(figures, id: \.label) { figure in
+                VStack(spacing: 0) {
+                    Text(figure.value)
+                        .font(.system(.subheadline, design: .rounded, weight: .bold)
+                            .monospacedDigit())
+                        .contentTransition(.numericText())
+                    Text(figure.label).font(.caption2).foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+        }
     }
 
     /// The pins, arcs and shading caveats joined into one line, so the globe does not
@@ -116,6 +157,9 @@ struct GlobeTimelineBar: View {
                     systemImage: replayIndex == nil ? "play.circle" : "globe"
                 )
                 .font(.caption.weight(.medium))
+                // A comfortable target, not just the caption it is drawn as.
+                .frame(minHeight: 44)
+                .contentShape(.rect)
             }
             .buttonStyle(.plain)
 
@@ -145,6 +189,8 @@ struct GlobeTimelineBar: View {
             .controlSize(.small)
             .accessibilityLabel("Replay position")
             .accessibilityValue(label)
+            // A tick for each day the replay stops on.
+            .sensoryFeedback(.selection, trigger: replayIndex)
         }
     }
 
@@ -159,7 +205,7 @@ struct GlobeTimelineBar: View {
             }
             return "All time"
         }
-        return date.iso
+        return Format.day(date)
     }
 }
 

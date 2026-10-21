@@ -33,6 +33,10 @@ struct JourneyEditor: View {
     /// `Section` is applied to every row in it, and competing sheets tear down the
     /// sheet this editor is itself presented in.
     @State private var picking: EndpointRequest?
+    /// The end to ask for once the current picker has gone: a new leg's To follows its
+    /// From, so a quick leg is mode, from, to, save (R-JLOG-1).
+    @State private var nextPick: EndpointRequest?
+    @State private var hasAskedForFirstEnd = false
 
     struct EndpointRequest: Identifiable {
         let legID: UUID
@@ -80,6 +84,7 @@ struct JourneyEditor: View {
                         let draft = LegDraft(mode: mode)
                         legs = [draft]
                         expandedLeg = draft.id
+                        picking = EndpointRequest(legID: draft.id, end: .origin)
                     }
                 } header: {
                     Text("How did you travel?")
@@ -115,6 +120,8 @@ struct JourneyEditor: View {
                         let next = last.connecting()
                         legs.append(next)
                         expandedLeg = next.id
+                        // It starts where the last leg ended; where it goes is the question.
+                        picking = EndpointRequest(legID: next.id, end: .destination)
                     }
                     .disabled(!last.isComplete)
                 }
@@ -147,14 +154,26 @@ struct JourneyEditor: View {
                     .disabled(legs.isEmpty || !legs.allSatisfy(\.isComplete))
             }
         }
+        .onAppear {
+            // A new journey that already knows its mode starts at "From?", not at a form.
+            guard existing == nil, !hasAskedForFirstEnd, legs.count == 1,
+                  let first = legs.first, first.origin == nil else { return }
+            hasAskedForFirstEnd = true
+            picking = EndpointRequest(legID: first.id, end: .origin)
+        }
         .guardingUnsavedEdits(
             Fields(legs: legs, title: title, tripID: tripID) != baseline && !saved,
             discard: onDone
         )
         .sensoryFeedback(.success, trigger: saved)
-        .sheet(item: $picking) { request in
+        .sheet(item: $picking, onDismiss: {
+            if let nextPick {
+                picking = nextPick
+                self.nextPick = nil
+            }
+        }, content: { request in
             endpointPicker(request)
-        }
+        })
         .confirmationDialog(
             "Delete this journey?",
             isPresented: $isConfirmingDelete,
@@ -167,7 +186,10 @@ struct JourneyEditor: View {
                 onDone()
             }
         } message: {
-            Text("Every leg is removed from your log and your statistics. This can't be undone.")
+            Text(
+                "Every leg is removed from your log and your statistics."
+                    + " You can undo it straight afterwards."
+            )
         }
     }
 
@@ -185,6 +207,9 @@ struct JourneyEditor: View {
                 guard let index = legs.firstIndex(where: { $0.id == request.legID }) else { return }
                 if request.end == .origin {
                     legs[index].origin = place
+                    if legs[index].destination == nil {
+                        nextPick = EndpointRequest(legID: request.legID, end: .destination)
+                    }
                 } else {
                     legs[index].destination = place
                 }

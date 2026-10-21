@@ -20,7 +20,7 @@ struct AttributesSection: View {
                         symbol: "hourglass",
                         detail: attributes.landmarkAgeInput.caveat(counting: "landmarks")
                             ?? attributes.medianLandmarkAgeYears
-                            .map { "Median \(Format.years($0))" }
+                            .map { "Median \(Format.years($0))" }, route: .places(.landmark)
                     )
                 }
                 if let oldest = attributes.oldestLandmark {
@@ -28,7 +28,7 @@ struct AttributesSection: View {
                         "Oldest",
                         Format.year(Int(oldest.value)),
                         symbol: "scroll",
-                        detail: oldest.place.name
+                        detail: oldest.place.name, route: .places(.landmark)
                     )
                 }
                 if let newest = attributes.newestLandmark, newest != attributes.oldestLandmark {
@@ -36,7 +36,7 @@ struct AttributesSection: View {
                         "Newest",
                         Format.year(Int(newest.value)),
                         symbol: "sparkle",
-                        detail: newest.place.name
+                        detail: newest.place.name, route: .places(.landmark)
                     )
                 }
                 if let population = attributes.averageCityPopulation {
@@ -45,7 +45,8 @@ struct AttributesSection: View {
                         Format.compact(population) + " people",
                         symbol: "person.3",
                         detail: attributes.cityPopulationInput.caveat(counting: "cities")
-                            ?? attributes.largestCity.map { "Largest: \($0.place.name)" }
+                            ?? attributes.largestCity.map { "Largest: \($0.place.name)" },
+                        route: .places(.city)
                     )
                 }
                 if let smallest = attributes.smallestCity, attributes.cityPopulationInput.used > 1 {
@@ -53,7 +54,7 @@ struct AttributesSection: View {
                         "Smallest city",
                         Format.compact(smallest.value) + " people",
                         symbol: "house",
-                        detail: smallest.place.name
+                        detail: smallest.place.name, route: .places(.city)
                     )
                 }
                 if let elevation = attributes.averageElevationM {
@@ -64,27 +65,27 @@ struct AttributesSection: View {
                         detail: attributes.highestPlace
                             .map {
                                 "Highest: \($0.place.name), \(Format.elevation($0.value, system))"
-                            }
+                            }, route: .places(.city)
                     )
                 }
                 StatRow(
                     "Time zones",
                     "\(attributes.timeZones.count)",
                     symbol: "clock",
-                    detail: attributes.timeZoneInput.caveat(counting: "places")
+                    detail: attributes.timeZoneInput.caveat(counting: "places"), route: .countries
                 )
                 StatRow(
                     "Languages",
                     "\(attributes.languageCodes.count)",
                     symbol: "character.bubble",
-                    detail: names(attributes.languageCodes, Format.languageName)
+                    detail: names(attributes.languageCodes, Format.languageName), route: .countries
                 )
                 StatRow(
                     "Currencies",
                     "\(attributes.currencyCodes.count)",
                     symbol: "banknote",
                     detail: attributes.currencyCodes.sorted().prefix(6)
-                        .joined(separator: " · ")
+                        .joined(separator: " · "), route: .countries
                 )
             }
             Text("""
@@ -142,7 +143,7 @@ struct PatternsSection: View {
                         "Days away",
                         "\(time.totalDaysAway)",
                         symbol: "sun.max",
-                        detail: daysAwayDetail(time)
+                        detail: daysAwayDetail(time), route: .trips
                     )
                 }
                 if !time.tripsByYear.isEmpty {
@@ -151,7 +152,8 @@ struct PatternsSection: View {
                         "\(time.tripsByYear.values.reduce(0, +))",
                         symbol: "suitcase",
                         detail: time.tripsByYear.sorted { $0.key > $1.key }.prefix(3)
-                            .map { "\($0.value) in \($0.key)" }.joined(separator: ", ")
+                            .map { "\($0.value) in \($0.key)" }.joined(separator: ", "),
+                        route: .trips
                     )
                 }
                 if let average = time.averageTripDays {
@@ -160,15 +162,23 @@ struct PatternsSection: View {
                         Format.ordinalCount(Int(average.rounded()), "day"),
                         symbol: "ruler",
                         detail: time.longestTrip
-                            .map { "Longest: \(Format.ordinalCount($0.days, "day"))" }
+                            .map { "Longest: \(Format.ordinalCount($0.days, "day"))" },
+                        route: .trips
                     )
                 }
                 if let busiest = time.busiestMonth {
                     StatRow(
                         "Busiest month",
-                        "\(Format.monthName(busiest.month)) \(busiest.year)",
+                        "\(Format.monthName(busiest.month)) \(String(busiest.year))",
                         symbol: "flame",
-                        detail: Format.ordinalCount(busiest.visits, "visit")
+                        detail: Format.ordinalCount(busiest.visits, "visit"),
+                        route: .visits(
+                            title: "\(Format.monthName(busiest.month)) \(String(busiest.year))",
+                            ids: model.log.visits.filter {
+                                $0.date.year == busiest.year && $0.date.startMonth == busiest.month
+                                    && model.rules.countsTowardsCoverage($0.visitType)
+                            }.map(\.id)
+                        )
                     )
                 }
                 if !time.repeatVisits.isEmpty {
@@ -341,6 +351,9 @@ private struct EraChart: View {
 // MARK: - Year in review
 
 struct YearInReviewTeaser: View {
+    // Sized with the text, so the year and its summary never spill out of the tile.
+    @ScaledMetric(relativeTo: .caption) private var tileWidth: CGFloat = 160
+    @ScaledMetric(relativeTo: .caption) private var tileHeight: CGFloat = 110
     @Environment(AppModel.self) private var model
     @State private var presentedYear: YearItem?
 
@@ -364,7 +377,11 @@ struct YearInReviewTeaser: View {
                                 }
                                 .foregroundStyle(.white)
                                 .padding(16)
-                                .frame(width: 160, height: 110, alignment: .bottomLeading)
+                                .frame(
+                                    width: tileWidth,
+                                    height: tileHeight,
+                                    alignment: .bottomLeading
+                                )
                                 .background(
                                     Palette.heroGradient,
                                     in: .rect(cornerRadius: 20, style: .continuous)

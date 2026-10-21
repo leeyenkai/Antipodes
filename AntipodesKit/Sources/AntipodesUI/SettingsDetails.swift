@@ -91,3 +91,21 @@ struct SourceDetailView: View {
         .navigationTitle(source.name)
     }
 }
+
+/// Settings in their own window on the Mac (⌘,), as Mac apps keep them.
+public struct SettingsWindow: View {
+    @State private var borderStore = GlobeBorderStore()
+
+    public init() {}
+
+    public var body: some View {
+        NavigationStack {
+            SettingsScreen(isDestination: true)
+        }
+        .environment(borderStore)
+        .frame(minWidth: 520, idealWidth: 560, minHeight: 560, idealHeight: 680)
+        #if os(macOS)
+            .formStyle(.grouped)
+        #endif
+    }
+}

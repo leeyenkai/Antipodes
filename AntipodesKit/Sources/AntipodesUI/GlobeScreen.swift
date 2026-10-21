@@ -194,18 +194,20 @@ struct GlobeScreen: View {
     // MARK: - Controls
 
     private var bottomControls: some View {
-        VStack(spacing: 10) {
-            if let message = borderStore.failure {
-                CaveatLabel(text: message)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 8)
-                    .glassEffect(.regular, in: .rect(cornerRadius: 14))
+        GlassEffectContainer(spacing: 10) {
+            VStack(spacing: 10) {
+                if let message = borderStore.failure {
+                    CaveatLabel(text: message)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .glassEffect(.regular, in: .rect(cornerRadius: 14))
+                }
+                GlobeTimelineBar(
+                    timeline: timeline,
+                    replayIndex: $replayIndex,
+                    onScrubToDate: focusCameraIfNeeded
+                )
             }
-            GlobeTimelineBar(
-                timeline: timeline,
-                replayIndex: $replayIndex,
-                onScrubToDate: focusCameraIfNeeded
-            )
         }
         .padding(.horizontal, 16)
         .padding(.bottom, 12)

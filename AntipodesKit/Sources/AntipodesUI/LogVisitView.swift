@@ -167,7 +167,10 @@ struct VisitForm: View {
                 onDone()
             }
         } message: {
-            Text("It is removed from your log and every statistic. This can't be undone.")
+            Text(
+                "It is removed from your log and every statistic."
+                    + " You can undo it straight afterwards."
+            )
         }
     }
 

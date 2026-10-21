@@ -26,6 +26,7 @@ struct GlobeSurface: View {
     @GestureState private var dragTranslation: CGSize = .zero
     @State private var gestureStartCamera: GlobeCamera?
     @State private var zoomStart: Double?
+    @State private var pinsDropped = 0
 
     var body: some View {
         GeometryReader { proxy in
@@ -42,6 +43,54 @@ struct GlobeSurface: View {
             .simultaneousGesture(zoom)
             .simultaneousGesture(dropPin(in: proxy.size), isEnabled: onDropPin != nil)
             .onTapGesture { location in handleTap(at: location, in: proxy.size) }
+            .accessibilityValue("Facing \(camera.centre.displayText)")
+            .accessibilityAdjustableAction(adjustZoom)
+            .accessibilityActions { accessibilityActions }
+        }
+        .sensoryFeedback(.impact(weight: .medium), trigger: pinsDropped)
+    }
+
+    // MARK: - VoiceOver
+
+    /// What a finger does by dragging and pinching, as actions: turn the globe a step
+    /// each way, zoom by swiping up or down, and open any of the places nearest the
+    /// middle of the view.
+    @ViewBuilder
+    private var accessibilityActions: some View {
+        Button("Turn east") { turn(longitude: 30) }
+        Button("Turn west") { turn(longitude: -30) }
+        Button("Turn north") { turn(latitude: 20) }
+        Button("Turn south") { turn(latitude: -20) }
+        ForEach(nearestPins) { pin in
+            Button("Open \(pin.place.name)") { onSelect(.pin(pin)) }
+        }
+    }
+
+    /// The ten places closest to where the globe is facing, on the side that shows.
+    private var nearestPins: [GlobePin] {
+        let quarterOfTheWorldKm = GreatCircle.earthCircumferenceKm / 4
+        return scene.pins
+            .filter(\.style.isTravel)
+            .map { ($0, GreatCircle.distanceKm(from: camera.centre, to: $0.coordinate)) }
+            .filter { $0.1 < quarterOfTheWorldKm }
+            .sorted { $0.1 < $1.1 }
+            .prefix(10)
+            .map(\.0)
+    }
+
+    private func turn(latitude: Double = 0, longitude: Double = 0) {
+        let centre = Coordinate(
+            latitude: max(-80, min(80, camera.centre.latitude + latitude)),
+            longitude: camera.centre.longitude + longitude
+        )
+        camera = GlobeCamera(centre: centre, zoom: camera.zoom)
+    }
+
+    private func adjustZoom(_ direction: AccessibilityAdjustmentDirection) {
+        switch direction {
+        case .increment: camera = GlobeCamera(centre: camera.centre, zoom: camera.zoom * 1.5)
+        case .decrement: camera = GlobeCamera(centre: camera.centre, zoom: camera.zoom / 1.5)
+        @unknown default: break
         }
     }
 
@@ -101,6 +150,7 @@ struct GlobeSurface: View {
                     x: drag.location.x,
                     y: drag.location.y
                 )) {
+                    pinsDropped += 1
                     onDropPin?(coordinate)
                 }
             }

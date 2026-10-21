@@ -30,16 +30,19 @@ struct AntipodesApp: App {
         #endif
         .commands {
             if case let .success(model) = opening {
-                CommandGroup(replacing: .newItem) {
-                    Button("Log a Place…") { model.addRequest = AddRequest() }
-                        .keyboardShortcut("n", modifiers: .command)
-                    Button("Log a Journey…") { model.addRequest = AddRequest(start: .journey(nil)) }
-                        .keyboardShortcut("n", modifiers: [.command, .shift])
-                    Button("Drop a Pin…") { model.addRequest = AddRequest(start: .pin(nil)) }
-                        .keyboardShortcut("p", modifiers: [.command, .shift])
-                }
+                AppCommands(model: model)
             }
         }
+
+        #if os(macOS)
+            Settings {
+                if case let .success(model) = opening {
+                    SettingsWindow()
+                        .environment(model)
+                        .preferredColorScheme(model.appearance.colorScheme)
+                }
+            }
+        #endif
     }
 
     /// Opens the on-disk store and the model around it.

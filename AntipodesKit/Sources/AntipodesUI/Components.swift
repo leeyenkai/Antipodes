@@ -359,8 +359,10 @@ struct EmptyStateView: View {
             Text(message)
         } actions: {
             if let actionTitle, let action {
+                // In the content, so a plain prominent button; glass is for controls
+                // floating over content.
                 Button(actionTitle, action: action)
-                    .buttonStyle(.glassProminent)
+                    .buttonStyle(.borderedProminent)
             }
         }
     }

@@ -30,7 +30,7 @@ struct CoverageSection: View {
                     detail: """
                     Measured against \(coverage.worldCountryCount) \
                     \(coverage.countryList.displayName)
-                    """
+                    """, route: .countries
                 )
                 StatRow(
                     "Regions",
@@ -70,22 +70,24 @@ struct CoverageSection: View {
                 extremeRow("Easternmost", extremes.easternmost, symbol: "arrow.right")
                 extremeRow("Westernmost", extremes.westernmost, symbol: "arrow.left")
                 if let highest = extremes.highest {
-                    StatRow(
-                        "Highest",
-                        Format.elevation(highest.elevationM, system),
+                    StatRow<LogRoute>(
+                        title: "Highest",
+                        value: Format.elevation(highest.elevationM, system),
                         symbol: "mountain.2",
                         detail: [
                             highest.visit.place.name,
                             extremes.elevationInput.caveat(counting: "places"),
-                        ].compactMap(\.self).joined(separator: "\n")
+                        ].compactMap(\.self).joined(separator: "\n"),
+                        destination: .visit(highest.visit.id)
                     )
                 }
                 if let lowest = extremes.lowest, lowest.visit != extremes.highest?.visit {
-                    StatRow(
-                        "Lowest",
-                        Format.elevation(lowest.elevationM, system),
+                    StatRow<LogRoute>(
+                        title: "Lowest",
+                        value: Format.elevation(lowest.elevationM, system),
                         symbol: "water.waves",
-                        detail: lowest.visit.place.name
+                        detail: lowest.visit.place.name,
+                        destination: .visit(lowest.visit.id)
                     )
                 }
             }
@@ -142,8 +144,9 @@ private struct AntipodeCard: View {
                 how close you've been to it.
                 """)
                 .foregroundStyle(.secondary)
+                // Content, not a floating control: a bordered button, not glass.
                 Button("Set Home", systemImage: "house") { isPickingHome = true }
-                    .buttonStyle(.glass)
+                    .buttonStyle(.bordered)
             }
         }
         .card()
@@ -190,9 +193,14 @@ struct DistanceSection: View {
                 StatRow(
                     "Round the Earth",
                     Format.multiple(distance.timesRoundTheEarth),
-                    symbol: "globe"
+                    symbol: "globe", route: .legs(nil)
                 )
-                StatRow("To the Moon", Format.percent(distance.totalKm / 384_400), symbol: "moon")
+                StatRow(
+                    "To the Moon",
+                    Format.percent(distance.totalKm / 384_400),
+                    symbol: "moon",
+                    route: .legs(nil)
+                )
                 if let longest = distance.longestLeg {
                     StatRow<LogRoute>(
                         title: "Longest leg",
@@ -216,7 +224,7 @@ struct DistanceSection: View {
                         "Time travelling",
                         Format.duration(minutes: journeys.totalMinutes),
                         symbol: "clock",
-                        detail: journeys.durationInput.caveat(counting: "legs")
+                        detail: journeys.durationInput.caveat(counting: "legs"), route: .legs(nil)
                     )
                 }
                 if let busiest = journeys.busiestDay {
@@ -227,7 +235,7 @@ struct DistanceSection: View {
                         detail: [
                             Format.day(busiest.day),
                             journeys.dayInput.caveat(counting: "legs"),
-                        ].compactMap(\.self).joined(separator: "\n")
+                        ].compactMap(\.self).joined(separator: "\n"), route: .legs(nil)
                     )
                 }
                 if let varied = journeys.mostVariedJourney {
@@ -247,7 +255,7 @@ struct DistanceSection: View {
                         detail: """
                         \(Format.ordinalCount(journeys.bordersCrossedOverland, "border")) crossed \
                         by land
-                        """
+                        """, route: .legs(nil)
                     )
                 }
             }
@@ -263,7 +271,7 @@ struct DistanceSection: View {
                         StatRow(
                             "Flight hours",
                             Format.hours(minutes: journeys.flightMinutes),
-                            symbol: "clock"
+                            symbol: "clock", route: .legs(.flight)
                         )
                     }
                     StatRow(
@@ -276,19 +284,21 @@ struct DistanceSection: View {
                         "Airlines",
                         "\(flights.airlineNames.count)",
                         symbol: "building",
-                        detail: flights.airlineNames.sorted().prefix(4).joined(separator: ", ")
+                        detail: flights.airlineNames.sorted().prefix(4).joined(separator: ", "),
+                        route: .legs(.flight)
                     )
                     StatRow(
                         "Aircraft types",
                         "\(flights.aircraftTypes.count)",
                         symbol: "airplane.circle",
-                        detail: flights.aircraftTypes.sorted().prefix(3).joined(separator: ", ")
+                        detail: flights.aircraftTypes.sorted().prefix(3).joined(separator: ", "),
+                        route: .legs(.flight)
                     )
                     StatRow(
                         "Average flight",
                         Format.distance(flights.averageFlightKm, system),
                         symbol: "divide",
-                        detail: flights.input.caveat(counting: "flights")
+                        detail: flights.input.caveat(counting: "flights"), route: .legs(.flight)
                     )
                 }
             }
@@ -356,35 +366,49 @@ struct JourneyDetailSection: View {
                             "Rail distance",
                             Format.distance(rail.kilometres, model.rules.unitSystem),
                             symbol: "ruler",
-                            detail: rail.kilometreInput.caveat(counting: "rail legs")
+                            detail: rail.kilometreInput.caveat(counting: "rail legs"),
+                            route: .legs(.rail)
                         )
-                        StatRow("Stations", "\(rail.stations.count)", symbol: "signpost.right")
+                        StatRow(
+                            "Stations",
+                            "\(rail.stations.count)",
+                            symbol: "signpost.right",
+                            route: .legs(.rail)
+                        )
                         StatRow(
                             "Operators",
                             "\(rail.operators.count)",
                             symbol: "building",
-                            detail: rail.operators.sorted().prefix(4).joined(separator: ", ")
+                            detail: rail.operators.sorted().prefix(4).joined(separator: ", "),
+                            route: .legs(.rail)
                         )
                         if !rail.namedServices.isEmpty {
                             StatRow(
                                 "Named services",
                                 "\(rail.namedServices.count)",
                                 symbol: "star",
-                                detail: rail.namedServices.sorted().joined(separator: ", ")
+                                detail: rail.namedServices.sorted().joined(separator: ", "),
+                                route: .legs(.rail)
                             )
                         }
-                        StatRow("Night trains", "\(rail.overnightLegs)", symbol: "bed.double")
+                        StatRow(
+                            "Night trains",
+                            "\(rail.overnightLegs)",
+                            symbol: "bed.double",
+                            route: .legs(.rail)
+                        )
                         StatRow(
                             "Countries by rail",
                             "\(rail.countries.count)",
                             symbol: "flag",
-                            detail: "\(Format.ordinalCount(rail.bordersCrossed, "border")) crossed"
+                            detail: "\(Format.ordinalCount(rail.bordersCrossed, "border")) crossed",
+                            route: .legs(.rail)
                         )
                         if let highest = rail.highestPointM {
                             StatRow(
                                 "Highest by rail",
                                 Format.elevation(highest, model.rules.unitSystem),
-                                symbol: "mountain.2"
+                                symbol: "mountain.2", route: .legs(.rail)
                             )
                         }
                     }
@@ -396,7 +420,8 @@ struct JourneyDetailSection: View {
                                 "Average arrival",
                                 Format.delay(minutes: average),
                                 symbol: "clock.badge.exclamationmark",
-                                detail: punctuality.input.caveat(counting: "legs")
+                                detail: punctuality.input.caveat(counting: "legs"),
+                                route: .legs(nil)
                             )
                         }
                         if let share = punctuality.onTimeShare {
@@ -406,7 +431,7 @@ struct JourneyDetailSection: View {
                                 symbol: "checkmark.circle",
                                 detail: """
                                 Within \(PunctualityStatistics.onTimeToleranceMinutes) minutes
-                                """
+                                """, route: .legs(nil)
                             )
                         }
                         if let best = punctuality.mostPunctualOperator {
@@ -414,7 +439,8 @@ struct JourneyDetailSection: View {
                                 "Most punctual",
                                 best.name,
                                 symbol: "hand.thumbsup",
-                                detail: Format.delay(minutes: best.averageDelayMinutes)
+                                detail: Format.delay(minutes: best.averageDelayMinutes),
+                                route: .legs(nil)
                             )
                         }
                         if let worst = punctuality.leastPunctualOperator,
@@ -423,14 +449,15 @@ struct JourneyDetailSection: View {
                                 "Least punctual",
                                 worst.name,
                                 symbol: "tortoise",
-                                detail: Format.delay(minutes: worst.averageDelayMinutes)
+                                detail: Format.delay(minutes: worst.averageDelayMinutes),
+                                route: .legs(nil)
                             )
                         }
                         if let minutes = punctuality.worstDelayMinutes, minutes > 0 {
                             StatRow(
                                 "Worst delay",
                                 Format.duration(minutes: minutes),
-                                symbol: "exclamationmark.triangle"
+                                symbol: "exclamationmark.triangle", route: .legs(nil)
                             )
                         }
                     }
@@ -440,12 +467,13 @@ struct JourneyDetailSection: View {
                         StatRow(
                             "Multi-leg journeys",
                             "\(journeys.multiLegJourneys)",
-                            symbol: "point.3.connected.trianglepath.dotted"
+                            symbol: "point.3.connected.trianglepath.dotted", route: .legs(nil)
                         )
                         StatRow(
                             "Connections missed",
                             "\(journeys.connectionsMissed)",
-                            symbol: "exclamationmark.arrow.triangle.2.circlepath"
+                            symbol: "exclamationmark.arrow.triangle.2.circlepath",
+                            route: .legs(nil)
                         )
                     }
                 }

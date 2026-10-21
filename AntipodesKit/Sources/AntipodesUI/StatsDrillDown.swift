@@ -22,10 +22,12 @@ struct StatsDrillDown: View {
         case .unesco: PlaceListView(kind: .landmark, filter: .unesco)
         case .personality: PersonalityDetailView()
         case let .legs(mode): LegListView(mode: mode)
-        case .carbon: LegListView(mode: nil, showsCarbon: true)
+        case let .carbon(mode): LegListView(mode: mode, showsCarbon: true)
         case .repeats: RepeatVisitsView()
         case .gaps: CountryGapsView()
-        case let .year(year): YearInReviewView(year: year)
+        case .continents: ContinentListView()
+        case .trips: TripStatsList()
+        case let .visits(title, ids): VisitListView(title: title, ids: ids)
         }
     }
 }
@@ -94,7 +96,7 @@ extension StatsDrillDown {
                 detail: nil,
                 symbol: "leaf.fill"
             )
-        case .personality, .repeats, .gaps, .year:
+        case .personality, .repeats, .gaps, .continents, .trips, .visits:
             return nil
         }
     }
@@ -220,7 +222,8 @@ struct PlaceListView: View {
         List {
             ForEach(groups, id: \.place.id) { group in
                 if let first = group.visits.first {
-                    NavigationLink(value: LogRoute.visit(first.id)) {
+                    // One visit opens itself; more open the list of them all.
+                    navigationLink(group, first: first) {
                         HStack {
                             PlaceRow(place: group.place)
                             Spacer()
@@ -238,6 +241,22 @@ struct PlaceListView: View {
             }
         }
         .navigationTitle(title)
+    }
+
+    @ViewBuilder
+    private func navigationLink(
+        _ group: (place: PlaceReference, visits: [Visit]),
+        first: Visit,
+        @ViewBuilder label: () -> some View
+    ) -> some View {
+        if group.visits.count == 1 {
+            NavigationLink(value: LogRoute.visit(first.id), label: label)
+        } else {
+            NavigationLink(
+                value: StatsRoute.visits(title: group.place.name, ids: group.visits.map(\.id)),
+                label: label
+            )
+        }
     }
 
     private var title: String {
@@ -355,7 +374,8 @@ struct LegListView: View {
                         .font(.subheadline.monospacedDigit())
                     }
                 }
-                .swipeActions(edge: .leading) {
+                // Not a full swipe: logging a whole journey should take a deliberate tap.
+                .swipeActions(edge: .leading, allowsFullSwipe: false) {
                     Button("Ride Again", systemImage: "arrow.uturn.forward") {
                         model.rideAgain(row.leg, tripID: row.journey.tripID)
                     }
@@ -438,46 +458,5 @@ struct PersonalityDetailView: View {
             }
         }
         .navigationTitle("Travel personality")
-    }
-}
-
-struct RepeatVisitsView: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        List(model.statistics.time.repeatVisits, id: \.place.id) { repeated in
-            HStack {
-                PlaceRow(place: repeated.place)
-                Spacer()
-                Text("\(repeated.visitCount)×")
-                    .font(.headline.monospacedDigit())
-            }
-        }
-        .navigationTitle("Places returned to")
-    }
-}
-
-struct CountryGapsView: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        List(model.statistics.time.countryGaps, id: \.countryCode) { gap in
-            NavigationLink(value: LogRoute.country(gap.countryCode)) {
-                HStack {
-                    Text(Format.flag(gap.countryCode)).font(.title2)
-                    VStack(alignment: .leading) {
-                        Text(gap.countryName)
-                        Text("Last there \(Format.day(gap.lastVisited))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Text(gap.daysSince >= 365 ? "\(gap.daysSince / 365)y" : "\(gap.daysSince)d")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
-            }
-        }
-        .navigationTitle("Time since each country")
     }
 }

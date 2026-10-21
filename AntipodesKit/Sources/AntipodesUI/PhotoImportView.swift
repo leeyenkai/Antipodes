@@ -123,6 +123,7 @@ struct PhotoImportView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .accessibilityAddTraits(selected.contains(suggestion.id) ? .isSelected : [])
                     }
                 }
             }

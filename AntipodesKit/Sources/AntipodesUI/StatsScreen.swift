@@ -11,10 +11,13 @@ enum StatsRoute: Hashable {
     case unesco
     case personality
     case legs(TravelMode?)
-    case carbon
+    case carbon(TravelMode?)
     case repeats
     case gaps
-    case year(Int)
+    case continents
+    case trips
+    /// Any set of visits, under a title: a place's visits, a month's.
+    case visits(title: String, ids: [UUID])
 }
 
 /// The stats dashboard (§9): personality first, then the five families.
@@ -65,7 +68,14 @@ struct StatsScreen: View {
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
-                    Button("Settings", systemImage: "gearshape") { isShowingSettings = true }
+                    #if os(macOS)
+                        // The Mac keeps settings in their own window (⌘,).
+                        SettingsLink {
+                            Label("Settings", systemImage: "gearshape")
+                        }
+                    #else
+                        Button("Settings", systemImage: "gearshape") { isShowingSettings = true }
+                    #endif
                 }
             }
             .logDestinations()
@@ -285,6 +295,10 @@ private struct PersonalityHero: View {
 struct ThemeBars: View {
     let shares: [ThemeShare]
     var tint: Color = Palette.visited
+    // Sized with the text, so a large text size widens the columns instead of
+    // truncating every label.
+    @ScaledMetric(relativeTo: .subheadline) private var labelWidth: CGFloat = 130
+    @ScaledMetric(relativeTo: .caption) private var percentWidth: CGFloat = 38
 
     var body: some View {
         VStack(spacing: 8) {
@@ -292,7 +306,7 @@ struct ThemeBars: View {
                 HStack(spacing: 10) {
                     Text(share.label)
                         .font(.subheadline)
-                        .frame(width: 130, alignment: .leading)
+                        .frame(width: labelWidth, alignment: .leading)
                         .lineLimit(1)
                     GeometryReader { proxy in
                         Capsule()
@@ -309,7 +323,7 @@ struct ThemeBars: View {
                     Text(Format.percent(share.share, digits: 0))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
-                        .frame(width: 38, alignment: .trailing)
+                        .frame(width: percentWidth, alignment: .trailing)
                 }
                 .accessibilityElement(children: .combine)
             }
@@ -354,13 +368,15 @@ private struct HeadlineGrid: View {
                     shareTitle: "travelled"
                 )
             }
-            StatCard(
-                title: "Continents",
-                value: "\(coverage.continentsVisited) of 7",
-                detail: coverage.continents.sorted().map(\.displayName).joined(separator: ", "),
-                symbol: "globe.americas.fill",
-                tint: Palette.mode(.ferry)
-            )
+            NavigationLink(value: StatsRoute.continents) {
+                StatCard(
+                    title: "Continents",
+                    value: "\(coverage.continentsVisited) of 7",
+                    detail: coverage.continents.sorted().map(\.displayName).joined(separator: ", "),
+                    symbol: "globe.americas.fill",
+                    tint: Palette.mode(.ferry)
+                )
+            }
             NavigationLink(value: StatsRoute.places(.city)) {
                 StatCard(
                     title: "Cities",
