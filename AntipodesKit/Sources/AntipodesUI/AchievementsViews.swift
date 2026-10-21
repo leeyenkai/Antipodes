@@ -107,6 +107,7 @@ private struct AchievementDetail: View {
                     Button("Done") { dismiss() }
                 }
             }
+            .shareCardButton { .achievement(status) }
         }
         .presentationDetents([.medium, .large])
         .sensoryFeedback(.success, trigger: status.isEarned) { _, earned in earned }

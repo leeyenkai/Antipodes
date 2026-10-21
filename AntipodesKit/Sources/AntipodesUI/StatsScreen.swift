@@ -248,11 +248,18 @@ struct StatCardList<Content: View>: View {
 private struct PersonalityHero: View {
     @Environment(AppModel.self) private var model
 
+    @Environment(\.shareStat) private var shareStat
+
     var body: some View {
         NavigationLink(value: StatsRoute.personality) {
             content
         }
         .buttonStyle(.plain)
+        .contextMenu {
+            if let shareStat, model.shownStatistics.themes.personality != nil {
+                Button("Share…", systemImage: "square.and.arrow.up") { shareStat(.personality) }
+            }
+        }
     }
 
     @ViewBuilder

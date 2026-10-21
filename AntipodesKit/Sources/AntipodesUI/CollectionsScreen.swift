@@ -181,6 +181,7 @@ struct CollectionDetailView: View {
             }
             .navigationTitle(progress.definition.name)
             .toolbarTitleDisplayMode(.inline)
+            .shareCardButton { .collection(collectionID) }
             .globeFocus(.collection(collectionID))
         } else {
             ContentUnavailableView(

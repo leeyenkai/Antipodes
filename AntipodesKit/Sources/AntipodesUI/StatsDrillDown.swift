@@ -101,8 +101,10 @@ extension StatsDrillDown {
                 detail: statistics.carbon.shortCredit,
                 symbol: "leaf.fill"
             )
-        case .personality, .repeats, .gaps, .continents, .trips, .visits, .legFilter, .ranked,
-             .grouped, .operators, .timeByMode:
+        case .personality:
+            return statistics.themes.personality == nil ? nil : .personality
+        case .repeats, .gaps, .continents, .trips, .visits, .legFilter, .ranked, .grouped,
+             .operators, .timeByMode:
             return nil
         }
     }

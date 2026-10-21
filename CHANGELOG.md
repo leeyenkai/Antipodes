@@ -111,6 +111,9 @@ is blocked.
   and countries under each; the busiest day opens that day's legs, punctuality its timed
   arrivals, night trains, overland and connections their own legs; each theme in the
   personality opens its landmarks.
+- **Share a personality, a badge or a collection** (R-SHARE-1, §9 "share any card"):
+  each has its card, square or story, with its symbol where other cards have a globe;
+  share from the personality screen, a badge's sheet, a collection, or the hero's menu.
 - **Ride again in one tap** (R-JLOG-6): the journey sheet lists the last few rides to
   log again for today, and any leg of a longer journey can be ridden again.
 - **Satellite globe** (D-26, R-GLOBE-1): the globe can be drawn from NASA's Blue Marble

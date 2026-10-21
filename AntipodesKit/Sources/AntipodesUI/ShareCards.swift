@@ -12,6 +12,9 @@ enum ShareCard {
     case trip(UUID)
     case journey(Journey)
     case year(Int)
+    case personality
+    case achievement(AchievementStatus)
+    case collection(String)
 }
 
 enum ShareCardFormat: String, CaseIterable, Identifiable, Sendable {
@@ -123,6 +126,8 @@ extension ShareCardPayload {
             )
         case let .journey(journey):
             self.init(journey: journey, model: model)
+        case .personality, .achievement, .collection:
+            self.init(collected: card, model: model)
         case let .year(year):
             let review = model.yearInReview(year)
             let scene = GlobeSceneBuilder.build(
@@ -206,7 +211,12 @@ struct ShareCardView: View {
 
     @ViewBuilder
     private var globe: some View {
-        if let scene = payload.scene {
+        if payload.scene == nil, let symbol = payload.symbol {
+            Image(systemName: symbol)
+                .font(.system(size: format == .story ? 120 : 72, weight: .ultraLight))
+                .foregroundStyle(Palette.visited)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else if let scene = payload.scene {
             GlobeCanvas(
                 scene: scene,
                 borders: payload.borders,
