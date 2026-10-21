@@ -158,6 +158,9 @@ struct SettingsScreen: View {
             Picker("Appearance", selection: $model.appearance) {
                 ForEach(AppearancePreference.allCases) { Text($0.displayName).tag($0) }
             }
+            Picker("Globe", selection: $model.globeStyle) {
+                ForEach(GlobeStyle.allCases) { Text($0.displayName).tag($0) }
+            }
             Button {
                 isPickingHome = true
             } label: {
@@ -326,6 +329,11 @@ struct SettingsScreen: View {
                 }
                 Text("Country outlines from Natural Earth (public domain).")
                     .font(.footnote)
+                Text("""
+                Satellite globe: Blue Marble Next Generation, NASA Earth Observatory \
+                (Reto Stöckli), public domain.
+                """)
+                .font(.footnote)
                 ForEach(info.sources) { source in
                     NavigationLink {
                         SourceDetailView(source: source)

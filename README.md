@@ -90,14 +90,17 @@ Individually:
 | `scripts/test.sh` | Run the full test suite (no simulator, no network) |
 | `scripts/lint.sh` | SwiftFormat + SwiftLint |
 | `scripts/build-placedb.sh` | Build `places.sqlite` from the cached open data (fetches it first if missing) |
-| `scripts/build-app.sh` | Build the app with `xcodebuild`; pass `"generic/platform=macOS"` for the Mac |
+| `scripts/fetch-imagery.sh` | Download NASA's Blue Marble once and scale it for the satellite globe |
+| `scripts/build-app.sh` | Build the app with `xcodebuild`; pass `"generic/platform=macOS"` for the Mac (fetches anything bundled that is missing) |
 | `scripts/check.sh` | Everything above, including the iOS and Mac app builds (`ANTIPODES_SKIP_APP=1` leaves those out) |
 
 To run the app, open `Antipodes.xcodeproj` in Xcode and run the `Antipodes` scheme on
 an iPhone simulator, an iPad simulator or My Mac.
 
-> Run `scripts/build-placedb.sh` before the first app build — the app bundles
-> `App/Antipodes/Resources/places.sqlite`, which is a build product and is not
+> Run `scripts/build-placedb.sh`, `scripts/build-borders.sh` and
+> `scripts/fetch-imagery.sh` before the first Xcode build (or `scripts/build-app.sh`
+> once, which runs whichever is needed) — the app bundles the place database, the
+> country outlines and the satellite picture, which are build products and are not
 > committed.
 
 ## Architecture in one paragraph

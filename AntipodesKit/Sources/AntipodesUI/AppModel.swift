@@ -96,6 +96,11 @@ public final class AppModel {
         didSet { preferences.appearance = appearance }
     }
 
+    /// Standard or satellite, for the globe on the home screen and beside the lists.
+    public var globeStyle: GlobeStyle {
+        didSet { preferences.globeStyle = globeStyle }
+    }
+
     /// Where the user lives: left out of "days away" and photo suggestions, and the
     /// point the antipode is measured from.
     public var home: PlaceReference? {
@@ -126,6 +131,7 @@ public final class AppModel {
         let loadedRules = CountingRulesStorage.load()
         rules = loadedRules
         appearance = preferences.appearance
+        globeStyle = preferences.globeStyle
         home = preferences.home
         hasCompletedOnboarding = preferences.hasCompletedOnboarding
         statistics = StatisticsEngine.compute(

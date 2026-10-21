@@ -32,10 +32,15 @@ final class SQLiteConnection {
 
     /// Opens a file read-only. Fails rather than creating a database, so a missing
     /// bundled resource is a loud error instead of an empty app.
+    ///
+    /// Opened as immutable: the database is a bundled build product nothing ever writes,
+    /// so SQLite can skip file locking altogether. With locking, a file provider touching
+    /// the file — iCloud Drive syncing a checkout, say — could fail a read with
+    /// "database is locked".
     init(readOnlyPath path: String) throws {
         var handle: OpaquePointer?
-        let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX
-        let result = sqlite3_open_v2(path, &handle, flags, nil)
+        let flags = SQLITE_OPEN_READONLY | SQLITE_OPEN_NOMUTEX | SQLITE_OPEN_URI
+        let result = sqlite3_open_v2(Self.immutableURI(path), &handle, flags, nil)
 
         guard result == SQLITE_OK, let opened = handle else {
             let message = handle.map { String(cString: sqlite3_errmsg($0)) }
@@ -50,6 +55,20 @@ final class SQLiteConnection {
 
     deinit {
         sqlite3_close_v2(handle)
+    }
+
+    /// A `file:` URI for a path, with the characters a URI gives meaning to escaped.
+    static func immutableURI(_ path: String) -> String {
+        var escaped = ""
+        for character in path {
+            switch character {
+            case "%": escaped += "%25"
+            case "?": escaped += "%3F"
+            case "#": escaped += "%23"
+            default: escaped.append(character)
+            }
+        }
+        return "file:\(escaped)?immutable=1"
     }
 
     var lastErrorMessage: String {

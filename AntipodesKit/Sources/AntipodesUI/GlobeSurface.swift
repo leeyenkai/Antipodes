@@ -12,6 +12,8 @@ import SwiftUI
 /// (R-NAV-1), so the two turn and select the same way.
 struct GlobeSurface: View {
     @Environment(GlobeBorderStore.self) private var borderStore
+    @Environment(AppModel.self) private var model
+    @Environment(GlobeImageryStore.self) private var imagery: GlobeImageryStore?
 
     let scene: GlobeScene
     @Binding var camera: GlobeCamera
@@ -36,7 +38,9 @@ struct GlobeSurface: View {
                 camera: liveCamera(in: proxy.size),
                 selection: selection,
                 emphasised: emphasised,
-                palette: palette
+                palette: palette,
+                surface: surface,
+                isInteracting: dragTranslation != .zero || zoomStart != nil
             )
             .contentShape(.rect)
             .gesture(rotation(in: proxy.size))
@@ -48,6 +52,15 @@ struct GlobeSurface: View {
             .accessibilityActions { accessibilityActions }
         }
         .sensoryFeedback(.impact(weight: .medium), trigger: pinsDropped)
+    }
+
+    /// The satellite picture once it has loaded; until then, and whenever the style is
+    /// standard, the vector globe.
+    private var surface: GlobeSurfaceStyle {
+        guard model.globeStyle == .satellite, let imagery, let image = imagery.image else {
+            return .standard
+        }
+        return .satellite(image, imagery.rasters)
     }
 
     // MARK: - VoiceOver

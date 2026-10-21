@@ -65,6 +65,9 @@ App/Antipodes/Resources/places.sqlite
 # The globe's country outlines are a build product of Tools/placedb/build_borders.py
 # in the same way — run scripts/fetch-borders.sh then scripts/build-borders.sh.
 *.antborders
+# The satellite globe's picture of the Earth, scaled from NASA's Blue Marble by
+# scripts/fetch-imagery.sh (D-26).
+App/Antipodes/Resources/earth-satellite.jpg
 *.sqlite
 *.sqlite-journal
 *.sqlite-wal

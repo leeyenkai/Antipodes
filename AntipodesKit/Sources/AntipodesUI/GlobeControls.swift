@@ -120,78 +120,109 @@ struct GlobeSummaryBar: View {
     }
 }
 
-/// The replay scrubber (§9).
+/// The replay (§9): play it through, or scrub it by hand.
 ///
-/// Stops on days something happened rather than running continuously, so dragging it
-/// steps from trip to trip instead of crawling through empty years.
+/// Stops on days something happened rather than running continuously, so it steps from
+/// trip to trip instead of crawling through empty years. Played, it walks the stops at
+/// a pace that fits the whole log into about fifteen seconds.
 struct GlobeTimelineBar: View {
     let timeline: GlobeTimeline
     @Binding var replayIndex: Double?
     let onScrubToDate: () -> Void
 
+    @State private var isPlaying = false
+
     var body: some View {
-        if timeline.isEmpty {
-            EmptyView()
-        } else {
-            VStack(alignment: .leading, spacing: 6) {
-                header
+        if timeline.stops.count > 1 {
+            // What the replay cannot place is said once, in the summary bar above, which
+            // follows the replay.
+            HStack(spacing: 10) {
+                playButton
                 slider
-                if let caveat = timeline.caveat {
-                    Text(caveat)
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                Text(label)
+                    .font(.caption.weight(.medium))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .fixedSize()
+                if replayIndex != nil {
+                    Button("Show Everything", systemImage: "xmark") {
+                        isPlaying = false
+                        replayIndex = nil
+                    }
+                    .labelStyle(.iconOnly)
+                    .font(.footnote.weight(.semibold))
+                    .frame(width: 32, height: 44)
+                    .contentShape(.rect)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
                 }
             }
-            .padding(14)
-            .glassEffect(.regular, in: .rect(cornerRadius: 22))
+            .padding(.leading, 6)
+            .padding(.trailing, 14)
+            .glassEffect(.regular, in: .capsule)
+            .task(id: isPlaying) { await play() }
+            .onChange(of: timeline.stops.count) { isPlaying = false }
         }
     }
 
-    private var header: some View {
-        HStack {
-            Button {
-                replayIndex = replayIndex == nil ? Double(max(0, timeline.stops.count - 1)) : nil
-            } label: {
-                Label(
-                    replayIndex == nil ? "Replay" : "Show everything",
-                    systemImage: replayIndex == nil ? "play.circle" : "globe"
-                )
-                .font(.caption.weight(.medium))
-                // A comfortable target, not just the caption it is drawn as.
-                .frame(minHeight: 44)
-                .contentShape(.rect)
-            }
-            .buttonStyle(.plain)
-
-            Spacer()
-
-            Text(label)
-                .font(.caption.weight(.medium))
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
-        }
+    private var lastIndex: Int {
+        max(0, timeline.stops.count - 1)
     }
 
-    @ViewBuilder
-    private var slider: some View {
-        if timeline.stops.count > 1 {
-            Slider(
-                value: Binding(
-                    get: { replayIndex ?? Double(timeline.stops.count - 1) },
-                    set: { newValue in
-                        replayIndex = newValue
-                        onScrubToDate()
-                    }
-                ),
-                in: 0 ... Double(timeline.stops.count - 1),
-                step: 1
+    private var playButton: some View {
+        Button {
+            isPlaying.toggle()
+        } label: {
+            Label(
+                isPlaying ? "Pause Replay" : "Play Replay",
+                systemImage: isPlaying ? "pause.fill" : "play.fill"
             )
-            .controlSize(.small)
-            .accessibilityLabel("Replay position")
-            .accessibilityValue(label)
-            // A tick for each day the replay stops on.
-            .sensoryFeedback(.selection, trigger: replayIndex)
+            .labelStyle(.iconOnly)
+            .font(.body)
+            .contentTransition(.symbolEffect(.replace))
+            .frame(width: 44, height: 44)
+            .contentShape(.circle)
         }
+        .buttonStyle(.plain)
+    }
+
+    /// Steps through the stops while playing. Starting from the end, or from the whole
+    /// log, starts again from the first stop.
+    private func play() async {
+        guard isPlaying else { return }
+        if replayIndex.map({ Int($0.rounded()) >= lastIndex }) ?? true {
+            replayIndex = 0
+            onScrubToDate()
+        }
+        let pause = Duration.seconds(min(1.2, max(0.35, 15 / Double(timeline.stops.count))))
+        while let index = replayIndex, Int(index.rounded()) < lastIndex {
+            try? await Task.sleep(for: pause)
+            guard !Task.isCancelled, isPlaying else { return }
+            replayIndex = index.rounded() + 1
+            onScrubToDate()
+        }
+        isPlaying = false
+    }
+
+    private var slider: some View {
+        Slider(
+            value: Binding(
+                get: { replayIndex ?? Double(lastIndex) },
+                set: { newValue in
+                    isPlaying = false
+                    replayIndex = newValue
+                    onScrubToDate()
+                }
+            ),
+            in: 0 ... Double(lastIndex),
+            step: 1
+        )
+        .controlSize(.small)
+        .accessibilityLabel("Replay position")
+        .accessibilityValue(label)
+        // A tick for each day the replay stops on.
+        .sensoryFeedback(.selection, trigger: replayIndex)
     }
 
     private var label: String {
@@ -209,8 +240,36 @@ struct GlobeTimelineBar: View {
     }
 }
 
+/// Standard or satellite (D-26), as a menu like a map's style picker.
+struct GlobeStyleMenu: View {
+    @Environment(AppModel.self) private var model
+    @Environment(GlobeImageryStore.self) private var imagery: GlobeImageryStore?
+
+    var body: some View {
+        @Bindable var model = model
+        if imagery?.isAvailable ?? false {
+            Menu {
+                Picker("Globe Style", selection: $model.globeStyle) {
+                    ForEach(GlobeStyle.allCases) { style in
+                        Label(style.displayName, systemImage: style.symbolName).tag(style)
+                    }
+                }
+                .pickerStyle(.inline)
+                if model.globeStyle == .satellite {
+                    Section {
+                        Text("Blue Marble imagery: NASA Earth Observatory")
+                    }
+                }
+            } label: {
+                Label("Globe Style", systemImage: "map")
+            }
+        }
+    }
+}
+
 /// Year, trip and mode filters (§9).
 struct GlobeFilterMenu: View {
+    @Environment(AppModel.self) private var model
     @Binding var filter: GlobeFilter
     let years: [Int]
     let trips: [Trip]
@@ -227,7 +286,7 @@ struct GlobeFilterMenu: View {
                 Picker("Trip", selection: $filter.tripID) {
                     Text("All trips").tag(UUID?.none)
                     ForEach(trips) { trip in
-                        Text(trip.name ?? "Untitled trip").tag(UUID?.some(trip.id))
+                        Text(trip.displayName(model: model)).tag(UUID?.some(trip.id))
                     }
                 }
             }

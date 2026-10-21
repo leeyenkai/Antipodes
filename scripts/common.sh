@@ -17,6 +17,11 @@ BORDERS_OUT="$REPO_ROOT/Tools/placedb/out"
 # than fetching its own copy.
 PLACEDB_VENDOR="$REPO_ROOT/Tools/placedb/vendor"
 PLACEDB_MANIFEST="$PLACEDB_VENDOR/manifest.json"
+# NASA's Blue Marble, downloaded and scaled for the satellite globe (D-26). A build
+# input like the borders: fetched once, never committed, never fetched by the app.
+IMAGERY_VENDOR="$PLACEDB_VENDOR/bluemarble"
+IMAGERY_OUT="$BORDERS_OUT/earth-satellite.jpg"
+APP_RESOURCE_IMAGERY="$APP_RESOURCE_DIR/earth-satellite.jpg"
 
 # Build products are kept outside the repository on purpose.
 #

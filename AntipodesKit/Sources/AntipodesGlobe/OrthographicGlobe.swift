@@ -48,9 +48,11 @@ public struct OrthographicGlobe: Sendable {
     /// Radius of the globe in points.
     public let radius: Double
 
-    private let axis: Vector3
-    private let east: Vector3
-    private let north: Vector3
+    // The view's axis, right and up directions on the sphere. Internal so the imagery
+    // rasteriser can run the inverse projection per pixel without re-deriving them.
+    let axis: Vector3
+    let east: Vector3
+    let north: Vector3
 
     public init(camera: GlobeCamera, size: GlobeSize) {
         self.camera = camera

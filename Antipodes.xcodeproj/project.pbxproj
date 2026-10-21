@@ -235,6 +235,7 @@
 				"$(SRCROOT)/App/Antipodes/Resources/places.sqlite",
 				"$(SRCROOT)/App/Antipodes/Resources/borders-110m.antborders",
 				"$(SRCROOT)/App/Antipodes/Resources/borders-50m.antborders",
+				"$(SRCROOT)/App/Antipodes/Resources/earth-satellite.jpg",
 			);
 			name = "Check Bundled Data";
 			outputFileListPaths = (
@@ -243,7 +244,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# The place database and the country outlines are build products, not committed\n# (.gitignore). An app built without them has empty search and an unshaded globe,\n# so a build without them fails here rather than shipping that way.\nfor file in \"$SCRIPT_INPUT_FILE_0\" \"$SCRIPT_INPUT_FILE_1\" \"$SCRIPT_INPUT_FILE_2\"; do\n  if [ ! -s \"$file\" ]; then\n    echo \"error: $(basename \"$file\") is missing from App/Antipodes/Resources. Run scripts/build-placedb.sh and scripts/build-borders.sh first.\"\n    exit 1\n  fi\ndone\n";
+			shellScript = "# The place database, the country outlines and the satellite picture are build\n# products, not committed (.gitignore). An app built without them has empty search,\n# an unshaded globe or no satellite style, so a build without them fails here rather\n# than shipping that way.\nfor file in \"$SCRIPT_INPUT_FILE_0\" \"$SCRIPT_INPUT_FILE_1\" \"$SCRIPT_INPUT_FILE_2\" \"$SCRIPT_INPUT_FILE_3\"; do\n  if [ ! -s \"$file\" ]; then\n    echo \"error: $(basename \"$file\") is missing from App/Antipodes/Resources. Run scripts/build-placedb.sh, scripts/build-borders.sh and scripts/fetch-imagery.sh first.\"\n    exit 1\n  fi\ndone\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

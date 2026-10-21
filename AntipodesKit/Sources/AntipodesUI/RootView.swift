@@ -19,6 +19,7 @@ public struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var borderStore = GlobeBorderStore()
+    @State private var imagery = GlobeImageryStore()
     @State private var selection: Destination = .globe
 
     enum Destination: Hashable {
@@ -98,6 +99,15 @@ public struct RootView: View {
             }
             .fileDropImport()
             .environment(borderStore)
+            .environment(imagery)
+            // The satellite picture is held only while it is the chosen style.
+            .task(id: model.globeStyle) {
+                if model.globeStyle == .satellite {
+                    imagery.load()
+                } else {
+                    imagery.unload()
+                }
+            }
             .tint(.accentColor)
             .preferredColorScheme(model.appearance.colorScheme)
             .sheet(item: $model.addRequest) { request in

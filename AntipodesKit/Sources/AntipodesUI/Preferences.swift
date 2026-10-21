@@ -30,6 +30,32 @@ public enum AppearancePreference: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// How the globe's surface is drawn (decision D-26).
+public enum GlobeStyle: String, CaseIterable, Identifiable, Sendable {
+    /// Countries drawn from the bundled outlines on a dark ocean, visited ones shaded.
+    case standard
+    /// NASA's Blue Marble wrapped round the sphere, with visited countries outlined.
+    case satellite
+
+    public var id: String {
+        rawValue
+    }
+
+    public var displayName: String {
+        switch self {
+        case .standard: "Standard"
+        case .satellite: "Satellite"
+        }
+    }
+
+    public var symbolName: String {
+        switch self {
+        case .standard: "globe"
+        case .satellite: "globe.americas.fill"
+        }
+    }
+}
+
 /// Personal preferences that are not counting rules: appearance, home, first-run state.
 ///
 /// Kept in `UserDefaults` on the device, like the counting rules. Home is a place the
@@ -38,6 +64,7 @@ public enum AppearancePreference: String, CaseIterable, Identifiable, Sendable {
 struct PreferencesStorage {
     private enum Key {
         static let appearance = "preferences.appearance"
+        static let globeStyle = "preferences.globeStyle"
         static let home = "preferences.home"
         static let onboarded = "preferences.hasCompletedOnboarding"
     }
@@ -55,6 +82,16 @@ struct PreferencesStorage {
         }
         nonmutating set {
             defaults.set(newValue.rawValue, forKey: Key.appearance)
+        }
+    }
+
+    var globeStyle: GlobeStyle {
+        get {
+            defaults.string(forKey: Key.globeStyle)
+                .flatMap(GlobeStyle.init(rawValue:)) ?? .standard
+        }
+        nonmutating set {
+            defaults.set(newValue.rawValue, forKey: Key.globeStyle)
         }
     }
 

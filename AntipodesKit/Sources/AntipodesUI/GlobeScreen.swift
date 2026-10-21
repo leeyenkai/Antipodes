@@ -220,6 +220,9 @@ struct GlobeScreen: View {
                 .accessibilityLabel("Frame everything")
         }
         ToolbarItem(placement: .primaryAction) {
+            GlobeStyleMenu()
+        }
+        ToolbarItem(placement: .primaryAction) {
             GlobeFilterMenu(
                 filter: $filter,
                 years: availableYears,

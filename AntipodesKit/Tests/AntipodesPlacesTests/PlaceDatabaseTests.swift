@@ -443,3 +443,16 @@ extension PlaceDatabase {
         try connection.queryOne(sql) { try $0.int(0) ?? 0 } ?? 0
     }
 }
+
+@Suite("Opening the database")
+struct SQLiteOpeningTests {
+    /// The checkout's own path has a "+" in it; "?", "#" and "%" are the characters a
+    /// SQLite URI reads specially, so they must reach the file system as themselves.
+    @Test("A path becomes an immutable file URI with its special characters escaped")
+    func uri() {
+        #expect(SQLiteConnection.immutableURI("/a+b/c d/places.sqlite")
+            == "file:/a+b/c d/places.sqlite?immutable=1")
+        #expect(SQLiteConnection.immutableURI("/x?y#z%/p.sqlite")
+            == "file:/x%3Fy%23z%25/p.sqlite?immutable=1")
+    }
+}

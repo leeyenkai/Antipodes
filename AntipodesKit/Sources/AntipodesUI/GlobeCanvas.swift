@@ -2,11 +2,20 @@ import AntipodesCore
 import AntipodesGlobe
 import SwiftUI
 
+/// What the globe's surface is drawn from.
+enum GlobeSurfaceStyle {
+    /// The bundled country outlines on a dark ocean.
+    case standard
+    /// The bundled Blue Marble picture (D-26), and the cache of globes drawn from it.
+    case satellite(EquirectangularImage, GlobeRasterCache)
+}
+
 /// Draws the globe: ocean, graticule, shaded countries, journey arcs and pins.
 ///
-/// Everything here comes from the log and from bundled vector outlines, so the screen
-/// renders identically in airplane mode and makes no network request of any kind
-/// (decision D-5, R-PRIV-7). There is no map imagery and nothing to fetch.
+/// Everything here comes from the log and from files bundled with the app — vector
+/// outlines, and for the satellite style one picture of the Earth — so the screen renders
+/// identically in airplane mode and makes no network request of any kind (decisions D-5
+/// and D-26, R-PRIV-7). There are no map tiles and nothing to fetch.
 struct GlobeCanvas: View {
     let scene: GlobeScene
     let borders: CountryBorders?
@@ -16,6 +25,10 @@ struct GlobeCanvas: View {
     /// what the screen beside the globe is showing (R-NAV-1).
     var emphasised: Set<UUID> = []
     let palette: GlobePalette
+    var surface: GlobeSurfaceStyle = .standard
+    /// While a finger is turning or pinching the globe, the satellite picture is drawn
+    /// at one pixel a point to keep up, and sharpened when the globe comes to rest.
+    var isInteracting = false
     /// Off the main thread on screen, so dragging stays smooth; on the main thread for
     /// `ImageRenderer`, which needs the drawing finished when it returns.
     var rendersAsynchronously = true
@@ -26,16 +39,25 @@ struct GlobeCanvas: View {
                 camera: camera,
                 size: GlobeSize(width: size.width, height: size.height)
             )
-            draw(in: &context, globe: globe)
+            draw(in: &context, globe: globe, size: size)
         }
         .drawingGroup()
         .accessibilityLabel(accessibilityLabel)
     }
 
-    private func draw(in context: inout GraphicsContext, globe: OrthographicGlobe) {
-        drawOcean(in: &context, globe: globe)
-        drawGraticule(in: &context, globe: globe)
-        drawCountries(in: &context, globe: globe)
+    private func draw(in context: inout GraphicsContext, globe: OrthographicGlobe, size: CGSize) {
+        switch surface {
+        case .standard:
+            drawOcean(in: &context, globe: globe)
+            drawGraticule(in: &context, globe: globe)
+            drawCountries(in: &context, globe: globe)
+        case let .satellite(image, cache):
+            drawAtmosphere(in: &context, globe: globe)
+            if !drawSatellite(image, cache: cache, in: &context, globe: globe, size: size) {
+                drawOcean(in: &context, globe: globe)
+            }
+            drawCountryOutlines(in: &context, globe: globe)
+        }
         drawArcs(in: &context, globe: globe)
         drawLimbShading(in: &context, globe: globe)
         drawPins(in: &context, globe: globe)
@@ -54,23 +76,25 @@ struct GlobeCanvas: View {
         )
     }
 
-    private func drawOcean(in context: inout GraphicsContext, globe: OrthographicGlobe) {
-        let sphere = disc(globe)
-
-        // A glow just outside the edge: the atmosphere, and the thing that stops the
-        // globe looking like a flat circle pasted on the background.
+    /// A glow just outside the edge: the atmosphere, and the thing that stops the globe
+    /// looking like a flat circle pasted on the background.
+    private func drawAtmosphere(in context: inout GraphicsContext, globe: OrthographicGlobe) {
         context.drawLayer { layer in
             layer.addFilter(.blur(radius: globe.radius * 0.06))
             layer.stroke(
-                sphere,
+                disc(globe),
                 with: .color(palette.atmosphere),
                 lineWidth: globe.radius * 0.07
             )
         }
+    }
+
+    private func drawOcean(in context: inout GraphicsContext, globe: OrthographicGlobe) {
+        drawAtmosphere(in: &context, globe: globe)
 
         // Lit from the upper left, so the ocean reads as a curved surface.
         context.fill(
-            sphere,
+            disc(globe),
             with: .radialGradient(
                 Gradient(colors: [palette.oceanHighlight, palette.ocean, palette.oceanShadow]),
                 center: CGPoint(
@@ -165,6 +189,74 @@ struct GlobeCanvas: View {
         context.stroke(land, with: .color(palette.border), lineWidth: 0.6)
     }
 
+    // MARK: - Satellite
+
+    /// The Blue Marble wrapped onto the sphere. Returns false if it could not be drawn,
+    /// so the plain ocean goes down instead of a hole.
+    private func drawSatellite(
+        _ image: EquirectangularImage,
+        cache: GlobeRasterCache,
+        in context: inout GraphicsContext,
+        globe: OrthographicGlobe,
+        size: CGSize
+    ) -> Bool {
+        // Two pixels a point at rest is past the picture's own detail on a phone-sized
+        // globe; one a point while moving keeps a turn at the display's frame rate.
+        let scale = isInteracting ? 1 : min(2, max(1, context.environment.displayScale))
+        let key = GlobeRasterCache.Key(
+            camera: globe.camera,
+            width: size.width,
+            height: size.height,
+            scale: scale
+        )
+        let entry = cache.entry(for: key) ?? {
+            guard let raster = globe.rasterise(
+                image,
+                viewSize: GlobeSize(width: size.width, height: size.height),
+                scale: scale
+            ), let picture = raster.cgImage else { return nil }
+            let made = GlobeRasterCache.Entry(
+                image: picture,
+                frame: CGRect(
+                    x: raster.originX,
+                    y: raster.originY,
+                    width: Double(raster.width) / scale,
+                    height: Double(raster.height) / scale
+                ),
+                scale: scale
+            )
+            cache.store(made, for: key)
+            return made
+        }()
+        guard let entry else { return false }
+        context.draw(Image(decorative: entry.image, scale: entry.scale), in: entry.frame)
+        return true
+    }
+
+    /// Borders over the picture: every country as a faint line, so the eye can find
+    /// them, and the visited ones washed and outlined in the visited colour.
+    private func drawCountryOutlines(in context: inout GraphicsContext, globe: OrthographicGlobe) {
+        guard let borders else { return }
+        var land = Path()
+        var visited = Path()
+        for country in borders.countries {
+            guard globe.mayBeVisible(box: country.box) else { continue }
+            let isVisited = country.countryCode.map(scene.shadedCountryCodes.contains) ?? false
+            for ring in country.rings where ring.role == .outer {
+                guard globe.mayBeVisible(box: ring.box) else { continue }
+                let clipped = globe.clippedRing(ring.coordinates)
+                guard clipped.count > 2 else { continue }
+                appendClosed(clipped, to: &land)
+                if isVisited {
+                    appendClosed(clipped, to: &visited)
+                }
+            }
+        }
+        context.stroke(land, with: .color(palette.satelliteBorder), lineWidth: 0.5)
+        context.fill(visited, with: .color(palette.visitedLand.opacity(0.28)))
+        context.stroke(visited, with: .color(palette.visitedLand), lineWidth: 1.1)
+    }
+
     // MARK: - Journeys
 
     private func drawArcs(in context: inout GraphicsContext, globe: OrthographicGlobe) {
@@ -186,10 +278,17 @@ struct GlobeCanvas: View {
                     lineWidth: isSelected ? 6 : 3.5
                 )
             }
+            // A surface leg is drawn along the great circle too, which is not the road
+            // or track it took, so it is dashed: approximate, as its distance is marked
+            // (R-PATH-3).
             context.stroke(
                 path,
                 with: .color(colour),
-                style: StrokeStyle(lineWidth: isSelected ? 2.6 : 1.5, lineCap: .round)
+                style: StrokeStyle(
+                    lineWidth: isSelected ? 2.6 : 1.5,
+                    lineCap: .round,
+                    dash: arc.mode.greatCircleIsExact ? [] : [5, 4]
+                )
             )
         }
     }
@@ -333,6 +432,7 @@ struct GlobePalette: Sendable {
     var land = Color(red: 0.24, green: 0.29, blue: 0.35)
     var visitedLand = Color(red: 0.31, green: 0.74, blue: 0.59)
     var border = Color.black.opacity(0.35)
+    var satelliteBorder = Color.white.opacity(0.22)
 
     var visitedPin = Color(red: 0.99, green: 0.85, blue: 0.42)
     var notCountedPin = Color.white.opacity(0.45)

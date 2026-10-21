@@ -15,6 +15,10 @@ if [[ ! -f "$APP_RESOURCE_DIR/borders-50m.antborders" || ! -f "$APP_RESOURCE_DIR
     note "the bundled country outlines are missing — building them first"
     "$REPO_ROOT/scripts/build-borders.sh"
 fi
+if [[ ! -f "$APP_RESOURCE_IMAGERY" ]]; then
+    note "the satellite picture is missing — fetching and scaling it first"
+    "$REPO_ROOT/scripts/fetch-imagery.sh"
+fi
 
 # The simulator takes an ad-hoc signature, which is what carries the app-group
 # entitlement the widgets read through. A device or Mac build needs a team, so

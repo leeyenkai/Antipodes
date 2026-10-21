@@ -95,6 +95,16 @@ is blocked.
   rejects, and hand-made Mac sizes.
 - A vector version of the same mark signs share cards and Year in Review instead of a
   generic globe symbol.
+- **Satellite globe** (D-26, R-GLOBE-1): the globe can be drawn from NASA's Blue Marble
+  instead of the vector map — from the globe's toolbar or Settings. One picture of the
+  whole Earth ships in the app and is wrapped round the sphere on the device, so it
+  works offline and turning it asks nothing of any server. Country outlines draw over
+  it, visited ones washed in the visited colour.
+- **Replay plays** (§9, R-GLOBE-6): the replay is a play button beside the scrubber now,
+  stepping trip by trip through the whole log in about fifteen seconds, and stopping
+  when the scrubber is touched. It had only parked the scrubber at the end.
+- Surface legs are dashed on the globe, since the great circle drawn is not the road or
+  track they took (R-PATH-3).
 - Onboarding: what the app does, what it never does with your data, and where home is.
 - Settings: appearance, home, counting rules, units, a JSON backup that can be restored,
   CSV export, imports, a plain-language account of how things are counted, and the data
@@ -180,6 +190,10 @@ is blocked.
   landmarks in all.
 - GeoNames' "no data" elevation of −9,999 m is stored as unknown. It had made Tromsø
   the lowest place anyone had visited.
+- The satellite globe's picture: NASA Blue Marble Next Generation (August 2004, with
+  topography and bathymetry), public domain, fetched once by `scripts/fetch-imagery.sh`,
+  digest-verified and scaled to 4096 × 2048. Recorded in `Tools/placedb/SOURCES.md` and
+  credited in Settings (D-26).
 
 ### Data (M1)
 
@@ -294,6 +308,11 @@ is blocked.
 
 ### Fixed
 
+- The globe's trip filter named every trip without a name "Untitled trip"; it uses the
+  trip's dates and first place, as the Trips list does.
+- The place database opens as immutable, so SQLite takes no file locks on it. A file
+  provider touching it — iCloud Drive syncing a checkout — could fail a read with
+  "database is locked".
 - **Edits no longer vanish.** Every edit form saves only on its confirm button, and now
   leaving any other way asks first: while there are unsaved changes, Back gives way to
   Cancel, Cancel asks "Discard your changes?", and a sheet cannot be swiped away. The
