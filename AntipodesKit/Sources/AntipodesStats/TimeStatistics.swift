@@ -327,7 +327,7 @@ public struct TimeStatistics: Hashable, Sendable {
     /// Visits and legs on today's month and day in an earlier year. A range counts when
     /// it spans today's date; a month or a year does not, because "on this day" is a
     /// claim about the day.
-    static func onThisDay(log: TravelLog, today: CalendarDate) -> [OnThisDayEntry] {
+    public static func onThisDay(log: TravelLog, today: CalendarDate) -> [OnThisDayEntry] {
         func matchingYear(_ date: FlexibleDate) -> Int? {
             switch date {
             case let .day(day):

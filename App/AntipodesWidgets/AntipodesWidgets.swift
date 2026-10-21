@@ -37,12 +37,21 @@ struct SnapshotProvider: TimelineProvider {
     }
 
     func getTimeline(in _: Context, completion: @escaping (Timeline<SnapshotEntry>) -> Void) {
-        // The app reloads the timeline whenever the log changes; this only refreshes at
-        // midnight, when "on this day" moves on.
-        completion(Timeline(
-            entries: [Self.entry(preview: false)],
-            policy: .after(Self.nextMidnight)
-        ))
+        // The app reloads the timeline whenever the log changes. Between those, one entry
+        // per day the snapshot has memories for, each starting at that day's midnight, so
+        // "on this day" moves on even if the app is not opened for a fortnight.
+        let now = Self.entry(preview: false)
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: .now)
+        let days = now.isPlaceholder ? 0 : WidgetSnapshot.memoryDayCount
+        let later = (1 ..< max(1, days)).compactMap { offset -> SnapshotEntry? in
+            calendar.date(byAdding: .day, value: offset, to: start).map {
+                SnapshotEntry(date: $0, snapshot: now.snapshot, isPlaceholder: false)
+            }
+        }
+        let refresh = calendar.date(byAdding: .day, value: max(1, days), to: start) ?? Self
+            .nextMidnight
+        completion(Timeline(entries: [now] + later, policy: .after(refresh)))
     }
 
     static func entry(preview: Bool) -> SnapshotEntry {
@@ -129,6 +138,12 @@ private struct CountriesView: View {
         }
         .redacted(reason: entry.isPlaceholder ? .placeholder : [])
         .containerBackground(for: .widget) { WidgetPalette.sky }
+        .widgetURL(DeepLink.stats.url)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(
+            "\(snapshot.countries) countries, "
+                + "\(percent(snapshot.worldPercent)) of \(snapshot.countryListName)"
+        )
     }
 
     private func stack(_ snapshot: WidgetSnapshot) -> some View {
@@ -203,6 +218,7 @@ private struct GlobeWidgetView: View {
         }
         .redacted(reason: entry.isPlaceholder ? .placeholder : [])
         .containerBackground(for: .widget) { WidgetPalette.sky }
+        .widgetURL(DeepLink.globe.url)
     }
 
     private func figure(_ value: String, _ label: String) -> some View {
@@ -228,12 +244,14 @@ private struct GlobeImage: View {
             Image(uiImage: image)
                 .resizable()
                 .scaledToFit()
+                .accessibilityLabel("Your globe, with the countries you've been to shaded")
         } else {
             Image(systemName: "globe.europe.africa.fill")
                 .resizable()
                 .scaledToFit()
                 .foregroundStyle(WidgetPalette.visited.opacity(0.6))
                 .padding(12)
+                .accessibilityHidden(true)
         }
     }
 }
@@ -256,7 +274,8 @@ private struct OnThisDayView: View {
     let entry: SnapshotEntry
 
     var body: some View {
-        let memories = entry.snapshot.memoriesDay == today ? entry.snapshot.memories : []
+        let day = CalendarDate(entry.date) ?? .today()
+        let memories = entry.snapshot.memories(on: day)
         VStack(alignment: .leading, spacing: 6) {
             Label("On this day", systemImage: "clock.arrow.circlepath")
                 .font(.caption.weight(.semibold))
@@ -272,17 +291,21 @@ private struct OnThisDayView: View {
                     Array(memories.prefix(family == .systemSmall ? 2 : 3).enumerated()),
                     id: \.offset
                 ) { _, memory in
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text(memory.title)
-                            .font(.headline)
-                            .foregroundStyle(.white)
+                    // Each memory opens its own record; a small widget takes only one
+                    // tap target, so there the first memory stands for the widget.
+                    Link(destination: memory.link ?? DeepLink.trips.url) {
+                        VStack(alignment: .leading, spacing: 0) {
+                            Text(memory.title)
+                                .font(.headline)
+                                .foregroundStyle(.white)
+                                .lineLimit(1)
+                            Text(
+                                "\(memory.subtitle) · \(Self.yearsAgo(memory.yearsAgo(on: day)))"
+                            )
+                            .font(.caption2)
+                            .foregroundStyle(.white.opacity(0.7))
                             .lineLimit(1)
-                        Text(
-                            "\(memory.subtitle) · \(Self.yearsAgo(memory.yearsAgo))"
-                        )
-                        .font(.caption2)
-                        .foregroundStyle(.white.opacity(0.7))
-                        .lineLimit(1)
+                        }
                     }
                 }
                 Spacer(minLength: 0)
@@ -291,10 +314,7 @@ private struct OnThisDayView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .redacted(reason: entry.isPlaceholder ? .placeholder : [])
         .containerBackground(for: .widget) { WidgetPalette.sky }
-    }
-
-    private var today: String {
-        CalendarDate.today().iso
+        .widgetURL(memories.first?.link ?? DeepLink.trips.url)
     }
 
     private static func yearsAgo(_ years: Int) -> String {
@@ -422,6 +442,9 @@ private struct CollectionView: View {
                         Text("\(collection.visited)")
                     }
                     .gaugeStyle(.accessoryCircularCapacity)
+                    .accessibilityLabel(
+                        "\(collection.name): \(collection.visited) of \(collection.total)"
+                    )
                 } else {
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
@@ -453,5 +476,7 @@ private struct CollectionView: View {
         }
         .redacted(reason: entry.isPlaceholder ? .placeholder : [])
         .containerBackground(for: .widget) { WidgetPalette.sky }
+        .widgetURL(entry.collection.map { DeepLink.collection($0.id).url } ?? DeepLink.collections
+            .url)
     }
 }

@@ -27,7 +27,7 @@ struct CollectionsScreen: View {
     }
 
     var body: some View {
-        GlobeBesideStack {
+        GlobeBesideStack(tab: .collections) {
             Group {
                 switch section {
                 case .collections: CollectionsList()

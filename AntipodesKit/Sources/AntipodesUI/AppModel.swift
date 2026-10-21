@@ -78,6 +78,8 @@ public final class AppModel {
     @ObservationIgnored var borders: CountryBorders?
     #if os(iOS)
         @ObservationIgnored var widgetGlobeSignature: Int?
+        @ObservationIgnored var widgetWrite: Task<Void, Never>?
+        @ObservationIgnored var lastWidgetSnapshot: WidgetSnapshot?
     #endif
     @ObservationIgnored let bordersURL: URL?
     @ObservationIgnored private let preferences = PreferencesStorage()
@@ -112,6 +114,9 @@ public final class AppModel {
     public var addRequest: AddRequest?
     /// The last failed operation, for the one app-wide alert.
     public var errorMessage: String?
+    /// A record to open in a tab's list, from a widget's link. The tab's stack takes it
+    /// and clears it.
+    public var pendingRoute: PendingRoute?
 
     public init(store: TravelLogStore, placeDatabaseURL: URL?, bordersURL: URL? = nil) {
         self.store = store
@@ -438,6 +443,19 @@ public final class AppModel {
     public func exportCSVFiles() -> [String: Data] {
         TravelLogExport.csvFiles(for: log)
     }
+}
+
+/// A record to open from outside the app's own navigation — a widget's link — and the
+/// tab whose list it opens in.
+public struct PendingRoute: Equatable {
+    public enum Tab: Equatable, Sendable {
+        case trips
+        case collections
+    }
+
+    public let id = UUID()
+    let tab: Tab
+    let route: LogRoute
 }
 
 /// A backup read but not yet restored: what is in the file, and how much of it is new.

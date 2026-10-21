@@ -16,11 +16,43 @@ extension AppModel {
     /// Widgets are an iOS extension only. On the Mac there is nothing to write for, and
     /// touching a group container there would ask the user for access to other apps'
     /// data, so this does nothing.
+    ///
+    /// A burst of edits — an import, a run of quick changes — settles first: the write
+    /// waits a moment and a newer one replaces it. Nothing is written, and the widgets
+    /// are not reloaded, when the snapshot would say what the last one did.
     func writeWidgetSnapshot() {
         #if os(iOS)
+            widgetWrite?.cancel()
+            widgetWrite = Task {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                writeWidgetSnapshotNow()
+            }
+        #endif
+    }
+
+    #if os(iOS)
+        private func writeWidgetSnapshotNow() {
+            let snapshot = makeWidgetSnapshot()
+            let globeChanged = writeWidgetGlobe()
+            if let last = lastWidgetSnapshot, last.hasSameContent(as: snapshot), !globeChanged {
+                return
+            }
+            do {
+                try snapshot.save()
+                lastWidgetSnapshot = snapshot
+                WidgetCenter.shared.reloadAllTimelines()
+            } catch {
+                // Without the app group the widgets show their placeholder; nothing for
+                // the user to do.
+            }
+        }
+
+        private func makeWidgetSnapshot() -> WidgetSnapshot {
             let statistics = statistics
             let today = CalendarDate.today()
-            let snapshot = WidgetSnapshot(
+            let days = (0 ..< WidgetSnapshot.memoryDayCount).compactMap { today.adding(days: $0) }
+            return WidgetSnapshot(
                 generatedAt: Date(),
                 countries: statistics.coverage.listedCountriesVisited,
                 worldPercent: statistics.coverage.worldFraction * 100,
@@ -28,22 +60,12 @@ extension AppModel {
                 continents: statistics.coverage.continentsVisited,
                 distanceText: Format.distance(statistics.distance.totalKm, rules.unitSystem),
                 placesLogged: log.visits.count,
-                memoriesDay: today.iso,
-                memories: statistics.time.onThisDay.prefix(3).map { entry in
-                    switch entry.record {
-                    case let .visit(visit):
-                        WidgetSnapshot.Memory(
-                            title: visit.place.name,
-                            subtitle: visit.visitType.displayName,
-                            yearsAgo: entry.yearsAgo
-                        )
-                    case let .leg(leg):
-                        WidgetSnapshot.Memory(
-                            title: "\(leg.origin.shortName) → \(leg.destination.shortName)",
-                            subtitle: leg.mode.displayName,
-                            yearsAgo: entry.yearsAgo
-                        )
-                    }
+                memoryDays: days.map { day in
+                    WidgetSnapshot.MemoryDay(
+                        day: day.iso,
+                        memories: TimeStatistics.onThisDay(log: log, today: day).prefix(3)
+                            .map(widgetMemory)
+                    )
                 },
                 collections: statistics.collections.map {
                     WidgetSnapshot.CollectionSummary(
@@ -55,19 +77,37 @@ extension AppModel {
                     )
                 }
             )
-            try? snapshot.save()
-            writeWidgetGlobe()
-            WidgetCenter.shared.reloadAllTimelines()
-        #endif
-    }
+        }
+
+        private func widgetMemory(_ entry: OnThisDayEntry) -> WidgetSnapshot.Memory {
+            switch entry.record {
+            case let .visit(visit):
+                WidgetSnapshot.Memory(
+                    title: visit.place.name,
+                    subtitle: visit.visitType.displayName,
+                    year: entry.year,
+                    link: DeepLink.visit(visit.id).url
+                )
+            case let .leg(leg):
+                WidgetSnapshot.Memory(
+                    title: "\(leg.origin.shortName) → \(leg.destination.shortName)",
+                    subtitle: leg.mode.displayName,
+                    year: entry.year,
+                    link: log.journeys.first { $0.legs.contains { $0.id == leg.id } }
+                        .map { DeepLink.journey($0.id).url }
+                )
+            }
+        }
+    #endif
 
     #if os(iOS)
-        /// Renders the globe the Globe widget shows. Rendering takes a few tens of
-        /// milliseconds on the main actor, so it is skipped when the shaded countries and
-        /// the pins and arcs are the same as last time.
-        private func writeWidgetGlobe() {
+        /// Renders the globe the Globe widget shows, and says whether it changed.
+        /// Rendering takes a few tens of milliseconds on the main actor, so it is skipped
+        /// when the shaded countries and the pins and arcs are the same as last time.
+        @discardableResult
+        private func writeWidgetGlobe() -> Bool {
             guard let url = WidgetSnapshot.containerURL()?
-                .appending(path: WidgetSnapshot.globeImageName) else { return }
+                .appending(path: WidgetSnapshot.globeImageName) else { return false }
             let scene = GlobeSceneBuilder.build(log: log, rules: rules, home: home, arcSegments: 24)
             var hasher = Hasher()
             hasher.combine(scene.shadedCountryCodes)
@@ -75,7 +115,7 @@ extension AppModel {
             hasher.combine(scene.arcs.count)
             hasher.combine(home?.name)
             let signature = hasher.finalize()
-            guard signature != widgetGlobeSignature else { return }
+            guard signature != widgetGlobeSignature else { return false }
 
             let globe = GlobeCanvas(
                 scene: scene,
@@ -89,12 +129,14 @@ extension AppModel {
             .environment(\.colorScheme, .dark)
             let renderer = ImageRenderer(content: globe)
             renderer.scale = 3
-            guard let data = renderer.uiImage?.pngData() else { return }
+            guard let data = renderer.uiImage?.pngData() else { return false }
             do {
                 try data.write(to: url, options: .atomic)
                 widgetGlobeSignature = signature
+                return true
             } catch {
                 // The widget falls back to a plain globe symbol; nothing for the user to do.
+                return false
             }
         }
     #endif

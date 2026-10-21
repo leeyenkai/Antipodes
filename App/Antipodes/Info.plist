@@ -5,10 +5,24 @@
 
   The launch screen is the globe's night sky rather than the default white: the app is
   dark by default (decision D-20), and a white flash before a dark screen is jarring.
+
+  The antipodes:// scheme is how a widget opens a record in the app (D-25). It is
+  handled on the device; nothing in such a link is sent anywhere.
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.leeyenkai.antipodes</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>antipodes</string>
+			</array>
+		</dict>
+	</array>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>

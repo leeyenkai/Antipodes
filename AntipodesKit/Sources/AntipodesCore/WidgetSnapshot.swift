@@ -10,14 +10,38 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
     public struct Memory: Codable, Hashable, Sendable {
         public let title: String
         public let subtitle: String
-        public let yearsAgo: Int
+        /// The year it happened, so "how long ago" is right on whichever day it shows.
+        public let year: Int
+        /// Opens the record in the app (`DeepLink`).
+        public let link: URL?
 
-        public init(title: String, subtitle: String, yearsAgo: Int) {
+        public init(title: String, subtitle: String, year: Int, link: URL? = nil) {
             self.title = title
             self.subtitle = subtitle
-            self.yearsAgo = yearsAgo
+            self.year = year
+            self.link = link
+        }
+
+        public func yearsAgo(on day: CalendarDate) -> Int {
+            day.year - year
         }
     }
+
+    /// The memories for one calendar day.
+    public struct MemoryDay: Codable, Hashable, Sendable {
+        /// ISO date, `2026-10-21`.
+        public let day: String
+        public let memories: [Memory]
+
+        public init(day: String, memories: [Memory]) {
+            self.day = day
+            self.memories = memories
+        }
+    }
+
+    /// How many days of "on this day" a snapshot carries, so the widget stays right on
+    /// the days the app is not opened.
+    public static let memoryDayCount = 14
 
     public struct CollectionSummary: Codable, Hashable, Sendable {
         public let id: String
@@ -35,7 +59,9 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
         }
     }
 
-    public static let fileName = "widget-snapshot.json"
+    /// Versioned with the shape: a widget reading an older file falls back to its
+    /// placeholder until the app writes a new one.
+    public static let fileName = "widget-snapshot-2.json"
     public static let globeImageName = "widget-globe.png"
 
     public let generatedAt: Date
@@ -45,9 +71,8 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
     public let continents: Int
     public let distanceText: String
     public let placesLogged: Int
-    /// "On this day" entries for the day the snapshot was written.
-    public let memoriesDay: String
-    public let memories: [Memory]
+    /// "On this day", for the day the snapshot was written and the days after it.
+    public let memoryDays: [MemoryDay]
     public let collections: [CollectionSummary]
 
     public init(
@@ -58,8 +83,7 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
         continents: Int,
         distanceText: String,
         placesLogged: Int,
-        memoriesDay: String,
-        memories: [Memory],
+        memoryDays: [MemoryDay],
         collections: [CollectionSummary]
     ) {
         self.generatedAt = generatedAt
@@ -69,9 +93,22 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
         self.continents = continents
         self.distanceText = distanceText
         self.placesLogged = placesLogged
-        self.memoriesDay = memoriesDay
-        self.memories = memories
+        self.memoryDays = memoryDays
         self.collections = collections
+    }
+
+    /// What happened on this date in earlier years, as far as the snapshot reaches.
+    public func memories(on day: CalendarDate) -> [Memory] {
+        memoryDays.first { $0.day == day.iso }?.memories ?? []
+    }
+
+    /// Whether two snapshots say the same thing, whenever they were written — so the app
+    /// only rewrites the file, and reloads the widgets, when something changed.
+    public func hasSameContent(as other: WidgetSnapshot) -> Bool {
+        countries == other.countries && worldPercent == other.worldPercent
+            && countryListName == other.countryListName && continents == other.continents
+            && distanceText == other.distanceText && placesLogged == other.placesLogged
+            && memoryDays == other.memoryDays && collections == other.collections
     }
 
     public static let placeholder = WidgetSnapshot(
@@ -82,8 +119,14 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
         continents: 4,
         distanceText: "182,400 km",
         placesLogged: 120,
-        memoriesDay: "",
-        memories: [Memory(title: "Oslo", subtitle: "Stayed", yearsAgo: 3)],
+        memoryDays: [
+            MemoryDay(
+                day: CalendarDate.today().iso,
+                memories: [
+                    Memory(title: "Oslo", subtitle: "Stayed", year: CalendarDate.today().year - 3),
+                ]
+            ),
+        ],
         collections: [
             CollectionSummary(
                 id: "nordic-capitals", name: "Nordic capitals", symbol: "snowflake", visited: 3,
@@ -111,9 +154,14 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
     }
 
     public func save() throws {
-        guard let url = Self.containerURL()?.appending(path: Self.fileName) else { return }
+        guard let container = Self.containerURL() else { return }
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        try encoder.encode(self).write(to: url, options: .atomic)
+        try encoder.encode(self).write(
+            to: container.appending(path: Self.fileName),
+            options: .atomic
+        )
+        // The first shape's file, from before memories ran ahead of today.
+        try? FileManager.default.removeItem(at: container.appending(path: "widget-snapshot.json"))
     }
 }

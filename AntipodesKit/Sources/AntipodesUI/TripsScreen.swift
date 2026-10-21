@@ -14,7 +14,7 @@ struct TripsScreen: View {
     @State private var tripToDelete: Trip?
 
     var body: some View {
-        GlobeBesideStack {
+        GlobeBesideStack(tab: .trips) {
             List {
                 if model.log.isEmpty {
                     EmptyStateView(

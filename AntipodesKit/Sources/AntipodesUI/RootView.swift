@@ -76,6 +76,11 @@ public struct RootView: View {
                     selection = selection == .records ? .trips : .stats
                 }
             }
+            .onOpenURL { url in
+                if let link = DeepLink(url: url) {
+                    open(link)
+                }
+            }
             .fileDropImport()
             .environment(borderStore)
             .tint(.accentColor)
@@ -116,6 +121,26 @@ public struct RootView: View {
             // ends; iOS forms are grouped already.
             .formStyle(.grouped)
         #endif
+    }
+
+    /// Goes where a widget's link points: a tab, or a record opened in a tab's list.
+    private func open(_ link: DeepLink) {
+        switch link {
+        case .globe: selection = .globe
+        case .trips: selection = .trips
+        case .stats: selection = .stats
+        case .collections: selection = .collections
+        case .log: model.addRequest = AddRequest()
+        case let .trip(id): show(.trip(id), in: .trips)
+        case let .visit(id): show(.visit(id), in: .trips)
+        case let .journey(id): show(.journey(id), in: .trips)
+        case let .collection(id): show(.collection(id), in: .collections)
+        }
+    }
+
+    private func show(_ route: LogRoute, in tab: PendingRoute.Tab) {
+        selection = tab == .trips ? .trips : .collections
+        model.pendingRoute = PendingRoute(tab: tab, route: route)
     }
 
     /// Onboarding shows until the user finishes it once.

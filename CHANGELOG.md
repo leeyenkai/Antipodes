@@ -74,6 +74,13 @@ is blocked.
   places, distance and carbon lists have a Share button. Every share opens one sheet
   with square and story sizes and a preview that is exactly the image shared — drawn
   once, at a fixed text size, so the reader's text size cannot reflow it.
+- **Widgets open the app where they point** (R-SHARE-2, D-25): Countries opens Stats,
+  Globe the globe, a collection its own page, and each "On this day" memory the visit
+  or journey it remembers, through `antipodes://` links handled on the device. "On
+  this day" now carries the next two weeks, so it stays right on days the app is not
+  opened; it had gone blank the morning after. Widgets have accessibility labels, and
+  the extension has its own privacy manifest. The app writes the widgets' snapshot a
+  moment after a burst of edits settles, and only when something changed.
 - A vector mark of the app — a place and its antipode through the Earth — signs share
   cards and Year in Review instead of a generic globe symbol.
 - Onboarding: what the app does, what it never does with your data, and where home is.

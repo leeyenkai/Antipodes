@@ -16,7 +16,9 @@ import SwiftUI
 /// which replaces everything beside it — so there each page carries the globe beside
 /// itself instead (`besideGlobe(_:)`).
 struct GlobeBesideStack<Root: View>: View {
+    @Environment(AppModel.self) private var model
     @State private var context = GlobeBesideContext()
+    private let tab: PendingRoute.Tab
     private let root: Root
 
     #if !os(macOS)
@@ -25,11 +27,25 @@ struct GlobeBesideStack<Root: View>: View {
         @State private var columns = NavigationSplitViewVisibility.all
     #endif
 
-    init(@ViewBuilder root: () -> Root) {
+    init(tab: PendingRoute.Tab, @ViewBuilder root: () -> Root) {
+        self.tab = tab
         self.root = root()
     }
 
     var body: some View {
+        stack
+            // A widget's link opens its record here, on top of the list itself.
+            .onChange(of: model.pendingRoute, initial: true) { _, pending in
+                guard let pending, pending.tab == tab else { return }
+                var path = NavigationPath()
+                path.append(pending.route)
+                context.path = path
+                model.pendingRoute = nil
+            }
+    }
+
+    @ViewBuilder
+    private var stack: some View {
         @Bindable var context = context
         #if os(macOS)
             NavigationStack(path: $context.path) { root.besideGlobe(context) }
