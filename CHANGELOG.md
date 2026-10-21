@@ -99,6 +99,9 @@ is blocked.
   that keep land and sea apart.
 - A vector version of the same mark signs share cards and Year in Review instead of a
   generic globe symbol.
+- Spec 0.6.0: D-26 (satellite globe), D-27 (journey lists), and §13.1 brought up to
+  date, naming what still waits for data — climate zones, mountain passes, a nightlife
+  theme and eras for undated landmarks.
 - **Stats can be filtered** by year, trip, mode and purpose (§5.7). A banner says what
   slice is showing; a mode or purpose keeps journeys only, since places have neither,
   and asking for commutes counts them whatever the counting rule.
