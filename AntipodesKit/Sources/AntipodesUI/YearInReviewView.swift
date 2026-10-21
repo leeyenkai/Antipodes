@@ -213,28 +213,28 @@ private struct ReviewPage: View {
                     palette: GlobePalette()
                 )
                 .frame(maxHeight: 320)
-                .scaleEffect(appeared || reduceMotion ? 1 : 0.85)
+                .scaleEffect(appeared || reduceMotion ? 1 : 0.96)
                 .opacity(appeared ? 1 : 0)
             } else {
                 Spacer(minLength: 40)
                 Image(systemName: card.symbol)
-                    .font(.system(size: 54, weight: .semibold))
+                    .font(.system(size: 44, weight: .light))
                     .foregroundStyle(Palette.visited)
-                    .symbolEffect(.bounce, value: appeared)
+                    .opacity(appeared ? 1 : 0)
             }
             Text(card.eyebrow.uppercased())
-                .font(.caption.weight(.bold))
-                .tracking(1.4)
+                .font(.caption.weight(.semibold))
+                .tracking(1.2)
                 .foregroundStyle(Palette.visited)
             Text(card.value)
                 .font(.statValue(64))
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
                 .contentTransition(.numericText())
-                .offset(y: appeared || reduceMotion ? 0 : 24)
+                .offset(y: appeared || reduceMotion ? 0 : 12)
                 .opacity(appeared ? 1 : 0)
             Text(card.title)
-                .font(.title2.weight(.semibold))
+                .font(.display(.title2))
                 .opacity(appeared ? 1 : 0)
             if let detail = card.detail, !detail.isEmpty {
                 Text(detail)
@@ -252,8 +252,7 @@ private struct ReviewPage: View {
             if active {
                 appeared = false
                 withAnimation(
-                    reduceMotion ? .easeIn(duration: 0.2) : .spring(duration: 0.7, bounce: 0.25)
-                        .delay(0.1)
+                    reduceMotion ? .easeIn(duration: 0.2) : .smooth(duration: 0.8).delay(0.1)
                 ) { appeared = true }
             }
         }

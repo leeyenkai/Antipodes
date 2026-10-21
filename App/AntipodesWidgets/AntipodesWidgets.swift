@@ -71,7 +71,7 @@ struct SnapshotProvider: TimelineProvider {
 }
 
 private enum WidgetPalette {
-    static let visited = Color(red: 0.31, green: 0.78, blue: 0.62)
+    static let visited = Color(red: 0.42, green: 0.75, blue: 0.69)
     static let sky = LinearGradient(
         colors: [
             Color(red: 0.06, green: 0.11, blue: 0.18),
@@ -148,11 +148,11 @@ private struct CountriesView: View {
 
     private func stack(_ snapshot: WidgetSnapshot) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Image(systemName: "globe.europe.africa.fill")
+            Image(systemName: "globe.europe.africa")
                 .foregroundStyle(WidgetPalette.visited)
             Spacer(minLength: 0)
             Text("\(snapshot.countries)")
-                .font(.system(size: 44, weight: .bold, design: .rounded))
+                .font(.system(size: 44, weight: .light).monospacedDigit())
                 .minimumScaleFactor(0.6)
                 .foregroundStyle(.white)
             Text("countries")
@@ -207,8 +207,7 @@ private struct GlobeWidgetView: View {
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 4) {
                     Text("\(snapshot.countries)")
-                        .font(.headline)
-                        .fontDesign(.rounded)
+                        .font(.headline.monospacedDigit())
                     Text("countries")
                         .font(.caption)
                         .foregroundStyle(.white.opacity(0.75))
@@ -224,8 +223,7 @@ private struct GlobeWidgetView: View {
     private func figure(_ value: String, _ label: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(value)
-                .font(.title3.weight(.bold))
-                .fontDesign(.rounded)
+                .font(.title3.weight(.medium).monospacedDigit())
                 .foregroundStyle(.white)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
@@ -461,8 +459,7 @@ private struct CollectionView: View {
                             .foregroundStyle(.white)
                             .lineLimit(2)
                         Text("\(collection.visited) of \(collection.total)")
-                            .font(.title2.weight(.bold))
-                            .fontDesign(.rounded)
+                            .font(.title2.monospacedDigit())
                             .foregroundStyle(.white)
                         ProgressView(value: fraction)
                             .tint(WidgetPalette.visited)

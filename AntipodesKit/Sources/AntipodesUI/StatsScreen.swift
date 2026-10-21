@@ -107,9 +107,17 @@ struct StatsSection<Content: View>: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label(title, systemImage: symbol)
-                .font(.title3.weight(.bold))
-                .accessibilityAddTraits(.isHeader)
+            HStack(spacing: 8) {
+                Image(systemName: symbol)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .accessibilityHidden(true)
+                Text(title)
+                    .font(.title3.weight(.semibold))
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+            .padding(.leading, 4)
             content
             if let caveat {
                 CaveatLabel(text: caveat)
@@ -153,7 +161,7 @@ struct StatRow<Destination: Hashable>: View {
             }
             Spacer(minLength: 8)
             Text(value)
-                .font(.body.weight(.semibold).monospacedDigit())
+                .font(.body.weight(.medium).monospacedDigit())
                 .multilineTextAlignment(.trailing)
             if chevron {
                 Image(systemName: "chevron.right")
@@ -212,7 +220,7 @@ struct StatCardList<Content: View>: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
-        .background(.background.secondary, in: .rect(cornerRadius: 22, style: .continuous))
+        .background(.background.secondary, in: .rect(cornerRadius: 20, style: .continuous))
     }
 }
 
@@ -234,21 +242,17 @@ private struct PersonalityHero: View {
         if let personality = themes.personality {
             let tint = Palette.archetype(personality.archetype)
             VStack(alignment: .leading, spacing: 14) {
-                HStack(spacing: 14) {
-                    Image(systemName: personality.archetype.symbolName)
-                        .font(.system(size: 30, weight: .semibold))
-                        .foregroundStyle(tint)
-                        .frame(width: 60, height: 60)
-                        .background(tint.opacity(0.16), in: .circle)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("YOUR TRAVEL PERSONALITY")
-                            .font(.caption2.weight(.semibold))
-                            .tracking(1)
-                            .foregroundStyle(.secondary)
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Eyebrow("Your travel personality")
                         Text(personality.archetype.name)
-                            .font(.largeTitle.weight(.bold))
-                            .fontDesign(.rounded)
+                            .font(.display(.largeTitle))
                     }
+                    Spacer(minLength: 8)
+                    Image(systemName: personality.archetype.symbolName)
+                        .font(.title2.weight(.light))
+                        .foregroundStyle(tint)
+                        .accessibilityHidden(true)
                 }
                 Text(personality.archetype.summary)
                     .foregroundStyle(.secondary)
@@ -262,16 +266,7 @@ private struct PersonalityHero: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
-            .padding(20)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                LinearGradient(
-                    colors: [tint.opacity(0.22), tint.opacity(0.05)],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                ),
-                in: .rect(cornerRadius: 26, style: .continuous)
-            )
+            .card(padding: 20)
         } else {
             VStack(alignment: .leading, spacing: 8) {
                 Label("Travel personality", systemImage: "sparkles")
@@ -309,17 +304,20 @@ struct ThemeBars: View {
                         .frame(width: labelWidth, alignment: .leading)
                         .lineLimit(1)
                     GeometryReader { proxy in
-                        Capsule()
-                            .fill(tint.gradient)
-                            .frame(width: max(
-                                6,
-                                proxy.size.width * share.share / max(
-                                    0.001,
-                                    shares.first?.share ?? 1
-                                )
-                            ))
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(tint.opacity(0.14))
+                            Capsule()
+                                .fill(tint)
+                                .frame(width: max(
+                                    4,
+                                    proxy.size.width * share.share / max(
+                                        0.001,
+                                        shares.first?.share ?? 1
+                                    )
+                                ))
+                        }
                     }
-                    .frame(height: 10)
+                    .frame(height: 4)
                     Text(Format.percent(share.share, digits: 0))
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(.secondary)
@@ -352,7 +350,6 @@ private struct HeadlineGrid: View {
                     value: "\(coverage.listedCountriesVisited)",
                     detail: worldShare(coverage),
                     symbol: "flag.fill",
-                    tint: Palette.visited,
                     shareTitle: "countries visited"
                 )
             }
@@ -364,7 +361,6 @@ private struct HeadlineGrid: View {
                     \(Format.multiple(statistics.distance.timesRoundTheEarth)) round the Earth
                     """,
                     symbol: "point.topleft.down.to.point.bottomright.curvepath",
-                    tint: Palette.mode(.flight),
                     shareTitle: "travelled"
                 )
             }
@@ -373,8 +369,7 @@ private struct HeadlineGrid: View {
                     title: "Continents",
                     value: "\(coverage.continentsVisited) of 7",
                     detail: coverage.continents.sorted().map(\.displayName).joined(separator: ", "),
-                    symbol: "globe.americas.fill",
-                    tint: Palette.mode(.ferry)
+                    symbol: "globe.americas.fill"
                 )
             }
             NavigationLink(value: StatsRoute.places(.city)) {
@@ -382,8 +377,7 @@ private struct HeadlineGrid: View {
                     title: "Cities",
                     value: "\(coverage.citiesVisited)",
                     detail: "\(coverage.capitalsVisited) capitals",
-                    symbol: "building.2.fill",
-                    tint: Palette.mode(.rail)
+                    symbol: "building.2.fill"
                 )
             }
         }

@@ -60,19 +60,23 @@ struct AchievementBadge: View {
     var body: some View {
         let tint = Palette.tier(status.definition.tier)
         VStack(spacing: 8) {
+            // A quiet medallion: earned ones carry their tier's metal as a ring and a
+            // wash; the rest show how far along they are.
             ZStack {
                 Circle()
-                    .fill(status
-                        .isEarned ? AnyShapeStyle(tint.gradient) : AnyShapeStyle(.quaternary))
-                ProgressRing(progress: status.progress, tint: tint, lineWidth: 4)
-                    .padding(-6)
-                    .opacity(status.isEarned ? 0 : 1)
+                    .fill(status.isEarned ? AnyShapeStyle(tint.opacity(0.16))
+                        : AnyShapeStyle(.fill.tertiary))
+                if status.isEarned {
+                    Circle().strokeBorder(tint.opacity(0.9), lineWidth: 1.5)
+                } else {
+                    ProgressRing(progress: status.progress, tint: tint, lineWidth: 3)
+                }
                 Image(systemName: status.definition.symbol ?? "star.fill")
-                    .font(.system(size: size * 0.36, weight: .semibold))
-                    .foregroundStyle(status.isEarned ? .white : .secondary)
+                    .font(.system(size: size * 0.34, weight: .regular))
+                    .foregroundStyle(status
+                        .isEarned ? AnyShapeStyle(tint) : AnyShapeStyle(.secondary))
             }
             .frame(width: size, height: size)
-            .shadow(color: status.isEarned ? tint.opacity(0.5) : .clear, radius: 8)
             Text(status.definition.name)
                 .font(.caption.weight(.medium))
                 .multilineTextAlignment(.center)

@@ -77,7 +77,7 @@ private struct CarbonByYearChart: View {
     var body: some View {
         Chart(kgByYear.sorted { $0.key < $1.key }, id: \.key) { year, kilograms in
             BarMark(x: .value("Year", String(year)), y: .value("kg CO₂e", kilograms))
-                .foregroundStyle(Palette.visited.gradient)
+                .foregroundStyle(Palette.visited)
                 .cornerRadius(4)
         }
         .chartYAxis {

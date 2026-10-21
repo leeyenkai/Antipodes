@@ -174,7 +174,7 @@ struct GlobeScreen: View {
     private var emptyPrompt: some View {
         VStack(spacing: 10) {
             Text("Your travels, on a globe")
-                .font(.title2.weight(.bold))
+                .font(.display(.title2))
             Text(
                 """
                 Log a place or a journey and it appears here. Touch and hold anywhere to drop a pin.

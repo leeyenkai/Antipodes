@@ -92,12 +92,12 @@ struct OnboardingView: View {
             """
         ) {
             VStack(alignment: .leading, spacing: 22) {
-                promise("lock.shield.fill", "Nothing to sign up for")
+                promise("lock.shield", "Nothing to sign up for")
                 promise("wifi.slash", "Search, maps and stats work offline")
-                promise("icloud.fill", "Syncs through your private iCloud")
-                promise("square.and.arrow.up.fill", "Export everything, any time")
+                promise("icloud", "Syncs through your private iCloud")
+                promise("square.and.arrow.up", "Export everything, any time")
             }
-            .font(.title3)
+            .font(.body)
             .padding(.vertical, 30)
         }
     }
@@ -112,7 +112,7 @@ struct OnboardingView: View {
         ) {
             VStack(spacing: 16) {
                 Image(systemName: model.home == nil ? "house" : "house.fill")
-                    .font(.system(size: 64))
+                    .font(.system(size: 56, weight: .ultraLight))
                     .foregroundStyle(Palette.visited)
                     .padding(.vertical, 20)
                 Button {
@@ -144,8 +144,7 @@ struct OnboardingView: View {
             Spacer(minLength: 20)
             art()
             Text(title)
-                .font(.largeTitle.weight(.bold))
-                .fontDesign(.rounded)
+                .font(.display(.largeTitle))
                 .multilineTextAlignment(.center)
             Text(message)
                 .font(.body)
@@ -162,6 +161,7 @@ struct OnboardingView: View {
             Text(text)
         } icon: {
             Image(systemName: symbol)
+                .fontWeight(.light)
                 .foregroundStyle(Palette.visited)
                 .frame(width: 32)
         }

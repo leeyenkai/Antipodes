@@ -271,11 +271,11 @@ struct GlobeCanvas: View {
             // A soft wide pass under a crisp thin one: the arcs need to read over both
             // ocean and land without a hard outline.
             context.drawLayer { layer in
-                layer.addFilter(.blur(radius: isSelected ? 5 : 3))
+                layer.addFilter(.blur(radius: isSelected ? 4 : 2.5))
                 layer.stroke(
                     path,
-                    with: .color(colour.opacity(0.55)),
-                    lineWidth: isSelected ? 6 : 3.5
+                    with: .color(colour.opacity(isSelected ? 0.5 : 0.3)),
+                    lineWidth: isSelected ? 5 : 3
                 )
             }
             // A surface leg is drawn along the great circle too, which is not the road
@@ -285,7 +285,7 @@ struct GlobeCanvas: View {
                 path,
                 with: .color(colour),
                 style: StrokeStyle(
-                    lineWidth: isSelected ? 2.6 : 1.5,
+                    lineWidth: isSelected ? 2.4 : 1.3,
                     lineCap: .round,
                     dash: arc.mode.greatCircleIsExact ? [] : [5, 4]
                 )
@@ -303,7 +303,7 @@ struct GlobeCanvas: View {
             guard projected.isVisible else { continue }
 
             let isSelected = selectedPinID == pin.id || emphasised.contains(pin.id)
-            let radius: Double = isSelected ? 7 : 4.5
+            let radius: Double = isSelected ? 6.5 : 4
             let centre = CGPoint(x: projected.point.x, y: projected.point.y)
             let dot = Path(
                 ellipseIn: CGRect(
@@ -331,7 +331,7 @@ struct GlobeCanvas: View {
             switch pin.style {
             case .visited:
                 context.fill(dot, with: .color(palette.visitedPin))
-                context.stroke(dot, with: .color(palette.pinOutline), lineWidth: 1)
+                context.stroke(dot, with: .color(palette.pinOutline), lineWidth: 0.8)
             case .notCounted:
                 // Hollow, because it is logged but not counted towards coverage: the
                 // globe says the same thing the coverage number does (R-CALC-1).
@@ -422,35 +422,27 @@ struct GlobeCanvas: View {
 /// The sphere is dark in both light and dark appearance, like a night-side globe: a
 /// pale globe on a pale background loses the arcs, which are the part worth looking at.
 struct GlobePalette: Sendable {
-    var ocean = Color(red: 0.07, green: 0.16, blue: 0.29)
-    var oceanHighlight = Color(red: 0.14, green: 0.28, blue: 0.46)
-    var oceanShadow = Color(red: 0.02, green: 0.05, blue: 0.11)
-    var atmosphere = Color(red: 0.36, green: 0.62, blue: 0.95).opacity(0.5)
-    var limbShadow = Color.black.opacity(0.65)
-    var graticule = Color.white.opacity(0.08)
+    var ocean = Color(red: 0.06, green: 0.13, blue: 0.22)
+    var oceanHighlight = Color(red: 0.11, green: 0.21, blue: 0.33)
+    var oceanShadow = Color(red: 0.02, green: 0.04, blue: 0.08)
+    var atmosphere = Color(red: 0.45, green: 0.66, blue: 0.88).opacity(0.38)
+    var limbShadow = Color.black.opacity(0.6)
+    var graticule = Color.white.opacity(0.06)
 
-    var land = Color(red: 0.24, green: 0.29, blue: 0.35)
-    var visitedLand = Color(red: 0.31, green: 0.74, blue: 0.59)
-    var border = Color.black.opacity(0.35)
-    var satelliteBorder = Color.white.opacity(0.22)
+    var land = Color(red: 0.20, green: 0.24, blue: 0.28)
+    var visitedLand = Color(red: 0.36, green: 0.66, blue: 0.61)
+    var border = Color.black.opacity(0.3)
+    var satelliteBorder = Color.white.opacity(0.2)
 
-    var visitedPin = Color(red: 0.99, green: 0.85, blue: 0.42)
+    var visitedPin = Palette.pin
     var notCountedPin = Color.white.opacity(0.45)
-    var wishlistPin = Color(red: 0.78, green: 0.62, blue: 0.98)
-    var homePin = Color(red: 0.36, green: 0.86, blue: 0.96)
-    var pinOutline = Color.black.opacity(0.55)
+    var wishlistPin = Palette.wishlist
+    var homePin = Color(red: 0.80, green: 0.92, blue: 0.95)
+    var pinOutline = Color.black.opacity(0.5)
 
+    /// The same colour a mode has everywhere else in the app.
     func colour(for mode: TravelMode) -> Color {
-        switch mode {
-        case .flight: Color(red: 1.0, green: 0.58, blue: 0.24)
-        case .rail: Color(red: 0.42, green: 0.80, blue: 0.98)
-        case .cityTransit: Color(red: 0.60, green: 0.86, blue: 0.70)
-        case .coach: Color(red: 0.96, green: 0.76, blue: 0.40)
-        case .ferry: Color(red: 0.48, green: 0.68, blue: 1.0)
-        case .roadTrip: Color(red: 0.98, green: 0.62, blue: 0.62)
-        case .humanPowered: Color(red: 0.74, green: 0.92, blue: 0.52)
-        case .cableAndMountain: Color(red: 0.86, green: 0.72, blue: 0.98)
-        }
+        Palette.mode(mode)
     }
 
     func colour(for style: GlobePinStyle) -> Color {

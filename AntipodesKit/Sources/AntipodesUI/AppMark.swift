@@ -10,13 +10,6 @@ import SwiftUI
 struct AppMark: View {
     var size: CGFloat = 20
 
-    /// The icon's geometry, as fractions of the Earth's radius.
-    private static let semiMajor = 0.933
-    private static let semiMinor = 0.373
-    private static let tilt = -32.0 * Double.pi / 180
-    private static let near = 124.0 * Double.pi / 180
-    private static let far = 304.0 * Double.pi / 180
-
     var body: some View {
         Canvas { context, canvas in
             let side = min(canvas.width, canvas.height)
@@ -24,11 +17,11 @@ struct AppMark: View {
             let radius = side / 2
 
             func point(_ angle: Double) -> CGPoint {
-                let x = Self.semiMajor * cos(angle)
-                let y = Self.semiMinor * sin(angle)
+                let x = Geometry.semiMajor * cos(angle)
+                let y = Geometry.semiMinor * sin(angle)
                 return CGPoint(
-                    x: centre.x + radius * (x * cos(Self.tilt) - y * sin(Self.tilt)),
-                    y: centre.y + radius * (x * sin(Self.tilt) + y * cos(Self.tilt))
+                    x: centre.x + radius * (x * cos(Geometry.tilt) - y * sin(Geometry.tilt)),
+                    y: centre.y + radius * (x * sin(Geometry.tilt) + y * cos(Geometry.tilt))
                 )
             }
 
@@ -63,7 +56,10 @@ struct AppMark: View {
                 with: .color(Palette.pin.opacity(0.4)),
                 style: StrokeStyle(lineWidth: line * 0.8, lineCap: .butt)
             )
-            context.fill(dot(at: Self.far, radius: side * 0.08), with: .color(.white.opacity(0.45)))
+            context.fill(
+                dot(at: Geometry.far, radius: side * 0.08),
+                with: .color(.white.opacity(0.45))
+            )
             context.fill(
                 Path(ellipseIn: CGRect(
                     x: centre.x - radius,
@@ -78,9 +74,19 @@ struct AppMark: View {
                 with: .color(Palette.pin),
                 style: StrokeStyle(lineWidth: line, lineCap: .butt)
             )
-            context.fill(dot(at: Self.near, radius: side * 0.11), with: .color(.white))
+            context.fill(dot(at: Geometry.near, radius: side * 0.11), with: .color(.white))
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)
     }
+}
+
+/// The icon's geometry, as fractions of the Earth's radius. Outside the view so the
+/// canvas, which draws off the main actor, can read it.
+private enum Geometry {
+    static let semiMajor = 0.933
+    static let semiMinor = 0.373
+    static let tilt = -32.0 * Double.pi / 180
+    static let near = 124.0 * Double.pi / 180
+    static let far = 304.0 * Double.pi / 180
 }

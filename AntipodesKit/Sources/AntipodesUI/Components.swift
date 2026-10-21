@@ -13,7 +13,6 @@ struct StatCard: View {
     var detail: String?
     var caveat: String?
     var symbol: String?
-    var tint: Color = .accentColor
     /// What the card says when shared, where that should read differently from the
     /// dashboard ("countries visited" rather than "Countries").
     var shareTitle: String?
@@ -25,7 +24,6 @@ struct StatCard: View {
         detail: String? = nil,
         caveat: String? = nil,
         symbol: String? = nil,
-        tint: Color = .accentColor,
         shareTitle: String? = nil
     ) {
         self.title = title
@@ -33,7 +31,6 @@ struct StatCard: View {
         self.detail = detail
         self.caveat = caveat
         self.symbol = symbol
-        self.tint = tint
         self.shareTitle = shareTitle
     }
 
@@ -48,16 +45,13 @@ struct StatCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
+            HStack(spacing: 5) {
                 if let symbol {
                     Image(systemName: symbol)
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(tint)
+                        .font(.caption2.weight(.medium))
+                        .foregroundStyle(.secondary)
                 }
-                Text(title)
-                    .font(.caption.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .textCase(.uppercase)
+                Eyebrow(title)
             }
             Text(value)
                 .font(.statValue(28))

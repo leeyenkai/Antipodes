@@ -233,7 +233,7 @@ struct ShareCardView: View {
                     .minimumScaleFactor(0.5)
             }
             Text(payload.title)
-                .font(payload.bigValue == nil ? .title.weight(.bold) : .title3.weight(.semibold))
+                .font(payload.bigValue == nil ? .display(.title) : .display(.title3))
                 .lineLimit(2)
                 .minimumScaleFactor(0.7)
             if let subtitle = payload.subtitle {

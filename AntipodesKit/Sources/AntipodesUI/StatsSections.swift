@@ -329,7 +329,7 @@ private struct ModeDistanceChart: View {
                 x: .value("Distance", system.distance(fromKilometres: row.kilometres)),
                 y: .value("Mode", row.mode.displayName)
             )
-            .foregroundStyle(Palette.mode(row.mode).gradient)
+            .foregroundStyle(Palette.mode(row.mode))
             .cornerRadius(6)
             .annotation(position: .trailing) {
                 Text(Format.distance(row.kilometres, system))

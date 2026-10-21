@@ -98,8 +98,7 @@ struct GlobeSummaryBar: View {
             ForEach(figures, id: \.label) { figure in
                 VStack(spacing: 0) {
                     Text(figure.value)
-                        .font(.system(.subheadline, design: .rounded, weight: .bold)
-                            .monospacedDigit())
+                        .font(.subheadline.weight(.semibold).monospacedDigit())
                         .contentTransition(.numericText())
                     Text(figure.label).font(.caption2).foregroundStyle(.secondary)
                 }

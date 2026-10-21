@@ -189,19 +189,19 @@ struct ReviewStoryFrame: View {
                 } else {
                     Spacer(minLength: 60)
                     Image(systemName: card.symbol)
-                        .font(.system(size: 54, weight: .semibold))
+                        .font(.system(size: 44, weight: .light))
                         .foregroundStyle(Palette.visited)
                 }
                 Text(card.eyebrow.uppercased())
-                    .font(.caption.weight(.bold))
-                    .tracking(1.4)
+                    .font(.caption.weight(.semibold))
+                    .tracking(1.2)
                     .foregroundStyle(Palette.visited)
                 Text(card.value)
                     .font(.statValue(60))
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
                 Text(card.title)
-                    .font(.title3.weight(.semibold))
+                    .font(.display(.title3))
                     .lineLimit(3)
                     .minimumScaleFactor(0.7)
                 if let detail = card.detail, !detail.isEmpty {

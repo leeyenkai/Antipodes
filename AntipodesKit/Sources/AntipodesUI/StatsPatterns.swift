@@ -226,7 +226,7 @@ struct YearChart: View {
         let rows = values.sorted { $0.key < $1.key }
         Chart(rows, id: \.key) { year, value in
             BarMark(x: .value("Year", String(year)), y: .value("Count", value))
-                .foregroundStyle(tint.gradient)
+                .foregroundStyle(tint)
                 .cornerRadius(4)
         }
         .chartXAxis {
@@ -245,7 +245,7 @@ private struct SeasonalityChart: View {
                 x: .value("Month", Format.shortMonthName(month)),
                 y: .value("Visits", byMonth[month] ?? 0)
             )
-            .foregroundStyle(Palette.mode(.coach).gradient)
+            .foregroundStyle(Palette.mode(.coach))
             .cornerRadius(4)
         }
         .frame(height: 140)
@@ -336,7 +336,7 @@ private struct EraChart: View {
     var body: some View {
         Chart(HistoricalEra.allCases) { era in
             BarMark(x: .value("Era", era.displayName), y: .value("Landmarks", byEra[era] ?? 0))
-                .foregroundStyle(Palette.archetype(.historian).gradient)
+                .foregroundStyle(Palette.archetype(.historian))
                 .cornerRadius(4)
         }
         .chartXAxis {

@@ -247,6 +247,16 @@ is blocked.
 
 ### Changed
 
+- **A quieter, more refined look.** One sea-glass teal is the brand and the visited
+  colour, pins are champagne, and the eight modes share a muted, evenly weighted set
+  used identically on the globe, in charts and in lists. Chrome is neutral: row tiles
+  and section headers no longer carry a different bright colour each. Figures are set
+  in SF Pro with even digits, lighter as they grow, instead of bold rounded; display
+  titles — a travel personality, a Year in Review card, onboarding, share cards — are
+  in New York. Cards, rings and bars are thinner, badges are flat medallions without a
+  glow, Year in Review fades in rather than bouncing, and the globe's arcs and pins are
+  finer with a softer glow. Widgets follow.
+
 - **Release hygiene**:
   - Saving a share card or a Year in Review video to Photos would have ended the app:
     the photo-library add-usage string was missing. It is there now.

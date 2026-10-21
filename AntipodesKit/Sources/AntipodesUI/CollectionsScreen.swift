@@ -100,12 +100,12 @@ private struct CollectionCard: View {
     var body: some View {
         HStack(spacing: 16) {
             ZStack {
-                ProgressRing(progress: progress.fraction, lineWidth: 7)
+                ProgressRing(progress: progress.fraction, lineWidth: 3)
                 Image(systemName: progress.definition.symbol ?? "square.stack.3d.up")
-                    .font(.title3.weight(.semibold))
+                    .font(.title3.weight(.light))
                     .foregroundStyle(progress.isComplete ? Palette.visited : .primary)
             }
-            .frame(width: 62, height: 62)
+            .frame(width: 56, height: 56)
             VStack(alignment: .leading, spacing: 4) {
                 Text(progress.definition.name)
                     .font(.headline)
