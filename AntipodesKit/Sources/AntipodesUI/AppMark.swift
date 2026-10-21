@@ -87,6 +87,6 @@ private enum Geometry {
     static let semiMajor = 0.933
     static let semiMinor = 0.373
     static let tilt = -32.0 * Double.pi / 180
-    static let near = 124.0 * Double.pi / 180
-    static let far = 304.0 * Double.pi / 180
+    static let near = 68.0 * Double.pi / 180
+    static let far = 248.0 * Double.pi / 180
 }

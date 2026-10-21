@@ -93,6 +93,10 @@ is blocked.
   `Tools/icon/render.sh` renders it with Xcode's `ictool`, beside the two concepts it was
   chosen from. It replaces a flattened PNG with an alpha channel, which App Store Connect
   rejects, and hand-made Mac sizes.
+- The icon's Earth carries real continents, projected from Natural Earth so the near
+  point is Madrid and the far point, seen through the glass, its true antipode off New
+  Zealand. A deeper sky, a two-tone ocean, sage land, and tinted and clear renditions
+  that keep land and sea apart.
 - A vector version of the same mark signs share cards and Year in Review instead of a
   generic globe symbol.
 - **Stats can be filtered** by year, trip, mode and purpose (§5.7). A banner says what
