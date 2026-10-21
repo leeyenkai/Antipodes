@@ -59,12 +59,14 @@ enum GroupedList: Hashable {
     case timeZones
     case languages
     case currencies
+    case climateZones
 
     var title: String {
         switch self {
         case .timeZones: "Time zones"
         case .languages: "Main languages"
         case .currencies: "Currencies"
+        case .climateZones: "Climate zones"
         }
     }
 }
@@ -155,6 +157,24 @@ struct GroupedAttributeView: View {
             case .currencies:
                 countrySections(attributes.countriesByCurrency) { code in
                     "\(Format.currencyName(code)) (\(code))"
+                }
+            case .climateZones:
+                let climate = model.shownStatistics.climate
+                ForEach(climate.zones) { zone in
+                    Section {
+                        ForEach(climate.placesByZone[zone] ?? [], id: \.id) { place in
+                            PlaceRow(place: place)
+                        }
+                    } header: {
+                        Text("\(zone.name) · \(zone.code)")
+                    } footer: {
+                        if zone == climate.zones.last {
+                            Text("""
+                            Köppen-Geiger zones worked out from TerraClimate's 1991–2020 \
+                            averages, by the rules of Peel et al. (2007).
+                            """)
+                        }
+                    }
                 }
             }
         }
@@ -265,5 +285,48 @@ private extension PlaceID {
             return row
         }
         return nil
+    }
+}
+
+/// Every visit with the usual temperature of its month, warmest first.
+struct VisitTemperatureList: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let climate = model.shownStatistics.climate
+        let system = model.rules.unitSystem
+        List {
+            Section {
+                ForEach(climate.visits) { visit in
+                    NavigationLink(value: LogRoute.visit(visit.visitID)) {
+                        HStack {
+                            PlaceRow(place: visit.place, subtitle: visit.date.displayText)
+                            Spacer(minLength: 8)
+                            VStack(alignment: .trailing, spacing: 2) {
+                                Text(Format.temperature(visit.temperatureC, system))
+                                    .monospacedDigit()
+                                if visit.isAnnualMean {
+                                    Text("year's average")
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                        }
+                    }
+                }
+            } footer: {
+                VStack(alignment: .leading, spacing: 6) {
+                    if let caveat = climate.temperatureInput.caveat(counting: "visits") {
+                        Text(caveat)
+                    }
+                    Text("""
+                    The 1991–2020 average for the place and month, from TerraClimate, \
+                    corrected to the place's elevation. A visit across two months weighs \
+                    each by its days.
+                    """)
+                }
+            }
+        }
+        .navigationTitle("Temperatures")
     }
 }

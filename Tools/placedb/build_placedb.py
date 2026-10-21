@@ -53,9 +53,10 @@ HERE = Path(__file__).parent
 # Isolated mode also drops the script's own directory, so `sources` needs this.
 sys.path.insert(0, str(HERE))
 
+import climate  # noqa: E402
 import sources as registry  # noqa: E402 - must follow the sys.path line above
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 
 #: How far round an airport or landmark the build looks for bundled cities when it has
 #: no linked city to take a time zone from. The zone is written only when every city
@@ -183,6 +184,7 @@ class Counts:
     collection_members: int = 0
     achievements: int = 0
     emission_factors: int = 0
+    climates: int = 0
 
     def summary(self) -> str:
         return (
@@ -194,7 +196,8 @@ class Counts:
     def extras(self) -> str:
         return (
             f"{self.collections} collections ({self.collection_members} members), "
-            f"{self.achievements} achievements, {self.emission_factors} carbon factors"
+            f"{self.achievements} achievements, {self.emission_factors} carbon factors, "
+            f"{self.climates} place climates"
         )
 
 
@@ -525,6 +528,7 @@ def build(out_path: Path, cities_dataset: str, data_version: str, built_at: str)
         insert_collections(connection, counts)
         insert_achievements(connection, counts)
         insert_emission_factors(connection, counts)
+        insert_climate(connection, counts, coverage)
 
         counts.indexed = build_search_index(connection, grid, single_zone, coverage)
         write_meta(connection, data_version, built_at, counts, coverage, manifest, cities_dataset)
@@ -535,6 +539,51 @@ def build(out_path: Path, cities_dataset: str, data_version: str, built_at: str)
         return counts, coverage
     finally:
         connection.close()
+
+
+def insert_climate(connection: sqlite3.Connection, counts: Counts, coverage: Coverage) -> None:
+    """Every city, landmark and airport's monthly normals and climate zone (R-CALC-2).
+
+    Read from the TerraClimate grids in the cache; a place with no land cell within
+    reach gets no row, and the coverage report says how many.
+    """
+    try:
+        grid = climate.ClimateGrid.load(HERE / "vendor" / "terraclimate")
+    except climate.ClimateError as error:
+        raise BuildError(str(error)) from error
+
+    # The elevation each place's temperatures are moved to: its own where recorded,
+    # a landmark's city's otherwise (a landmark records a height, not an elevation).
+    elevation_sql = {
+        "city": "SELECT id, latitude, longitude, elevation_m FROM city ORDER BY id",
+        "landmark": """
+            SELECT landmark.id, landmark.latitude, landmark.longitude, city.elevation_m
+            FROM landmark LEFT JOIN city ON city.id = landmark.city_id
+            ORDER BY landmark.id
+        """,
+        "airport": "SELECT id, latitude, longitude, elevation_m FROM airport ORDER BY id",
+    }
+    rows: list[tuple[str, int, str, str, str]] = []
+    for kind, sql in elevation_sql.items():
+        total = 0
+        found = 0
+        for ref_id, latitude, longitude, elevation in connection.execute(sql):
+            total += 1
+            normals = grid.normals(latitude, longitude, elevation)
+            if normals is None:
+                continue
+            found += 1
+            tenths = ",".join(str(round(value * 10)) for value in normals.mean_temperature)
+            rows.append((kind, ref_id, tenths, normals.koppen, "terraclimate"))
+        coverage.record(f"{kind} climate", found, total)
+    connection.executemany(
+        """
+        INSERT INTO climate (place_kind, ref_id, tmean_tenths, koppen, source)
+        VALUES (?, ?, ?, ?, ?)
+        """,
+        rows,
+    )
+    counts.climates = len(rows)
 
 
 def write_data_sources(connection: sqlite3.Connection, cities_dataset: str) -> dict:

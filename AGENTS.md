@@ -175,6 +175,8 @@ The place database is built from open data, and the licences differ:
 | GeoNames | **CC BY 4.0** | **Attribution, and say it was modified** | Yes — cities, regions, elevations, time zones |
 | OurAirports | Public domain | None | Yes — airports and codes |
 | Wikidata | CC0 | None | Yes — landmark facts, UNESCO status, UN membership |
+| TerraClimate (University of Idaho) | CC0 | None (cited anyway) | Yes — 1991–2020 monthly temperature normals and Köppen climate zones |
+| NASA Blue Marble | Public domain | Credit NASA; no endorsement implied | Yes — the satellite globe's picture (bundled, not in the database) |
 | OpenStreetMap / OpenRailwayMap | ODbL | Share-alike on a *derived database* | **No — excluded, see below** |
 | Trainline EU stations | ODbL | Same as OSM | **No — excluded** |
 | UNESCO World Heritage List | Prior written authorisation | Permission needed | **No — excluded; status comes from Wikidata** |

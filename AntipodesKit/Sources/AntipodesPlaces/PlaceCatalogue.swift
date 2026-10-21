@@ -189,7 +189,38 @@ public extension PlaceDatabase {
         """) { row in
             try (row.requiredInt64(0), PlaceFacts(timeZoneIdentifier: row.string(1)))
         }
+        try addClimate(to: &facts, kinds: byKind)
         return facts
+    }
+
+    /// Each place's monthly temperature normals and climate zone, merged into its facts
+    /// (R-CALC-2). Kept apart from the per-kind queries: one table serves three kinds.
+    private func addClimate(
+        to facts: inout [PlaceID: PlaceFacts],
+        kinds byKind: [PlaceKind: [Int64]]
+    ) throws {
+        for kind in [PlaceKind.city, .landmark, .airport] {
+            for chunk in (byKind[kind] ?? []).sorted().chunked(into: 400) {
+                let placeholders = Array(repeating: "?", count: chunk.count).joined(separator: ",")
+                let rows = try connection.query(
+                    """
+                    SELECT ref_id, tmean_tenths, koppen FROM climate
+                    WHERE place_kind = ? AND ref_id IN (\(placeholders))
+                    """,
+                    parameters: [.text(kind.rawValue)] + chunk.map { .integer($0) }
+                ) { row in
+                    try (row.requiredInt64(0), row.requiredString(1), row.string(2))
+                }
+                for (ref, tenths, koppen) in rows {
+                    let months = tenths.split(separator: ",").compactMap { Double($0) }
+                        .map { $0 / 10 }
+                    var fact = facts[.database(kind, ref)] ?? PlaceFacts()
+                    fact.monthlyMeanTemperatureC = months.count == 12 ? months : nil
+                    fact.koppen = koppen
+                    facts[.database(kind, ref)] = fact
+                }
+            }
+        }
     }
 
     // swiftlint:enable function_body_length

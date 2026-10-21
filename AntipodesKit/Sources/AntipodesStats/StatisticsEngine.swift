@@ -47,6 +47,7 @@ public struct TravelStatistics: Hashable, Sendable {
     public let flights: FlightStatistics
     public let extremes: ExtremePoints
     public let attributes: PlaceAttributeStatistics
+    public let climate: ClimateStatistics
     public let time: TimeStatistics
     public let themes: ThemeStatistics
     public let journeys: JourneyStatistics
@@ -143,6 +144,7 @@ public enum StatisticsEngine {
                 gazetteer: gazetteer,
                 referenceYear: context.today.year
             ),
+            climate: ClimateStatistics.compute(for: log, rules: rules, gazetteer: gazetteer),
             time: TimeStatistics.compute(
                 for: log,
                 rules: rules,

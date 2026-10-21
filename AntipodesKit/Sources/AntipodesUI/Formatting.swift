@@ -54,6 +54,12 @@ enum Format {
         }
     }
 
+    /// "17 °C" or "63 °F", to the whole degree: a climate normal is not more precise.
+    static func temperature(_ celsius: Double, _ system: UnitSystem) -> String {
+        let value = Int(system.temperature(fromCelsius: celsius).rounded())
+        return "\(value) \(system == .metric ? "°C" : "°F")"
+    }
+
     static func compact(_ value: Double) -> String {
         value.formatted(.number.notation(.compactName).precision(.significantDigits(2)))
     }

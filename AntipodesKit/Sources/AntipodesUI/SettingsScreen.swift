@@ -334,6 +334,11 @@ struct SettingsScreen: View {
                 (Reto Stöckli), public domain.
                 """)
                 .font(.footnote)
+                Text("""
+                Climate: TerraClimate, Abatzoglou et al. (2018), Scientific Data 5:170191, \
+                University of Idaho, CC0.
+                """)
+                .font(.footnote)
                 ForEach(info.sources) { source in
                     NavigationLink {
                         SourceDetailView(source: source)

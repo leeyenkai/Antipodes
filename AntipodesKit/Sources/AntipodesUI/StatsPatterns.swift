@@ -90,12 +90,7 @@ struct AttributesSection: View {
                         .joined(separator: " · "), route: .grouped(.currencies)
                 )
             }
-            Text("""
-            Temperature in the month you visited, and climate zones, need climate data that \
-            hasn't been licence-cleared yet, so they aren't shown rather than guessed.
-            """)
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            ClimateRows()
         }
     }
 

@@ -248,6 +248,21 @@ CREATE INDEX idx_airport_iata ON airport (iata);
 CREATE INDEX idx_airport_country ON airport (country_iso2);
 CREATE INDEX idx_country_un ON country (is_un_member);
 
+-- The climate of a place: TerraClimate's 1991-2020 monthly normals at the nearest grid
+-- cell with data, and the Köppen-Geiger zone they make (R-CALC-2, §7). One row per
+-- city, landmark and airport that has land within reach of its coordinate; a place
+-- without one has no row rather than a guessed climate (R-DB-2).
+CREATE TABLE climate (
+    place_kind   TEXT NOT NULL,
+    ref_id       INTEGER NOT NULL,
+    -- Twelve monthly mean temperatures, January first, in tenths of a degree Celsius,
+    -- comma-separated: "53,59,81,…".
+    tmean_tenths TEXT NOT NULL,
+    koppen       TEXT NOT NULL,
+    source       TEXT NOT NULL REFERENCES data_source (id),
+    PRIMARY KEY (place_kind, ref_id)
+) WITHOUT ROWID;
+
 -- Everything searchable, flattened.
 --
 -- Two ranking columns, because they answer different questions (R-LOG-1).

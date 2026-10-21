@@ -23,6 +23,11 @@ public struct PlaceFacts: Hashable, Sendable, Codable {
     public var isCapital: Bool
     /// What kind of landmark it is, e.g. "national park", where known.
     public var landmarkKind: String?
+    /// Mean temperature of each month, January first, °C: the 1991-2020 normal at the
+    /// place (R-CALC-2). `nil` where the climate grid had no land within reach.
+    public var monthlyMeanTemperatureC: [Double]?
+    /// The Köppen-Geiger climate zone those normals make, such as "Cfb".
+    public var koppen: String?
 
     public init(
         population: Int? = nil,
@@ -33,7 +38,9 @@ public struct PlaceFacts: Hashable, Sendable, Codable {
         isUNESCO: Bool = false,
         themes: [String] = [],
         isCapital: Bool = false,
-        landmarkKind: String? = nil
+        landmarkKind: String? = nil,
+        monthlyMeanTemperatureC: [Double]? = nil,
+        koppen: String? = nil
     ) {
         self.population = population
         self.elevationM = elevationM
@@ -44,6 +51,14 @@ public struct PlaceFacts: Hashable, Sendable, Codable {
         self.themes = themes
         self.isCapital = isCapital
         self.landmarkKind = landmarkKind
+        self.monthlyMeanTemperatureC = monthlyMeanTemperatureC
+        self.koppen = koppen
+    }
+
+    /// The mean of the twelve monthly normals.
+    public var annualMeanTemperatureC: Double? {
+        guard let months = monthlyMeanTemperatureC, months.count == 12 else { return nil }
+        return months.reduce(0, +) / 12
     }
 }
 

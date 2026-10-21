@@ -28,6 +28,7 @@ struct StatsDrillDown: View {
         case let .grouped(list): GroupedAttributeView(list: list)
         case .operators: OperatorPunctualityView()
         case .timeByMode: TimeByModeView()
+        case .temperatures: VisitTemperatureList()
         case .repeats: RepeatVisitsView()
         case .gaps: CountryGapsView()
         case .continents: ContinentListView()
@@ -104,7 +105,7 @@ extension StatsDrillDown {
         case .personality:
             return statistics.themes.personality == nil ? nil : .personality
         case .repeats, .gaps, .continents, .trips, .visits, .legFilter, .ranked, .grouped,
-             .operators, .timeByMode:
+             .operators, .timeByMode, .temperatures:
             return nil
         }
     }

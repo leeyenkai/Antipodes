@@ -55,6 +55,25 @@ struct PlaceCatalogueTests {
         #expect(countries.count == 252)
     }
 
+    /// TerraClimate's 1991-2020 normals put Oslo's July near 17 °C and its January
+    /// below freezing, and the published Köppen-Geiger maps call it Dfb; Singapore is Af
+    /// and Cairo BWh. The test allows a degree either way: the figures come from a
+    /// 28 km grid corrected to the city's elevation, not from a single station.
+    @Test("Climate normals and zones arrive with the facts")
+    func climate() async throws {
+        let database = try PlaceDatabaseFixture.open()
+        let ids: [PlaceID] = [
+            .database(.city, 3_143_244), .database(.city, 1_880_252), .database(.city, 360_630),
+        ]
+        let facts = try await database.facts(for: ids)
+        let oslo = try #require(facts[.database(.city, 3_143_244)]?.monthlyMeanTemperatureC)
+        #expect(abs(oslo[6] - 17) < 1.5)
+        #expect(oslo[0] < 0)
+        #expect(facts[.database(.city, 3_143_244)]?.koppen == "Dfb")
+        #expect(facts[.database(.city, 1_880_252)]?.koppen == "Af")
+        #expect(facts[.database(.city, 360_630)]?.koppen == "BWh")
+    }
+
     @Test("Every collection resolves to members, and the New 7 Wonders are all there")
     func collections() async throws {
         let database = try PlaceDatabaseFixture.open()

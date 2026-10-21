@@ -17,6 +17,7 @@ enum StatsRoute: Hashable {
     case grouped(GroupedList)
     case operators
     case timeByMode
+    case temperatures
     case repeats
     case gaps
     case continents

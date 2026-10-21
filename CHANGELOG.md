@@ -102,6 +102,12 @@ is blocked.
 - Spec 0.6.0: D-26 (satellite globe), D-27 (journey lists), and §13.1 brought up to
   date, naming what still waits for data — climate zones, mountain passes, a nightlife
   theme and eras for undated landmarks.
+- **Temperature in the month visited, and climate zones** (R-CALC-2, R-DATE-3, §7, D-28):
+  every visit takes the usual temperature of its month at the place — the 1991–2020
+  normal, corrected to the place's elevation — with the warmest and coldest visits, a
+  list of every visit, and the Köppen-Geiger climate zones reached. A visit across two
+  months weighs each by its days; one dated only by year uses the year's average and
+  says so. Temperatures follow the units setting.
 - **Stats can be filtered** by year, trip, mode and purpose (§5.7). A banner says what
   slice is showing; a mode or purpose keeps journeys only, since places have neither,
   and asking for commutes counts them whatever the counting rule.
@@ -223,6 +229,11 @@ is blocked.
   landmarks in all.
 - GeoNames' "no data" elevation of −9,999 m is stored as unknown. It had made Tromsø
   the lowest place anyone had visited.
+- **Schema version 4**: a `climate` table with the monthly temperature normals and
+  Köppen-Geiger zone of 79,577 cities, landmarks and airports, from TerraClimate
+  (University of Idaho, CC0), read at 0.25° and corrected to each place's elevation.
+  The fetch pins four OPeNDAP responses by digest; `climate.py` reads them with the
+  standard library and has its own tests, run by `scripts/test.sh`.
 - The satellite globe's picture: NASA Blue Marble Next Generation (August 2004, with
   topography and bathymetry), public domain, fetched once by `scripts/fetch-imagery.sh`,
   digest-verified and scaled to 4096 × 2048. Recorded in `Tools/placedb/SOURCES.md` and

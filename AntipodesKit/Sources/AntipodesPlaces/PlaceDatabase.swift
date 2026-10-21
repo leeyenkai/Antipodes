@@ -10,7 +10,7 @@ import Foundation
 public actor PlaceDatabase {
     /// Schema version this code expects. The pipeline writes the same number into
     /// `meta`, and a mismatch is an error rather than a wrong query.
-    public static let expectedSchemaVersion = 3
+    public static let expectedSchemaVersion = 4
 
     /// How prominent a row must be for an exact name match to promote it above more
     /// prominent prefix matches.

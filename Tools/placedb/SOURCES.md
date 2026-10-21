@@ -19,7 +19,7 @@ courtesy (R-DB-7 in [the specification](../../docs/SPECIFICATION.md)).
 
 ## 1. Cleared and in use
 
-These five, plus this repository's own curation, are everything in `places.sqlite`. The
+These six, plus this repository's own curation, are everything in `places.sqlite`. The
 last row, NASA's Blue Marble, is not in the database: it is the one picture the app
 bundles, for the satellite globe.
 
@@ -31,6 +31,7 @@ bundles, for the satellite globe.
 | [Wikidata](https://creativecommons.org/publicdomain/zero/1.0/) | Landmark facts, UNESCO status, UN membership | CC0 1.0 | **None.** Main-namespace structured data "is released into the public domain under Creative Commons Zero." | Credited anyway, in Settings |
 | [UK DESNZ GHG conversion factors 2025](https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting) | Carbon emission factors per mode and class (R-CO2-1, decision D-14) | [Open Government Licence v3.0](https://www.nationalarchives.gov.uk/doc/open-government-licence/version/3/) | **Attribution**; no share-alike, commercial use permitted, compatible with CC BY 4.0 | The OGL credit line, written into `data_source` and shown in Settings; the factor year shown with every carbon figure (R-CO2-3). `curation/emission_factors.csv` names which factor each mode uses and the build reads the value from the published flat file, pinned by digest |
 | `antipodes-curation` | Landmark selection, theme tags, famous routes | CC0 1.0, part of this repository | None | — |
+| [TerraClimate](https://www.climatologylab.org/terraclimate.html) (University of Idaho) | Monthly temperature normals for 1991-2020 and the Köppen-Geiger zone they make, for every city, landmark and airport (R-CALC-2, D-28): maximum and minimum temperature, precipitation and elevation, read through OPeNDAP at every sixth cell (0.25°) and corrected to each place's own elevation | CC0 1.0 ("public domain as licensed under the Creative Commons Public Domain (CC0) license") | **None.** The authors ask to be cited | Cited in Settings: Abatzoglou et al. (2018), *Scientific Data* 5:170191 |
 | [NASA Blue Marble Next Generation](https://visibleearth.nasa.gov/collection/1484/blue-marble) | **Not in `places.sqlite`.** The picture the satellite globe wraps round the sphere: `world.topo.bathy.200408` (August 2004, topography and bathymetry), scaled to 4096 × 2048 by `scripts/fetch-imagery.sh` into the bundled `earth-satellite.jpg` (D-26) | Public domain (a NASA work, not subject to copyright in the United States) | **None**, beyond [NASA's media guidelines](https://www.nasa.gov/nasa-brand-center/images-and-media/): credit NASA as the source and never imply NASA endorses the app | Credited in Settings as "Blue Marble Next Generation, NASA Earth Observatory (Reto Stöckli)" and in the globe's style menu. No NASA name or insignia is used anywhere else |
 
 ### The GeoNames obligation, precisely
@@ -188,6 +189,7 @@ where the app can show it.
 | OurAirports | No — a rolling feed | Digest and retrieval date in the manifest |
 | Wikidata | No — queried live, bounded to the curated QIDs in `queries/` | Digest of the cached answer |
 | NASA Blue Marble | **Yes** — one file, digest verified on download (`scripts/fetch-imagery.sh`) | Same bytes every time; `sips` scales it the same way |
+| TerraClimate | **Yes** — four fixed OPeNDAP requests over a static climatology, digests pinned | Same bytes every time |
 
 A release build should pass `--built-at` and archive the matching `vendor/` directory,
 because that directory is the only way to reproduce its database byte for byte.

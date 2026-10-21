@@ -44,6 +44,23 @@ DESNZ_FACTORS_URL = (
 )
 DESNZ_FACTORS_YEAR = 2025
 
+# TerraClimate's 1991-2020 monthly climatologies, served by the University of Idaho's
+# THREDDS server. Read through OPeNDAP as every sixth cell of the 1/24° grid — a 0.25°
+# grid, about 28 km — in DAP2's binary form, which the standard library can read; the
+# full files are compressed NetCDF-4 that it cannot. Each request is fixed, so its bytes
+# are too, and the digest is pinned.
+TERRACLIMATE_DODS = (
+    "http://thredds.northwestknowledge.net:8080/thredds/dodsC/TERRACLIMATE_ALL/climatology/"
+    "TerraClimate_19912020_{var}.nc.dods?{var}%5B0:1:11%5D%5B3:6:4319%5D%5B3:6:8639%5D"
+)
+
+# The elevation TerraClimate's grid is built on, sampled at the same cells, so a place
+# higher or lower than its cell can be corrected by the standard lapse rate.
+TERRACLIMATE_DEM_DODS = (
+    "http://thredds.northwestknowledge.net:8080/thredds/dodsC/TERRACLIMATE_ALL/layers/"
+    "terraclim_dem.nc.dods?elevation%5B3:6:4319%5D%5B3:6:8639%5D"
+)
+
 # The Wikidata Query Service blocks clients that do not identify themselves, and asks
 # for a contact route in the User-Agent.
 # https://www.mediawiki.org/wiki/Wikidata_Query_Service/User_Manual
@@ -200,6 +217,43 @@ DESNZ = Source(
     ),
 )
 
+#: Monthly climate normals, 1991-2020, for the temperature in the month visited
+#: (R-CALC-2, R-DATE-3) and the climate zone of every place (§7). Abatzoglou et al.
+#: (2018); the University of Idaho releases TerraClimate under CC0.
+TERRACLIMATE = Source(
+    id="terraclimate",
+    name="TerraClimate",
+    url="https://www.climatologylab.org/terraclimate.html",
+    licence="CC0 1.0",
+    licence_url="https://creativecommons.org/publicdomain/zero/1.0/",
+    # CC0 asks for nothing; the authors ask to be cited, and are, in Settings.
+    attribution=None,
+    used_for="Monthly temperature normals 1991-2020, Köppen climate zones and the "
+    "elevation they are corrected by",
+    files=(
+        RemoteFile(
+            "tmax_1991_2020_p25.dods",
+            TERRACLIMATE_DODS.format(var="tmax"),
+            sha256="f49e6230c71428581e8980ebfcf4c9cb63fe7f58086017f058d0728416d8b63a",
+        ),
+        RemoteFile(
+            "tmin_1991_2020_p25.dods",
+            TERRACLIMATE_DODS.format(var="tmin"),
+            sha256="13a7ec5d34c5f592419fdaa29e8b7b579cbd4313d40d7d6645cbe6e8bf850f56",
+        ),
+        RemoteFile(
+            "ppt_1991_2020_p25.dods",
+            TERRACLIMATE_DODS.format(var="ppt"),
+            sha256="9fb415b07dfb4face6476545b0d79ff45f76dd57910495fa3524c605df80508e",
+        ),
+        RemoteFile(
+            "dem_p25.dods",
+            TERRACLIMATE_DEM_DODS,
+            sha256="f00b502ac4d0d50bb497721651acc5c96f279a89c46e3d935dc43b829a970336",
+        ),
+    ),
+)
+
 #: Deliberate human input: which landmarks and routes exist, the theme taxonomy, and
 #: the two reconciliations the upstream data cannot express. §6 of the specification
 #: calls for landmarks and famous routes to be curated, and R-DB-1 requires a theme
@@ -225,6 +279,7 @@ def all_sources(cities_dataset: str = DEFAULT_CITIES_DATASET) -> tuple[Source, .
                 DESNZ,
                 geonames_source(cities_dataset),
                 OURAIRPORTS,
+                TERRACLIMATE,
                 WIKIDATA,
                 CURATION,
             ),
