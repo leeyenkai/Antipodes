@@ -327,3 +327,96 @@ Q192493,Robben Island,ZA,Cape Town,modern-history
 Q213360,Table Mountain,ZA,Cape Town,"nature,national-parks"
 Q43278,Victoria Falls,ZM,,nature
 Q209217,Great Zimbabwe,ZW,,"medieval-history,archaeology"
+# Mountain passes (R-DB-1, §5.7 "mountain passes crossed"). A visit of any type to one
+# of these counts as crossing it. Nathu La, Khardung La and Zoji La are left out for the
+# same reason as the Western Wall: Wikidata files them under a country whose sovereignty
+# there is disputed.
+Q1334855,Stelvio Pass,IT,,"nature,engineering"
+Q25233,Gotthard Pass,CH,,"nature,modern-history"
+Q666628,Furka Pass,CH,,nature
+Q666668,Grimsel Pass,CH,,nature
+Q623424,Great St Bernard Pass,CH,,"nature,ancient-history"
+Q471166,Simplon Pass,CH,,nature
+Q666086,Susten Pass,CH,,nature
+Q204774,Bernina Pass,CH,,nature
+Q661013,Oberalp Pass,CH,,nature
+Q212946,Brenner Pass,AT,,nature
+Q732143,Col du Galibier,FR,,nature
+Q547474,Col de l'Iseran,FR,,nature
+Q942322,Col du Tourmalet,FR,,nature
+Q1193166,Pordoi Pass,IT,,nature
+Q1008597,Gavia Pass,IT,,nature
+Q877334,Timmelsjoch / Passo del Rombo,AT,,nature
+Q17189229,Arlberg Pass,AT,,nature
+Q63600,Semmering Pass,AT,,"nature,engineering"
+Q934803,Transfăgărășan,RO,,"nature,engineering"
+Q633415,Rohtang Pass,IN,,nature
+Q191333,Khyber Pass,PK,,"nature,military-history"
+Q1137017,Khunjerab Pass,PK,,nature
+Q764344,Thorong La,NP,,nature
+Q1477078,Hai Van Pass,VN,,nature
+Q1394723,Independence Pass,US,,nature
+Q28809154,Beartooth Pass,US,,nature
+Q2981963,Logan Pass,US,,"nature,national-parks"
+Q2436036,Tioga Pass,US,,"nature,national-parks"
+Q15191430,Arthur's Pass,NZ,,nature
+Q498788,Haast Pass / Tioripatea,NZ,,nature
+Q127968,Sani Pass,ZA,,nature
+Q1561072,Uspallata Pass,AR,,nature
+Q940332,Trollstigen,NO,,"nature,engineering"
+Q1107424,Col de la Bonette,FR,,nature
+Q629324,San Bernardino Pass,CH,,nature
+Q289898,Julier Pass,CH,,nature
+Q667398,Klausen Pass,CH,,nature
+# Nightlife: streets and districts people go to for the night (R-PERS-1). Venues
+# themselves would come from OpenStreetMap, which D-8 keeps out; these are the places.
+Q1105882,Bourbon Street,US,New Orleans,"nightlife,modern-history"
+Q5502736,Frenchmen Street,US,New Orleans,nightlife
+Q745608,Las Vegas Strip,US,Las Vegas,"nightlife,modern-architecture"
+Q812917,Beale Street,US,Memphis,nightlife
+Q1079139,Sixth Street,US,Austin,nightlife
+Q3976,Reeperbahn,DE,Hamburg,nightlife
+Q920229,Temple Bar,IE,Dublin,nightlife
+Q1203550,Khaosan Road,TH,Bangkok,nightlife
+Q665216,Kabukichō,JP,Tokyo,nightlife
+Q5363705,Shinjuku Golden Gai,JP,Tokyo,nightlife
+Q265071,Roppongi,JP,Tokyo,nightlife
+Q964876,Dōtonbori,JP,Osaka,"nightlife,food"
+Q576507,Quartier Pigalle,FR,Paris,nightlife
+Q124010,Soho,GB,London,nightlife
+Q652613,Bairro Alto,PT,Lisbon,nightlife
+Q495646,Itaewon,KR,Seoul,nightlife
+Q5895772,Hongdae (area),KR,Seoul,nightlife
+Q11334291,Bui Vien Street,VN,Ho Chi Minh City,nightlife
+Q1095828,Clarke Quay,SG,Singapore,nightlife
+Q3509700,Szimpla,HU,Budapest,nightlife
+Q181649,Zona Rosa,MX,Mexico City,nightlife
+Q1471225,plaza Garibaldi,MX,Mexico City,"nightlife,food"
+# Food and markets (R-PERS-1, the Gourmand).
+Q1334899,La Boqueria,ES,Barcelona,"food,markets"
+Q6770825,Market of San Miguel,ES,Madrid,"food,markets"
+Q2197068,Mercat Central,ES,Valencia,"food,markets,architecture"
+Q894072,Borough Market,GB,London,"food,markets"
+Q11650434,Nishiki Market,JP,Kyoto,"food,markets"
+Q10855506,Kuromon Market,JP,Osaka,"food,markets"
+Q505954,Grand Bazaar,TR,Istanbul,"markets,architecture"
+Q668641,Spice Bazaar,TR,Istanbul,"food,markets"
+Q417645,Naschmarkt,AT,Vienna,"food,markets"
+Q1373418,Pike Place Market,US,Seattle,"food,markets"
+Q7300572,Reading Terminal Market,US,Philadelphia,"food,markets"
+Q1408117,San Francisco Ferry Building,US,San Francisco,"food,architecture"
+Q1068311,Chatuchak Weekend Market,TH,Bangkok,markets
+Q13014948,Damnoen Saduak floating market,TH,,"food,markets"
+Q686629,Viktualienmarkt,DE,Munich,"food,markets"
+Q3854843,Mercato Centrale,IT,Florence,"food,markets"
+Q1061621,Khan el-Khalili,EG,Cairo,"markets,medieval-history"
+Q28226115,Time Out Market Lisboa,PT,Lisbon,food
+Q7697795,Lau Pa Sat,SG,Singapore,"food,architecture"
+Q18651495,Alor Street,MY,Kuala Lumpur,food
+Q860621,Queen Victoria Market,AU,Melbourne,"food,markets"
+Q697118,Shilin Night Market,TW,Taipei,"food,markets,nightlife"
+Q707622,Raohe Street Night Market,TW,Taipei,"food,markets,nightlife"
+Q12585067,Gwangjang Market,KR,Seoul,"food,markets"
+Q10389750,Ver-o-Peso Market,BR,Belém,"food,markets"
+Q18354379,"San Juan Market, Mexico City",MX,Mexico City,"food,markets"
+Q3236763,Chandni Chowk,IN,Delhi,"markets,food"

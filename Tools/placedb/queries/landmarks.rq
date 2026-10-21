@@ -7,7 +7,7 @@
 #
 # One row per (item, class) pair; fetch_sources.py folds them into one record per item.
 SELECT ?item ?itemLabel ?iso2 ?lat ?lon ?sitelinks ?class ?classLabel
-       ?inception ?height ?unesco
+       ?inception ?precision ?height ?unesco
 WHERE {
   VALUES ?item { {{VALUES}} }
   OPTIONAL { ?item wdt:P17/wdt:P297 ?iso2 }
@@ -17,7 +17,15 @@ WHERE {
   }
   OPTIONAL { ?item wikibase:sitelinks ?sitelinks }
   OPTIONAL { ?item wdt:P31 ?class }
-  OPTIONAL { ?item wdt:P571 ?inception }
+  # Every non-deprecated inception with its precision (9 a year, 8 a decade, 7 a century,
+  # 6 a millennium), so a date known only to the century becomes an era rather than a
+  # made-up year (R-DB-3).
+  OPTIONAL {
+    ?item p:P571 ?statement .
+    ?statement wikibase:rank ?rank ; psv:P571 ?time .
+    ?time wikibase:timeValue ?inception ; wikibase:timePrecision ?precision .
+    FILTER(?rank != wikibase:DeprecatedRank)
+  }
   OPTIONAL { ?item wdt:P2048 ?height }
   BIND(EXISTS { ?item wdt:P1435 wd:Q9259 } AS ?unesco)
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }

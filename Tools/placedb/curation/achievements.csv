@@ -21,6 +21,10 @@
 #   antarctic-circle      a visit or leg endpoint south of the Antarctic Circle
 #   antipodes             threshold = kilometres; two visited places at most this far
 #                         from being exactly opposite each other on the globe
+#   mountain-passes       threshold = mountain passes visited, of any visit type —
+#                         passing through a pass is crossing it
+#   climate-groups        threshold = main Köppen climates (tropical, arid, temperate,
+#                         continental, polar) among the places visited
 #
 # `tier` is bronze, silver, gold or platinum where an achievement is one step of a
 # ladder (R-ACH-3), and empty where it stands alone.
@@ -61,3 +65,7 @@ arctic-circle,Midnight sun,Go north of the Arctic Circle.,sun.max,arctic-circle,
 antarctic-circle,Southern extreme,Go south of the Antarctic Circle.,snowflake.circle,antarctic-circle,,,,82
 antipodes,Antipodean,Visit two places within 2000 km of being exactly opposite each other on the globe.,circle.circle,antipodes,2000,,gold,83
 trips-10,Seasoned traveller,Log 10 trips.,suitcase,trips,10,,bronze,90
+passes-5,Over the top,Cross five mountain passes.,mountain.2,mountain-passes,5,,bronze,91
+passes-20,Pass master,Cross twenty mountain passes.,mountain.2.fill,mountain-passes,20,,silver,92
+climates-3,Change of air,"Visit three of the five main climates.",cloud.sun,climate-groups,3,,bronze,93
+climates-5,Every climate,"Visit all five main climates: tropical, arid, temperate, continental and polar.",thermometer.sun,climate-groups,5,,gold,94

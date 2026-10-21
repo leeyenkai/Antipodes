@@ -108,7 +108,16 @@ is blocked.
   list of every visit, and the Köppen-Geiger climate zones reached. A visit across two
   months weighs each by its days; one dated only by year uses the year's average and
   says so. Temperatures follow the units setting.
-- **Stats can be filtered** by year, trip, mode and purpose (§5.7). A banner says what
+- **Mountain passes, nightlife and markets** (§5.7, R-PERS-1): 37 famous passes,
+  22 nightlife districts and 31 markets and food halls join the landmarks, from Wikidata.
+  "Rail, road and sea" counts the mountain passes crossed — any visit to a pass, passing
+  through included — and the theme mix gains Nightlife, read as a new **Night owl**
+  personality (D-15). Four new badges: five and twenty passes, three and all five of
+  the main climates.
+- **Eras for undated landmarks** (R-DB-3): a landmark Wikidata knows only to the century
+  or millennium — the Parthenon, 5th century BC — carries that era instead of a made-up
+  year, and joins the era spread where the era lies within one period.
+ by year, trip, mode and purpose (§5.7). A banner says what
   slice is showing; a mode or purpose keeps journeys only, since places have neither,
   and asking for commutes counts them whatever the counting rule.
 - **Road and sea** (§5.7): distance driven, ferries taken, the longest sea crossing and
@@ -229,6 +238,10 @@ is blocked.
   landmarks in all.
 - GeoNames' "no data" elevation of −9,999 m is stored as unknown. It had made Tromsø
   the lowest place anyone had visited.
+- 382 landmarks, up from 296: mountain passes (a new `mountain pass` kind), nightlife
+  districts and markets, with a Nightlife theme in the taxonomy (now 17). Inception
+  dates are fetched with their precision; century and millennium dates become `era`
+  text and leave `year_built` empty, where before the century's first year stood in.
 - **Schema version 4**: a `climate` table with the monthly temperature normals and
   Köppen-Geiger zone of 79,577 cities, landmarks and airports, from TerraClimate
   (University of Idaho, CC0), read at 0.25° and corrected to each place's elevation.

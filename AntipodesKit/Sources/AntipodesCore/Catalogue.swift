@@ -54,6 +54,8 @@ public enum AchievementRule: String, Sendable, Codable, CaseIterable {
     case arcticCircle = "arctic-circle"
     case antarcticCircle = "antarctic-circle"
     case antipodes
+    case mountainPasses = "mountain-passes"
+    case climateGroups = "climate-groups"
 }
 
 /// A rung on a ladder of achievements (R-ACH-3).

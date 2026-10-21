@@ -154,7 +154,7 @@ public enum StatisticsEngine {
             themes: ThemeStatistics.compute(for: log, rules: rules, gazetteer: gazetteer),
             journeys: JourneyStatistics.compute(for: log, rules: rules, routes: context.routes),
             rail: RailStatistics.compute(for: log, rules: rules, routes: context.routes),
-            roadAndSea: RoadAndSeaStatistics.compute(for: log, rules: rules),
+            roadAndSea: RoadAndSeaStatistics.compute(for: log, rules: rules, gazetteer: gazetteer),
             punctuality: PunctualityStatistics.compute(for: log, rules: rules),
             carbon: CarbonStatistics.compute(
                 for: log,

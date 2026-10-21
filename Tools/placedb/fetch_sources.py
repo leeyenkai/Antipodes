@@ -203,6 +203,7 @@ def fetch_landmarks(destination: Path) -> None:
                     "sitelinks": None,
                     "classes": {},
                     "inception": None,
+                    "inception_precision": None,
                     "height_m": None,
                     "unesco": False,
                 },
@@ -220,8 +221,18 @@ def fetch_landmarks(destination: Path) -> None:
             if value("class"):
                 class_qid = value("class").rsplit("/", 1)[-1]  # type: ignore[union-attr]
                 record["classes"][class_qid] = value("classLabel") or class_qid
-            if value("inception") and record["inception"] is None:
-                record["inception"] = value("inception")
+            if value("inception"):
+                # Several inceptions can come back: keep the most precise, then the
+                # earliest, so the cache never depends on the order rows arrived in.
+                precision = int(value("precision") or 0)
+                candidate = (-precision, value("inception"))
+                current = (
+                    -(record["inception_precision"] or 0),
+                    record["inception"] or "~",
+                )
+                if record["inception"] is None or candidate < current:
+                    record["inception"] = value("inception")
+                    record["inception_precision"] = precision
             if value("height") and record["height_m"] is None:
                 record["height_m"] = float(value("height"))  # type: ignore[arg-type]
             if value("unesco") == "true":

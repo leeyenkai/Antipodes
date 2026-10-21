@@ -67,6 +67,18 @@ public enum HistoricalEra: String, Sendable, CaseIterable, Identifiable, Compara
     public static func < (lhs: HistoricalEra, rhs: HistoricalEra) -> Bool {
         allCases.firstIndex(of: lhs)! < allCases.firstIndex(of: rhs)!
     }
+
+    /// A landmark's era: by its year built, or by the century or millennium it is known
+    /// to, if that falls wholly in one era. The 2nd millennium spans five, so says
+    /// nothing; the 15th century is medieval throughout.
+    public static func of(_ facts: PlaceFacts) -> HistoricalEra? {
+        if let year = facts.yearBuilt {
+            return containing(year: year)
+        }
+        guard let years = facts.eraYears else { return nil }
+        let first = containing(year: years.lowerBound)
+        return first == containing(year: years.upperBound) ? first : nil
+    }
 }
 
 /// What the user chooses to see: the culture-and-themes family (§7).
@@ -117,9 +129,11 @@ public struct ThemeStatistics: Hashable, Sendable {
                     weights[theme, default: 0] += share
                 }
             }
-            if let year = facts?.yearBuilt {
+            // A year places a landmark in its era; so does a century or millennium,
+            // when the whole of it lies inside one era (R-DB-3).
+            if let era = facts.flatMap(HistoricalEra.of) {
                 eraInput.include()
-                eras[HistoricalEra.containing(year: year), default: 0] += 1
+                eras[era, default: 0] += 1
             } else {
                 eraInput.exclude(.attributeUnknown)
             }
@@ -162,6 +176,7 @@ public struct TravelPersonality: Hashable, Sendable {
         case pilgrim
         case futurist
         case gourmand
+        case nightOwl
         case wanderer
 
         public var id: String {
@@ -176,6 +191,7 @@ public struct TravelPersonality: Hashable, Sendable {
             case .pilgrim: "Pilgrim"
             case .futurist: "Futurist"
             case .gourmand: "Gourmand"
+            case .nightOwl: "Night owl"
             case .wanderer: "Wanderer"
             }
         }
@@ -188,6 +204,7 @@ public struct TravelPersonality: Hashable, Sendable {
             case .pilgrim: "Seeks out temples, cathedrals and sacred sites."
             case .futurist: "Chases skylines, towers and feats of engineering."
             case .gourmand: "Travels for markets, food and drink."
+            case .nightOwl: "Comes alive after dark: the streets of music, bars and late nights."
             case .wanderer: "A bit of everything — no one theme dominates."
             }
         }
@@ -200,6 +217,7 @@ public struct TravelPersonality: Hashable, Sendable {
             case .pilgrim: "sparkles"
             case .futurist: "building.2"
             case .gourmand: "fork.knife"
+            case .nightOwl: "moon.stars"
             case .wanderer: "safari"
             }
         }
@@ -217,6 +235,7 @@ public struct TravelPersonality: Hashable, Sendable {
             case .pilgrim: ["religious-sites"]
             case .futurist: ["modern-architecture", "engineering"]
             case .gourmand: ["food", "markets"]
+            case .nightOwl: ["nightlife"]
             case .wanderer: []
             }
         }
@@ -229,7 +248,7 @@ public struct TravelPersonality: Hashable, Sendable {
             case .historian, .trailblazer, .aesthete: 0.40
             case .futurist: 0.35
             case .pilgrim: 0.30
-            case .gourmand: 0.20
+            case .gourmand, .nightOwl: 0.20
             case .wanderer: 0
             }
         }

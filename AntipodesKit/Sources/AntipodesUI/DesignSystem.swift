@@ -48,6 +48,7 @@ enum Palette {
         case .pilgrim: Color(red: 0.92, green: 0.80, blue: 0.56)
         case .futurist: Color(red: 0.56, green: 0.72, blue: 0.92)
         case .gourmand: Color(red: 0.90, green: 0.62, blue: 0.54)
+        case .nightOwl: Color(red: 0.62, green: 0.60, blue: 0.90)
         case .wanderer: visited
         }
     }

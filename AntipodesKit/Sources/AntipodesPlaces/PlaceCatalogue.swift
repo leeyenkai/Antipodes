@@ -144,7 +144,7 @@ public extension PlaceDatabase {
             )
         }
         try each(.landmark, sql: """
-        SELECT l.id, l.year_built, l.height_m, l.unesco, l.themes, l.kind, p.timezone
+        SELECT l.id, l.year_built, l.height_m, l.unesco, l.themes, l.kind, p.timezone, l.era
         FROM landmark AS l
         LEFT JOIN place_index AS p ON p.kind = 'landmark' AND p.ref_id = l.id
         WHERE l.id IN (IDS)
@@ -154,6 +154,7 @@ public extension PlaceDatabase {
                 PlaceFacts(
                     timeZoneIdentifier: row.string(6),
                     yearBuilt: row.int(1),
+                    era: row.string(7),
                     heightM: row.double(2),
                     isUNESCO: row.bool(3),
                     themes: (row.string(4) ?? "")

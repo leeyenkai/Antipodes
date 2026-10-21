@@ -74,6 +74,20 @@ struct PlaceCatalogueTests {
         #expect(facts[.database(.city, 360_630)]?.koppen == "BWh")
     }
 
+    /// Stelvio (Q1334855) is filed as a mountain pass. The Parthenon's inception is
+    /// known only to the century (Wikidata: 5th century BC), so it carries an era and no
+    /// made-up year (R-DB-3).
+    @Test("Passes have their kind and century-precise landmarks an era")
+    func passesAndEras() async throws {
+        let database = try PlaceDatabaseFixture.open()
+        let stelvio = PlaceID.database(.landmark, 1_334_855)
+        let parthenon = PlaceID.database(.landmark, 10288)
+        let facts = try await database.facts(for: [stelvio, parthenon])
+        #expect(facts[stelvio]?.landmarkKind == "mountain pass")
+        #expect(facts[parthenon]?.era == "5th century BC")
+        #expect(facts[parthenon]?.yearBuilt == nil)
+    }
+
     @Test("Every collection resolves to members, and the New 7 Wonders are all there")
     func collections() async throws {
         let database = try PlaceDatabaseFixture.open()
@@ -160,7 +174,8 @@ struct PlaceCatalogueTests {
     func themes() async throws {
         let database = try PlaceDatabaseFixture.open()
         let themes = try await database.themes()
-        #expect(themes.count == 16)
+        #expect(themes.count == 17)
+        #expect(themes.first { $0.id == "nightlife" }?.label == "Nightlife")
         #expect(themes.first { $0.id == "national-parks" }?.label == "Parks")
     }
 

@@ -11,12 +11,12 @@ struct JourneyDetailSection: View {
     var body: some View {
         let rail = model.shownStatistics.rail
         let roadAndSea = model.shownStatistics.roadAndSea
-        if rail.legCount > 0 || roadAndSea.roadTripLegs > 0 || roadAndSea.ferriesTaken > 0 {
+        if rail.legCount > 0 || roadAndSea.hasAnything {
             StatsSection(title: "Rail, road and sea", symbol: "tram") {
                 if rail.legCount > 0 {
                     railCard(rail)
                 }
-                if roadAndSea.roadTripLegs > 0 || roadAndSea.ferriesTaken > 0 {
+                if roadAndSea.hasAnything {
                     roadAndSeaCard(roadAndSea)
                 }
             }
@@ -106,6 +106,16 @@ struct JourneyDetailSection: View {
                 )
             }
             namedRow("Ships sailed on", stats.ships, symbol: "sailboat", route: .legs(.ferry))
+            if !stats.passes.isEmpty {
+                StatRow(
+                    "Mountain passes",
+                    "\(stats.passes.count)",
+                    symbol: "mountain.2",
+                    detail: stats.passes.prefix(3).map(\.name).joined(separator: ", ")
+                        + (stats.passes.count > 3 ? "…" : ""),
+                    route: .visits(title: "Mountain passes", ids: stats.passVisitIDs)
+                )
+            }
         }
     }
 
@@ -238,5 +248,11 @@ extension AppModel {
     /// The journey a leg belongs to.
     func journeyID(containing legID: UUID) -> UUID? {
         log.journeys.first { $0.legs.contains { $0.id == legID } }?.id
+    }
+}
+
+private extension RoadAndSeaStatistics {
+    var hasAnything: Bool {
+        roadTripLegs > 0 || ferriesTaken > 0 || !passes.isEmpty
     }
 }

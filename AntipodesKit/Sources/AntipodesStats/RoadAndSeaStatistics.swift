@@ -4,9 +4,13 @@ import Foundation
 /// The road and sea group of the journey stats (§5.7, "Road and sea"): distance driven,
 /// ferries taken, the longest sea crossing and the ships sailed on.
 ///
-/// Mountain passes crossed are not here: a pass is crossed along a road's real path,
-/// and surface legs are straight lines until path snapping exists (R-PATH-1, §13.1).
+/// Mountain passes count the passes the user logged — a visit of any type to a place
+/// the database calls a mountain pass — since a leg's line is straight until path
+/// snapping exists and cannot say which pass a road went over (R-PATH-1).
 public struct RoadAndSeaStatistics: Hashable, Sendable {
+    /// The landmark kind the database gives a mountain pass.
+    public static let passKind = "mountain pass"
+
     /// Road-trip legs — the user's own car or motorbike — and the distance they cover.
     public let roadTripLegs: Int
     public let kilometresDriven: Double
@@ -21,11 +25,18 @@ public struct RoadAndSeaStatistics: Hashable, Sendable {
     public let ferryOperators: Set<String>
     /// Ferries the distances could use.
     public let seaInput: StatInputSummary
+    /// Mountain passes visited, each once, and the visits behind them.
+    public let passes: [PlaceReference]
+    public let passVisitIDs: [UUID]
 
+    // One pass over the road and sea legs tallies every figure.
+    // swiftlint:disable:next function_body_length
     public static func compute(
         for log: TravelLog,
-        rules: CountingRules = .default
+        rules: CountingRules = .default,
+        gazetteer: Gazetteer = .empty
     ) -> RoadAndSeaStatistics {
+        let (passes, passVisits) = Self.passes(in: log, gazetteer: gazetteer)
         var roadLegs = 0
         var driven = 0.0
         var roadInput = StatInputSummary()
@@ -84,7 +95,25 @@ public struct RoadAndSeaStatistics: Hashable, Sendable {
             longestSeaCrossing: longest,
             ships: ships,
             ferryOperators: operators,
-            seaInput: seaInput
+            seaInput: seaInput,
+            passes: passes,
+            passVisitIDs: passVisits.map(\.id)
         )
+    }
+
+    /// Mountain passes visited, earliest first and each once, and every visit to one.
+    private static func passes(
+        in log: TravelLog,
+        gazetteer: Gazetteer
+    ) -> ([PlaceReference], [Visit]) {
+        let visits = log.visits.filter {
+            gazetteer.facts(for: $0.place.id)?.landmarkKind == passKind
+        }
+        var seen: Set<PlaceID> = []
+        let passes = visits
+            .sorted { $0.date < $1.date }
+            .map(\.place)
+            .filter { seen.insert($0.id).inserted }
+        return (passes, visits)
     }
 }

@@ -390,6 +390,25 @@ def wikidata_year(timestamp: str | None) -> int | None:
     return sign * year if year else None
 
 
+def wikidata_era(timestamp: str | None, precision: int | None) -> str | None:
+    """A century or millennium for a date Wikidata knows only that well (R-DB-3).
+
+    Wikidata stores "the 2nd century BC" as a year with century precision; the year is
+    any year inside it. Read the way Wikidata's own interface reads it: a year *y* is in
+    century ⌈|y| / 100⌉, so 1800 is the 18th century and 1801 the 19th.
+    """
+    if not timestamp or precision not in (6, 7):
+        return None
+    year = wikidata_year(timestamp)
+    if year is None:
+        return None
+    size = 100 if precision == 7 else 1000
+    number = (abs(year) + size - 1) // size
+    suffix = "th" if 10 <= number % 100 <= 20 else {1: "st", 2: "nd", 3: "rd"}.get(number % 10, "th")
+    unit = "century" if precision == 7 else "millennium"
+    return f"{number}{suffix} {unit}{' BC' if year < 0 else ''}"
+
+
 def country_id(iso2: str) -> int:
     """A country's permanent row id, read straight off its ISO letters.
 
@@ -1161,7 +1180,15 @@ def insert_landmarks(
         )
         kind = mapped[0][1] if mapped else None
 
-        year_built = wikidata_year(record.get("inception"))
+        precision = record.get("inception_precision")
+        # A year where Wikidata knows one to the year or decade; an era where it knows
+        # only the century or millennium (R-DB-3); nothing for anything vaguer.
+        year_built = (
+            wikidata_year(record.get("inception"))
+            if precision is None or precision >= 8
+            else None
+        )
+        era = wikidata_era(record.get("inception"), precision)
         height = record.get("height_m")
         unesco = 1 if record.get("unesco") else 0
 
@@ -1191,10 +1218,7 @@ def insert_landmarks(
                 "latitude": latitude,
                 "longitude": longitude,
                 "year_built": year_built,
-                # Only the inception date is fetched, so an era is never derived.
-                # R-DB-3 wants a year where known and an era where not; the era half
-                # waits for a source that carries one.
-                "era": None,
+                "era": era,
                 "height_m": height,
                 "unesco": unesco,
                 "themes": ",".join(themes),
@@ -1528,7 +1552,7 @@ ACHIEVEMENT_RULES = {
     "countries", "continents", "regions", "cities", "capitals", "landmarks", "unesco",
     "airports", "flights", "trips", "distance", "modes", "collection-complete",
     "collection-count", "unesco-in-one-trip", "overnight-train", "crossed-equator",
-    "arctic-circle", "antarctic-circle", "antipodes",
+    "arctic-circle", "antarctic-circle", "antipodes", "mountain-passes", "climate-groups",
 }
 ACHIEVEMENT_TIERS = {None, "bronze", "silver", "gold", "platinum"}
 

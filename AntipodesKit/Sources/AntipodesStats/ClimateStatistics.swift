@@ -114,7 +114,8 @@ public struct ClimateStatistics: Hashable, Sendable {
     /// A place's climate, or its city's: a landmark visited in Rome has Rome's weather
     /// even if the landmark itself had no grid cell to read.
     static func climateFacts(for place: PlaceReference, in gazetteer: Gazetteer) -> PlaceFacts? {
-        if let own = gazetteer.facts(for: place.id), own.monthlyMeanTemperatureC != nil {
+        if let own = gazetteer.facts(for: place.id),
+           own.monthlyMeanTemperatureC != nil || own.koppen != nil {
             return own
         }
         if let city = place.cityID {

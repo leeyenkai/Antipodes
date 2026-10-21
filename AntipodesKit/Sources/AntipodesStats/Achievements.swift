@@ -224,6 +224,20 @@ public enum AchievementEngine {
                 return latitude(definition, rule: rule)
             case .antipodes:
                 return antipodes(definition, target)
+            case .mountainPasses:
+                // Any visit counts: passing through a pass is crossing it.
+                return counting(definition, target, events: log.visits.compactMap { visit in
+                    gazetteer.facts(for: visit.place.id)?.landmarkKind == RoadAndSeaStatistics
+                        .passKind
+                        ? Event(day: visit.date.exactStartDay, key: visit.place.id.description)
+                        : nil
+                })
+            case .climateGroups:
+                return counting(definition, target, events: counted.compactMap { visit in
+                    ClimateStatistics.climateFacts(for: visit.place, in: gazetteer)?.koppen
+                        .flatMap(ClimateZone.init(code:))
+                        .map { Event(day: visit.date.exactStartDay, key: $0.group.rawValue) }
+                })
             }
         }
 

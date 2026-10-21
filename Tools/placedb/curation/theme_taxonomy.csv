@@ -1,8 +1,8 @@
 # The fixed theme taxonomy every landmark draws from (R-DB-1).
 #
-# The final list is still an open question (Q-6): these sixteen are what the curated
+# The final list is still an open question (Q-6): these seventeen are what the curated
 # set in landmarks.csv actually needs, and the build rejects any theme not listed here
-# so a typo cannot quietly create a seventeenth. Renaming a tag is a data migration —
+# so a typo cannot quietly create an eighteenth. Renaming a tag is a data migration —
 # the personality stats (R-PERS-1) will key off these strings.
 #
 # `label` is what the app shows. `description` is for whoever is tagging the next
@@ -20,6 +20,7 @@ military-history,Military history,"Fortifications, battlefields and war memorial
 modern-architecture,Modern architecture,"20th and 21st century buildings and skylines."
 modern-history,Modern history,"Roughly 1800 onwards: industrial, political and 20th-century sites."
 national-parks,Parks,"National parks, urban parks and protected landscapes."
+nightlife,Nightlife,"Streets and districts people go to for bars, clubs and music after dark."
 nature,Nature,"Landforms and natural features: mountains, falls, coasts, caves."
 palaces,Palaces and castles,"Royal, noble and governing residences."
 religious-sites,Religious sites,"Temples, churches, mosques, shrines and places of pilgrimage."

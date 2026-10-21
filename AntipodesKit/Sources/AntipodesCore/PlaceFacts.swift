@@ -12,6 +12,8 @@ public struct PlaceFacts: Hashable, Sendable, Codable {
     public var timeZoneIdentifier: String?
     /// Year built, negative for BC. Landmarks only.
     public var yearBuilt: Int?
+    /// "5th century BC", where the year is known only that well (R-DB-3). Landmarks only.
+    public var era: String?
     public var heightM: Double?
     /// Listed as a UNESCO World Heritage Site in its own right. `false` is not proof of
     /// the opposite: the Colosseum is part of a listed site without carrying the
@@ -34,6 +36,7 @@ public struct PlaceFacts: Hashable, Sendable, Codable {
         elevationM: Double? = nil,
         timeZoneIdentifier: String? = nil,
         yearBuilt: Int? = nil,
+        era: String? = nil,
         heightM: Double? = nil,
         isUNESCO: Bool = false,
         themes: [String] = [],
@@ -46,6 +49,7 @@ public struct PlaceFacts: Hashable, Sendable, Codable {
         self.elevationM = elevationM
         self.timeZoneIdentifier = timeZoneIdentifier
         self.yearBuilt = yearBuilt
+        self.era = era
         self.heightM = heightM
         self.isUNESCO = isUNESCO
         self.themes = themes
@@ -53,6 +57,25 @@ public struct PlaceFacts: Hashable, Sendable, Codable {
         self.landmarkKind = landmarkKind
         self.monthlyMeanTemperatureC = monthlyMeanTemperatureC
         self.koppen = koppen
+    }
+
+    /// The years an era covers, read from the database's own wording: century *n* is
+    /// the hundred years from (n − 1) × 100, so the 15th century is 1400–1499 and the
+    /// 5th century BC 500–401 BC. `nil` for anything else.
+    public var eraYears: ClosedRange<Int>? {
+        guard let era else { return nil }
+        let words = era.split(separator: " ")
+        guard words.count >= 2, let number = Int(words[0].prefix { $0.isNumber }), number > 0
+        else { return nil }
+        let size = switch words[1] {
+        case "century": 100
+        case "millennium": 1000
+        default: 0
+        }
+        guard size > 0 else { return nil }
+        let start = (number - 1) * size
+        let end = number * size - 1
+        return words.last == "BC" ? -(end + 1) ... -(start + 1) : start ... end
     }
 
     /// The mean of the twelve monthly normals.
