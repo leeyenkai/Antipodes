@@ -18,6 +18,8 @@ enum StatsRoute: Hashable {
     case operators
     case timeByMode
     case temperatures
+    case transitSystems
+    case transitSystem(Int64)
     case repeats
     case gaps
     case continents
@@ -61,6 +63,7 @@ struct StatsScreen: View {
                         CoverageSection()
                         DistanceSection()
                         JourneyDetailSection()
+                        TransitSection()
                         CarbonSection()
                         AttributesSection()
                         PatternsSection()

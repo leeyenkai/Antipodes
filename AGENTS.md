@@ -174,13 +174,13 @@ The place database is built from open data, and the licences differ:
 | Natural Earth | Public domain | None | Yes — country list, ISO codes, sovereignty |
 | GeoNames | **CC BY 4.0** | **Attribution, and say it was modified** | Yes — cities, regions, elevations, time zones |
 | OurAirports | Public domain | None | Yes — airports and codes |
-| Wikidata | CC0 | None | Yes — landmark facts, UNESCO status, UN membership |
+| Wikidata | CC0 | None | Yes — landmark facts, UNESCO status, UN membership, city transit lines and stops (D-29) |
 | TerraClimate (University of Idaho) | CC0 | None (cited anyway) | Yes — 1991–2020 monthly temperature normals and Köppen climate zones |
 | NASA Blue Marble | Public domain | Credit NASA; no endorsement implied | Yes — the satellite globe's picture (bundled, not in the database) |
 | OpenStreetMap / OpenRailwayMap | ODbL | Share-alike on a *derived database* | **No — excluded, see below** |
 | Trainline EU stations | ODbL | Same as OSM | **No — excluded** |
 | UNESCO World Heritage List | Prior written authorisation | Permission needed | **No — excluded; status comes from Wikidata** |
-| GTFS feeds | Varies per feed | Check each one individually | Not yet reviewed |
+| GTFS feeds | Varies per feed | Check each one individually | Not used — city transit comes from Wikidata (D-29) |
 
 **Rules:**
 

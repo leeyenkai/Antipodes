@@ -7,6 +7,9 @@ public enum PlaceKind: String, Sendable, Codable, CaseIterable, Identifiable {
     case landmark
     case airport
     case route
+    /// A city transit stop, from a transit pack (R-TRAN-1). Implies its city, as a
+    /// landmark does.
+    case station
     /// A pin the user dropped for something not in the database (R-LOG-5).
     case custom
 
@@ -22,6 +25,7 @@ public enum PlaceKind: String, Sendable, Codable, CaseIterable, Identifiable {
         case .landmark: "Landmark"
         case .airport: "Airport"
         case .route: "Route"
+        case .station: "Station"
         case .custom: "Custom pin"
         }
     }
@@ -34,6 +38,7 @@ public enum PlaceKind: String, Sendable, Codable, CaseIterable, Identifiable {
         case .landmark: "building.columns"
         case .airport: "airplane.departure"
         case .route: "point.topleft.down.to.point.bottomright.curvepath"
+        case .station: "tram.fill.tunnel"
         case .custom: "mappin.and.ellipse"
         }
     }
@@ -148,7 +153,7 @@ public struct PlaceReference: Hashable, Sendable, Codable, Identifiable {
                 return impliedCityID == row
             }
             return false
-        case .landmark, .airport, .route, .custom:
+        case .landmark, .airport, .route, .station, .custom:
             return false
         }
     }

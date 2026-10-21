@@ -266,9 +266,89 @@ def fetch_landmarks(destination: Path) -> None:
     )
 
 
+def curated_transit_systems() -> list[dict[str, str]]:
+    """The systems in curation/transit_systems.csv, as rows."""
+    import csv
+
+    path = HERE / "curation" / "transit_systems.csv"
+    if not path.exists():
+        raise FetchError(f"missing curation file: {path}")
+    lines = [
+        line
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#")
+    ]
+    return sorted(csv.DictReader(lines), key=lambda row: row["qid"])
+
+
+def fetch_transit(destination: Path) -> None:
+    """Every curated system's stations, lines and station-to-station links (R-TRAN-1).
+
+    One query per system. Several answers can disagree on a station's coordinate or a
+    line's colour; the smallest is kept, so the cache never depends on row order.
+    """
+    template = read_query("transit.rq")
+    systems = []
+    for row in curated_transit_systems():
+        qid = row["qid"]
+        languages = row.get("languages") or "en"
+        results = sparql(
+            template.replace("{{SYSTEM}}", qid).replace("{{LANGUAGES}}", languages)
+        )
+        stations: dict[str, dict] = {}
+        lines: dict[str, dict] = {}
+        links: set[tuple[str, str, str]] = set()
+        for binding in results["results"]["bindings"]:
+
+            def value(key: str) -> str | None:
+                return binding.get(key, {}).get("value")
+
+            station = (value("station") or "").rsplit("/", 1)[-1]
+            adjacent = (value("adjacent") or "").rsplit("/", 1)[-1]
+            line = (value("line") or "").rsplit("/", 1)[-1]
+            if not (station and adjacent and line) or station == adjacent:
+                continue
+            coordinate = (float(value("lat")), float(value("lon")))  # type: ignore[arg-type]
+            known = stations.get(station)
+            if known is None or coordinate < (known["latitude"], known["longitude"]):
+                stations[station] = {
+                    "label": value("stationLabel"),
+                    "latitude": coordinate[0],
+                    "longitude": coordinate[1],
+                }
+            entry = lines.setdefault(
+                line,
+                {"label": value("lineLabel"), "colour": None, "short": None, "member": False},
+            )
+            entry["member"] = entry["member"] or value("member") == "true"
+            if value("colour") and (entry["colour"] is None or value("colour") < entry["colour"]):
+                entry["colour"] = value("colour")
+            short = value("short")
+            if short and (entry["short"] is None or (len(short), short) < (len(entry["short"]), entry["short"])):
+                entry["short"] = short
+            links.add((station, adjacent, line))
+        systems.append(
+            {
+                "qid": qid,
+                "stations": {key: stations[key] for key in sorted(stations)},
+                "lines": {key: lines[key] for key in sorted(lines)},
+                "links": sorted(links),
+            }
+        )
+        print(f"    {row['name']}: {len(stations)} stations, {len(lines)} lines, {len(links)} links")
+        time.sleep(WIKIDATA_PAUSE_SECONDS)
+
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(
+        json.dumps(systems, sort_keys=True, indent=1, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 WIKIDATA_FETCHERS = {
     "un_members.csv": fetch_un_members,
     "landmarks.json": fetch_landmarks,
+    "transit.json": fetch_transit,
 }
 
 

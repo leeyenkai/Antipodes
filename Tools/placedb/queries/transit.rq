@@ -1,0 +1,40 @@
+# Station-to-station links of one transit system (R-TRAN-1, R-TRAN-2).
+#
+# A link is an "adjacent station" statement (P197) qualified by the line it runs on
+# (P81). It belongs to the system when its line is part of the system (P361 or P16), or
+# when both stations are (P16). Stations that have closed (P576, P3999) and deprecated
+# statements are left out, and so are lines and stations not yet open. {{SYSTEM}} is the system's QID and {{LANGUAGES}} the label
+# order, both filled in by fetch_sources.py.
+SELECT ?station ?stationLabel ?lat ?lon ?adjacent ?line ?lineLabel ?colour ?short ?member
+WHERE {
+  {
+    ?line wdt:P361|wdt:P16 wd:{{SYSTEM}} .
+    ?station p:P197 ?statement .
+    ?statement ps:P197 ?adjacent ; pq:P81 ?line .
+  } UNION {
+    ?station wdt:P16 wd:{{SYSTEM}} ; p:P197 ?statement .
+    ?statement ps:P197 ?adjacent ; pq:P81 ?line .
+    ?adjacent wdt:P16 wd:{{SYSTEM}} .
+  }
+  FILTER NOT EXISTS { ?statement wikibase:rank wikibase:DeprecatedRank }
+  FILTER NOT EXISTS { ?station wdt:P576 ?demolished }
+  FILTER NOT EXISTS { ?station wdt:P3999 ?closed }
+  FILTER NOT EXISTS { ?adjacent wdt:P576 ?adjacentDemolished }
+  FILTER NOT EXISTS { ?adjacent wdt:P3999 ?adjacentClosed }
+  # Not yet open: under construction (Q12377751), or a service start still to come.
+  FILTER NOT EXISTS { ?line wdt:P5817 wd:Q12377751 }
+  FILTER NOT EXISTS { ?station wdt:P5817 wd:Q12377751 }
+  FILTER NOT EXISTS { ?adjacent wdt:P5817 wd:Q12377751 }
+  FILTER NOT EXISTS { ?line wdt:P729 ?lineOpens . FILTER(?lineOpens > NOW()) }
+  FILTER NOT EXISTS { ?station wdt:P729 ?stationOpens . FILTER(?stationOpens > NOW()) }
+  FILTER NOT EXISTS { ?adjacent wdt:P729 ?adjacentOpens . FILTER(?adjacentOpens > NOW()) }
+  ?station p:P625/psv:P625 ?node .
+  ?node wikibase:geoLatitude ?lat ; wikibase:geoLongitude ?lon .
+  ?adjacent wdt:P625 ?adjacentCoordinate .
+  # Whether the line itself belongs to the system: a main-line railway calling at a metro
+  # station is linked through its stations but is not part of the metro.
+  BIND(EXISTS { ?line wdt:P361|wdt:P16 wd:{{SYSTEM}} } AS ?member)
+  OPTIONAL { ?line wdt:P465 ?colour }
+  OPTIONAL { ?line wdt:P1813 ?short }
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "{{LANGUAGES}},mul". }
+}

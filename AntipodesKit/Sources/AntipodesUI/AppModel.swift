@@ -51,6 +51,8 @@ public struct AddRequest: Identifiable, Equatable {
 public final class AppModel {
     public let store: TravelLogStore
     public private(set) var places: PlaceDatabase?
+    /// The transit systems the log rides, for the city transit stats (R-TRAN-2).
+    public private(set) var transitNetwork = TransitNetwork.empty
     public private(set) var databaseInfo: PlaceDatabaseInfo?
     /// Why the place database could not be opened, shown in the UI instead of an empty
     /// search field that silently never matches.
@@ -237,9 +239,20 @@ public final class AppModel {
     private func refreshFacts() async {
         guard let places else { return }
         let ids = log.referencedDatabasePlaceIDs.filter { placeFacts[$0] == nil }
-        guard !ids.isEmpty else { return }
-        if let found = try? await places.facts(for: ids) {
+        var changed = false
+        if !ids.isEmpty, let found = try? await places.facts(for: ids) {
             placeFacts.merge(found) { _, new in new }
+            changed = true
+        }
+        // The networks of every system ridden, loaded once each.
+        let lines = Set(log.allLegs.compactMap(\.transitLineID))
+        if !lines.isSubset(of: Set(transitNetwork.lines.keys)),
+           let systems = try? await places.transitSystems(ofLines: lines),
+           let network = try? await places.transitNetwork(systems: systems) {
+            transitNetwork = network
+            changed = true
+        }
+        if changed {
             recompute()
         }
     }
@@ -257,7 +270,8 @@ public final class AppModel {
             emissionFactors: catalogue.emissionFactors,
             collections: catalogue.collections,
             achievements: catalogue.achievements,
-            routes: catalogue.routes
+            routes: catalogue.routes,
+            transit: transitNetwork
         )
     }
 
@@ -465,35 +479,5 @@ public final class AppModel {
         try store.deleteEverything()
         home = nil
         reload()
-    }
-
-    // MARK: - Export
-
-    public func exportJSON() throws -> Data {
-        try TravelLogExport.json(for: log)
-    }
-
-    public func exportCSVFiles() -> [String: Data] {
-        TravelLogExport.csvFiles(for: log)
-    }
-}
-
-/// A record to open from outside the app's own navigation — a widget's link — and the
-/// tab whose list it opens in.
-public struct PendingRoute: Equatable {
-    public enum Tab: Equatable, Sendable {
-        case trips
-        case collections
-    }
-
-    public let id = UUID()
-    let tab: Tab
-    let route: LogRoute
-}
-
-extension String {
-    var trimmedOrNil: String? {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
     }
 }

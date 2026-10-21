@@ -484,6 +484,8 @@
             if let siberian = route(id: 8) {
                 addToWishlist(route: siberian)
             }
+
+            try await seedSampleTransit(japan: japan.id, italy: italy.id)
         }
         // swiftlint:enable cyclomatic_complexity function_body_length
     }

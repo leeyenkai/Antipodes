@@ -250,6 +250,8 @@ public extension StoredLeg {
             missedConnection: missedConnection,
             routeID: routeID.map(Int64.init),
             routeName: routeName,
+            transitLineID: transitLineID.map(Int64.init),
+            networkVersion: networkVersion,
             operatorName: operatorName,
             serviceNumber: serviceNumber,
             vehicle: vehicle,
@@ -284,6 +286,8 @@ public extension StoredLeg {
         missedConnection = leg.missedConnection
         routeID = leg.routeID.map(Int.init)
         routeName = leg.routeName
+        transitLineID = leg.transitLineID.map(Int.init)
+        networkVersion = leg.networkVersion
         operatorName = leg.operatorName
         serviceNumber = leg.serviceNumber
         vehicle = leg.vehicle

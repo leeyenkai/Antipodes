@@ -14,6 +14,8 @@ public struct StatisticsContext: Sendable {
     public var collections: [CollectionDefinition]
     public var achievements: [AchievementDefinition]
     public var routes: [RouteInfo]
+    /// The transit systems the log rides, for the city transit stats (R-TRAN-2).
+    public var transit: TransitNetwork
 
     public init(
         rules: CountingRules = .default,
@@ -23,7 +25,8 @@ public struct StatisticsContext: Sendable {
         emissionFactors: EmissionFactorTable = .empty,
         collections: [CollectionDefinition] = [],
         achievements: [AchievementDefinition] = [],
-        routes: [RouteInfo] = []
+        routes: [RouteInfo] = [],
+        transit: TransitNetwork = .empty
     ) {
         self.rules = rules
         self.gazetteer = gazetteer
@@ -33,6 +36,7 @@ public struct StatisticsContext: Sendable {
         self.collections = collections
         self.achievements = achievements
         self.routes = routes
+        self.transit = transit
     }
 }
 
@@ -53,6 +57,7 @@ public struct TravelStatistics: Hashable, Sendable {
     public let journeys: JourneyStatistics
     public let rail: RailStatistics
     public let roadAndSea: RoadAndSeaStatistics
+    public let transit: TransitStatistics
     public let punctuality: PunctualityStatistics
     public let carbon: CarbonStatistics
     public let collections: [CollectionProgress]
@@ -155,6 +160,7 @@ public enum StatisticsEngine {
             journeys: JourneyStatistics.compute(for: log, rules: rules, routes: context.routes),
             rail: RailStatistics.compute(for: log, rules: rules, routes: context.routes),
             roadAndSea: RoadAndSeaStatistics.compute(for: log, rules: rules, gazetteer: gazetteer),
+            transit: TransitStatistics.compute(for: log, rules: rules, network: context.transit),
             punctuality: PunctualityStatistics.compute(for: log, rules: rules),
             carbon: CarbonStatistics.compute(
                 for: log,

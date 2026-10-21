@@ -191,7 +191,7 @@ public struct CoverageStatistics: Hashable, Sendable {
                 }
             case .airport: airportIDs.insert(place.id)
             case .custom: customPinIDs.insert(place.id)
-            case .country, .region, .city, .route: break
+            case .country, .region, .city, .route, .station: break
             }
         }
 

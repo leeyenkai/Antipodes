@@ -114,6 +114,14 @@ is blocked.
   through included — and the theme mix gains Nightlife, read as a new **Night owl**
   personality (D-15). Four new badges: five and twenty passes, three and all five of
   the main climates.
+- **City transit** (R-TRAN-1 to 5, R-JLOG-5, D-29): 38 metro systems — London, Paris,
+  Tokyo, Seoul, New Delhi, Mexico City and more — ship with their lines, stops and the
+  links between them. A ride is logged by picking the system, the line, and where you
+  got on and off; its length runs stop to stop along the line. Stats add systems and
+  lines ridden, each system's share of segments covered (riding a stretch twice adds a
+  ride, not coverage), and stations boarded, alighted and passed through. A commute pass
+  is one ride dated across its months, with the purpose Commute (R-JLOG-6). Systems
+  outside the set are still logged between two places.
 - **Eras for undated landmarks** (R-DB-3): a landmark Wikidata knows only to the century
   or millennium — the Parthenon, 5th century BC — carries that era instead of a made-up
   year, and joins the era spread where the era lies within one period.
@@ -247,6 +255,13 @@ is blocked.
   (University of Idaho, CC0), read at 0.25° and corrected to each place's elevation.
   The fetch pins four OPeNDAP responses by digest; `climate.py` reads them with the
   standard library and has its own tests, run by `scripts/test.sh`.
+- **Schema version 5**: `transit_system`, `transit_line`, `transit_stop` and
+  `transit_segment`, from Wikidata (CC0) for the 38 systems in
+  `curation/transit_systems.csv` — 313 lines and 5,326 stops, about 0.5 MB.
+  `transit.py` turns the cached station links into segments, drops stations more than
+  90 km from their city and applies `curation/transit_line_fixes.csv`, and has its own
+  tests. Legs gain `transit_line_id` and `network_version` in the store and the CSV
+  export (R-TRAN-4).
 - The satellite globe's picture: NASA Blue Marble Next Generation (August 2004, with
   topography and bathymetry), public domain, fetched once by `scripts/fetch-imagery.sh`,
   digest-verified and scaled to 4096 × 2048. Recorded in `Tools/placedb/SOURCES.md` and

@@ -37,6 +37,12 @@ struct JourneyEditor: View {
     /// From, so a quick leg is mode, from, to, save (R-JLOG-1).
     @State private var nextPick: EndpointRequest?
     @State private var hasAskedForFirstEnd = false
+    /// The leg whose transit line and stops are being chosen (R-JLOG-5).
+    @State private var pickingTransit: TransitPick?
+
+    struct TransitPick: Identifiable {
+        let id: UUID
+    }
 
     struct EndpointRequest: Identifiable {
         let legID: UUID
@@ -84,7 +90,7 @@ struct JourneyEditor: View {
                         let draft = LegDraft(mode: mode)
                         legs = [draft]
                         expandedLeg = draft.id
-                        picking = EndpointRequest(legID: draft.id, end: .origin)
+                        askForFirstEnd(of: draft)
                     }
                 } header: {
                     Text("How did you travel?")
@@ -113,7 +119,8 @@ struct JourneyEditor: View {
                     isExpanded: expandedLeg == leg.id,
                     expand: { expandedLeg = expandedLeg == leg.id ? nil : leg.id },
                     remove: { remove(leg.id) },
-                    pick: { end in picking = EndpointRequest(legID: leg.id, end: end) }
+                    pick: { end in picking = EndpointRequest(legID: leg.id, end: end) },
+                    pickTransit: { pickingTransit = TransitPick(id: leg.id) }
                 )
             }
 
@@ -177,13 +184,22 @@ struct JourneyEditor: View {
             guard existing == nil, !hasAskedForFirstEnd, legs.count == 1,
                   let first = legs.first, first.origin == nil else { return }
             hasAskedForFirstEnd = true
-            picking = EndpointRequest(legID: first.id, end: .origin)
+            askForFirstEnd(of: first)
         }
         .guardingUnsavedEdits(
             Fields(legs: legs, title: title, tripID: tripID) != baseline && !saved,
             discard: onDone
         )
         .sensoryFeedback(.success, trigger: saved)
+        .sheet(item: $pickingTransit) { pick in
+            TransitRidePicker { ride in
+                if let index = legs.firstIndex(where: { $0.id == pick.id }) {
+                    legs[index].apply(ride)
+                }
+            } onPlacesInstead: {
+                nextPick = EndpointRequest(legID: pick.id, end: .origin)
+            }
+        }
         .sheet(item: $picking, onDismiss: {
             if let nextPick {
                 picking = nextPick
@@ -231,8 +247,18 @@ struct JourneyEditor: View {
                 } else {
                     legs[index].destination = place
                 }
+                legs[index].leaveTransitLine()
                 legs[index].endpointChanged(route: legs[index].routeID.flatMap(model.route(id:)))
             }
+        }
+    }
+
+    /// A city transit ride starts at its line (R-JLOG-5); anything else at "From?".
+    private func askForFirstEnd(of draft: LegDraft) {
+        if draft.mode == .cityTransit {
+            pickingTransit = TransitPick(id: draft.id)
+        } else {
+            picking = EndpointRequest(legID: draft.id, end: .origin)
         }
     }
 
@@ -333,6 +359,7 @@ private struct LegSection: View {
     let expand: () -> Void
     let remove: () -> Void
     let pick: (LegEnd) -> Void
+    let pickTransit: () -> Void
 
     @State private var showsDetails = false
 
@@ -392,6 +419,10 @@ private struct LegSection: View {
             ForEach(TravelMode.loggable) { mode in
                 Label(mode.displayName, systemImage: mode.symbolName).tag(mode)
             }
+        }
+
+        if draft.mode == .cityTransit {
+            TransitLineButton(lineID: draft.transitLineID, action: pickTransit)
         }
 
         EndpointButton(label: "From", place: draft.origin, mode: draft.mode) { pick(.origin) }

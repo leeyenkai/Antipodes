@@ -23,6 +23,12 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
     /// The catalogue route this leg rode, if any (R-JLOG-3).
     public var routeID: Int64?
     public var routeName: String?
+    /// The transit line ridden, from a transit pack (R-JLOG-5); the ends are then its
+    /// stops, so the stops passed through can be worked out (R-TRAN-3).
+    public var transitLineID: Int64?
+    /// The network the ride was logged against, kept so a later network does not
+    /// rewrite it (R-TRAN-4).
+    public var networkVersion: String?
     public var operatorName: String?
     public var serviceNumber: String?
     public var vehicle: String?
@@ -47,6 +53,8 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
         missedConnection: Bool = false,
         routeID: Int64? = nil,
         routeName: String? = nil,
+        transitLineID: Int64? = nil,
+        networkVersion: String? = nil,
         operatorName: String? = nil,
         serviceNumber: String? = nil,
         vehicle: String? = nil,
@@ -69,6 +77,8 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
         self.missedConnection = missedConnection
         self.routeID = routeID
         self.routeName = routeName
+        self.transitLineID = transitLineID
+        self.networkVersion = networkVersion
         self.operatorName = operatorName
         self.serviceNumber = serviceNumber
         self.vehicle = vehicle
@@ -204,6 +214,8 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
             distanceKmOverride: distanceKmOverride,
             routeID: routeID,
             routeName: routeName,
+            transitLineID: transitLineID,
+            networkVersion: networkVersion,
             operatorName: operatorName,
             serviceNumber: serviceNumber,
             vehicle: vehicle,
@@ -221,7 +233,8 @@ extension JourneyLeg: Codable {
     private enum CodingKeys: String, CodingKey {
         case id, mode, origin, destination, date, purpose, storedPathLengthKm
         case distanceKmOverride, durationMinutesOverride, times, missedConnection
-        case routeID, routeName, operatorName, serviceNumber, vehicle, registration
+        case routeID, routeName, transitLineID, networkVersion
+        case operatorName, serviceNumber, vehicle, registration
         case travelClass, seat, rating, notes
     }
 
@@ -247,6 +260,8 @@ extension JourneyLeg: Codable {
                 ?? false,
             routeID: container.decodeIfPresent(Int64.self, forKey: .routeID),
             routeName: container.decodeIfPresent(String.self, forKey: .routeName),
+            transitLineID: container.decodeIfPresent(Int64.self, forKey: .transitLineID),
+            networkVersion: container.decodeIfPresent(String.self, forKey: .networkVersion),
             operatorName: container.decodeIfPresent(String.self, forKey: .operatorName),
             serviceNumber: container.decodeIfPresent(String.self, forKey: .serviceNumber),
             vehicle: container.decodeIfPresent(String.self, forKey: .vehicle),
@@ -273,6 +288,8 @@ extension JourneyLeg: Codable {
         try container.encode(missedConnection, forKey: .missedConnection)
         try container.encodeIfPresent(routeID, forKey: .routeID)
         try container.encodeIfPresent(routeName, forKey: .routeName)
+        try container.encodeIfPresent(transitLineID, forKey: .transitLineID)
+        try container.encodeIfPresent(networkVersion, forKey: .networkVersion)
         try container.encodeIfPresent(operatorName, forKey: .operatorName)
         try container.encodeIfPresent(serviceNumber, forKey: .serviceNumber)
         try container.encodeIfPresent(vehicle, forKey: .vehicle)

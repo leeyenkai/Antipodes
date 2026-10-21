@@ -55,8 +55,9 @@ sys.path.insert(0, str(HERE))
 
 import climate  # noqa: E402
 import sources as registry  # noqa: E402 - must follow the sys.path line above
+import transit  # noqa: E402
 
-SCHEMA_VERSION = 4
+SCHEMA_VERSION = 5
 
 #: How far round an airport or landmark the build looks for bundled cities when it has
 #: no linked city to take a time zone from. The zone is written only when every city
@@ -185,6 +186,9 @@ class Counts:
     achievements: int = 0
     emission_factors: int = 0
     climates: int = 0
+    transit_systems: int = 0
+    transit_lines: int = 0
+    transit_stops: int = 0
 
     def summary(self) -> str:
         return (
@@ -197,7 +201,8 @@ class Counts:
         return (
             f"{self.collections} collections ({self.collection_members} members), "
             f"{self.achievements} achievements, {self.emission_factors} carbon factors, "
-            f"{self.climates} place climates"
+            f"{self.climates} place climates, {self.transit_systems} transit systems "
+            f"({self.transit_lines} lines, {self.transit_stops} stops)"
         )
 
 
@@ -548,6 +553,7 @@ def build(out_path: Path, cities_dataset: str, data_version: str, built_at: str)
         insert_achievements(connection, counts)
         insert_emission_factors(connection, counts)
         insert_climate(connection, counts, coverage)
+        insert_transit(connection, by_name, counts, coverage)
 
         counts.indexed = build_search_index(connection, grid, single_zone, coverage)
         write_meta(connection, data_version, built_at, counts, coverage, manifest, cities_dataset)
@@ -603,6 +609,100 @@ def insert_climate(connection: sqlite3.Connection, counts: Counts, coverage: Cov
         rows,
     )
     counts.climates = len(rows)
+
+
+def insert_transit(
+    connection: sqlite3.Connection,
+    by_name: dict[tuple[str, str], list[dict[str, object]]],
+    counts: Counts,
+    coverage: Coverage,
+) -> None:
+    """The curated transit systems, from the cached Wikidata links (R-TRAN-5)."""
+    path = HERE / "vendor" / "wikidata" / "transit.json"
+    if not path.exists():
+        raise BuildError(f"Missing {path}. Run fetch_sources.py --only wikidata.")
+    cached = {system["qid"]: system for system in json.loads(path.read_text(encoding="utf-8"))}
+    manifest = json.loads((HERE / "vendor" / "manifest.json").read_text(encoding="utf-8"))
+    retrieved = manifest.get("files", {}).get("wikidata/transit.json", {}).get("retrieved")
+    version = f"wikidata-{retrieved or 'unversioned'}"
+
+    problems: list[str] = []
+    fixes: dict[str, transit.LineFix] = {}
+    for row in read_curation("transit_line_fixes.csv"):
+        try:
+            fixes[row["line_qid"]] = transit.LineFix.parse(row)
+        except ValueError as error:
+            problems.append(f"transit_line_fixes.csv: {error}")
+    cached_lines = {line for system in cached.values() for line in system.get("lines", {})}
+    for line_qid in sorted(set(fixes) - cached_lines):
+        coverage.notes.append(f"transit_line_fixes.csv {line_qid}: line no longer cached; remove the row")
+    in_pieces = 0
+    dropped = 0
+    for row in read_curation("transit_systems.csv"):
+        label = f"transit_systems.csv {row['qid']}"
+        answer = cached.get(row["qid"])
+        if not answer or not answer.get("links"):
+            problems.append(f"{label}: no links cached; run fetch_sources.py --only wikidata --refresh")
+            continue
+        candidates = by_name.get((row["country_iso2"], strip_accents(row["city_name"])))
+        if not candidates:
+            problems.append(f"{label}: city {row['city_name']!r} is not in the {row['country_iso2']} city set")
+            continue
+        stations = answer["stations"].values()
+        centroid = (
+            sum(s["latitude"] for s in stations) / len(stations),
+            sum(s["longitude"] for s in stations) / len(stations),
+        )
+        city = nearest_city(candidates, *centroid)
+        system = transit.build_system(
+            row, answer, (city["latitude"], city["longitude"]), fixes  # type: ignore[arg-type]
+        )
+        if not system.lines:
+            problems.append(f"{label}: no line has a segment near {row['city_name']}")
+            continue
+        dropped += system.dropped_far
+        connection.execute(
+            """
+            INSERT INTO transit_system (id, name, kind, city_id, country_iso2,
+                                        network_version, wikidata_qid, source)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'wikidata')
+            """,
+            (system.id, system.name, system.kind, city["id"], system.country_iso2, version, row["qid"]),
+        )
+        counts.transit_systems += 1
+        for stop in system.stops.values():
+            inserted = connection.execute(
+                """
+                INSERT OR IGNORE INTO transit_stop (id, name, latitude, longitude, city_id,
+                                                    country_iso2, timezone, source)
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'wikidata')
+                """,
+                (stop.id, stop.name, stop.latitude, stop.longitude, city["id"],
+                 system.country_iso2, city.get("timezone")),
+            )
+            counts.transit_stops += inserted.rowcount
+        for line in system.lines:
+            inserted = connection.execute(
+                """
+                INSERT OR IGNORE INTO transit_line (id, system_id, name, short_name, colour,
+                                                    segment_count, source)
+                VALUES (?, ?, ?, ?, ?, ?, 'wikidata')
+                """,
+                (line.id, system.id, line.name, line.short_name, line.colour, len(line.segments)),
+            )
+            if not inserted.rowcount:
+                continue
+            counts.transit_lines += 1
+            in_pieces += 1 if line.components() > 1 else 0
+            connection.executemany(
+                "INSERT INTO transit_segment (line_id, stop_a, stop_b) VALUES (?, ?, ?)",
+                [(line.id, a, b) for a, b in sorted(line.segments)],
+            )
+    if problems:
+        raise BuildError("transit problems:\n  " + "\n  ".join(problems))
+    coverage.record("transit lines in one piece", counts.transit_lines - in_pieces, counts.transit_lines)
+    if dropped:
+        coverage.notes.append(f"transit links dropped as too far from their city: {dropped}")
 
 
 def write_data_sources(connection: sqlite3.Connection, cities_dataset: str) -> dict:

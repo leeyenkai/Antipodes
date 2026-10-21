@@ -156,6 +156,7 @@ extension PlaceKind {
         case .landmark: "Landmarks"
         case .airport: "Airports"
         case .route: "Routes"
+        case .station: "Stations"
         case .custom: "Pins"
         }
     }

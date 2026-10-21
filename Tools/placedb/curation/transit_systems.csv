@@ -1,0 +1,53 @@
+# City transit systems in the launch set (R-TRAN-5, Q-12), built from Wikidata (CC0).
+#
+# Each row names a system; fetch_sources.py asks Wikidata for every station-to-station
+# link ("adjacent station", P197, qualified by its line, P81) on a line that belongs to
+# the system, or between two stations that do, and the build turns those links into
+# segments (R-TRAN-2). Only rail-based systems for now (R-TRAN-6).
+#
+# A system is here because its Wikidata network was surveyed as complete enough to ride:
+# New York, Munich, Oslo, Stockholm, Hamburg and Vienna were not, on 2026-10-21 — their
+# stations rarely record their neighbours — and are left out until they are.
+#
+# `name` is what the app shows. `city_name` places the system and its stations, and
+# must be a city of `country_iso2` in the bundled set. `languages` is the label order
+# asked of Wikidata: English first, then the local language for stations without one.
+qid,name,country_iso2,city_name,kind,languages
+Q20075,London Underground,GB,London,metro,en
+Q50716,Paris Métro,FR,Paris,metro,"en,fr"
+Q191987,Madrid Metro,ES,Madrid,metro,"en,es"
+Q237189,Barcelona Metro,ES,Barcelona,metro,"en,ca,es"
+Q68646,Berlin U-Bahn,DE,Berlin,metro,"en,de"
+Q212741,Copenhagen Metro,DK,Copenhagen,metro,"en,da"
+Q260870,Amsterdam Metro,NL,Amsterdam,metro,"en,nl"
+Q735559,Milan Metro,IT,Milan,metro,"en,it"
+Q237480,Rome Metro,IT,Rome,metro,"en,it"
+Q746032,Lisbon Metro,PT,Lisbon,metro,"en,pt"
+Q190271,Prague Metro,CZ,Prague,metro,"en,cs"
+Q211044,Budapest Metro,HU,Budapest,metro,"en,hu"
+Q336488,Athens Metro,GR,Athens,metro,"en,el"
+Q320028,Warsaw Metro,PL,Warsaw,metro,"en,pl"
+Q506298,Brussels Metro,BE,Brussels,metro,"en,fr,nl"
+Q1552,Lyon Metro,FR,Lyon,metro,"en,fr"
+Q207287,Helsinki Metro,FI,Helsinki,metro,"en,fi"
+Q506290,Glasgow Subway,GB,Glasgow,metro,en
+Q498172,Istanbul Metro,TR,Istanbul,metro,"en,tr"
+Q5499,Moscow Metro,RU,Moscow,metro,"en,ru"
+Q215871,Kyiv Metro,UA,Kyiv,metro,"en,uk"
+Q171221,Washington Metro,US,Washington,metro,en
+Q820880,"Chicago ""L""",US,Chicago,metro,en
+Q392377,Montreal Metro,CA,Montréal,metro,"en,fr"
+Q20379,Toronto subway,CA,Toronto,metro,en
+Q735042,Mexico City Metro,MX,Mexico City,metro,"en,es"
+Q483343,São Paulo Metro,BR,São Paulo,metro,"en,pt"
+Q497044,Buenos Aires Underground,AR,Buenos Aires,metro,"en,es"
+Q913314,Santiago Metro,CL,Santiago,metro,"en,es"
+Q962135,Tokyo subway,JP,Tokyo,metro,"en,ja"
+Q303026,Osaka Metro,JP,Osaka,metro,"en,ja"
+Q16950,Seoul Metropolitan Subway,KR,Seoul,metro,"en,ko"
+Q714810,Taipei Metro,TW,Taipei,metro,"en,zh-tw,zh"
+Q806485,Bangkok MRT,TH,Bangkok,metro,"en,th"
+Q271195,Delhi Metro,IN,Delhi,metro,"en,hi"
+Q83787,Dubai Metro,AE,Dubai,metro,"en,ar"
+Q462201,Shanghai Metro,CN,Shanghai,metro,"en,zh-cn,zh"
+Q235319,Beijing Subway,CN,Beijing,metro,"en,zh-cn,zh"

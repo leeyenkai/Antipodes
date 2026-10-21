@@ -163,7 +163,7 @@ extension PlaceReference {
             switch kind {
             case .country: [continent?.displayName]
             case .region, .city: [regionName, countryName]
-            case .landmark, .airport: [cityName, countryName]
+            case .landmark, .airport, .station: [cityName, countryName]
             case .route: ["Route"]
             case .custom: [regionName, countryName ?? "Custom pin"]
             }

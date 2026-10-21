@@ -187,12 +187,13 @@ WIKIDATA = Source(
     licence="CC0 1.0",
     licence_url="https://creativecommons.org/publicdomain/zero/1.0/",
     attribution=None,
-    used_for="Landmark facts, UNESCO status, UN membership",
+    used_for="Landmark facts, UNESCO status, UN membership, city transit stations and lines",
     # Written by fetch_sources.py from the queries in `queries/`, not downloaded
     # directly, so they carry no URL of their own.
     files=(
         RemoteFile("un_members.csv", WIKIDATA_SPARQL),
         RemoteFile("landmarks.json", WIKIDATA_SPARQL),
+        RemoteFile("transit.json", WIKIDATA_SPARQL),
     ),
 )
 

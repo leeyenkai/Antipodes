@@ -263,6 +263,54 @@ CREATE TABLE climate (
     PRIMARY KEY (place_kind, ref_id)
 ) WITHOUT ROWID;
 
+-- City transit (R-TRAN-1 to R-TRAN-5), from Wikidata's station-to-station links.
+-- A system has lines; a line is a set of segments, each the stretch between two
+-- adjacent stops (R-TRAN-2), stored once with the lower stop id first. Branches and
+-- loops need no special shape: they are simply more segments of the same line.
+CREATE TABLE transit_system (
+    id              INTEGER PRIMARY KEY,
+    name            TEXT NOT NULL,
+    kind            TEXT NOT NULL,
+    city_id         INTEGER REFERENCES city (id),
+    country_iso2    TEXT NOT NULL REFERENCES country (iso2),
+    -- When the network was read: every ride records the version it was logged against
+    -- (R-TRAN-4), so a later network does not rewrite what was ridden.
+    network_version TEXT NOT NULL,
+    wikidata_qid    TEXT UNIQUE,
+    source          TEXT NOT NULL REFERENCES data_source (id)
+);
+
+CREATE TABLE transit_line (
+    id            INTEGER PRIMARY KEY,
+    system_id     INTEGER NOT NULL REFERENCES transit_system (id),
+    name          TEXT NOT NULL,
+    short_name    TEXT,
+    -- Six hex digits, where Wikidata records the line's colour.
+    colour        TEXT,
+    segment_count INTEGER NOT NULL,
+    source        TEXT NOT NULL REFERENCES data_source (id)
+);
+
+CREATE TABLE transit_stop (
+    id           INTEGER PRIMARY KEY,
+    name         TEXT NOT NULL,
+    latitude     REAL NOT NULL,
+    longitude    REAL NOT NULL,
+    city_id      INTEGER REFERENCES city (id),
+    country_iso2 TEXT NOT NULL REFERENCES country (iso2),
+    timezone     TEXT,
+    source       TEXT NOT NULL REFERENCES data_source (id)
+);
+
+CREATE TABLE transit_segment (
+    line_id INTEGER NOT NULL REFERENCES transit_line (id),
+    stop_a  INTEGER NOT NULL REFERENCES transit_stop (id),
+    stop_b  INTEGER NOT NULL REFERENCES transit_stop (id),
+    PRIMARY KEY (line_id, stop_a, stop_b)
+) WITHOUT ROWID;
+
+CREATE INDEX idx_transit_line_system ON transit_line (system_id);
+
 -- Everything searchable, flattened.
 --
 -- Two ranking columns, because they answer different questions (R-LOG-1).

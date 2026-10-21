@@ -14,6 +14,9 @@ struct LegDraft: Identifiable, Equatable {
     var missedConnection = false
     var routeID: Int64?
     var routeName: String?
+    /// The transit line ridden and the network it was picked from (R-JLOG-5, R-TRAN-4).
+    var transitLineID: Int64?
+    var networkVersion: String?
     var storedPathLengthKm: Double?
     /// The user's own distance, in kilometres, kept exactly as given.
     var distanceOverrideKm: Double?
@@ -42,6 +45,8 @@ struct LegDraft: Identifiable, Equatable {
         missedConnection = leg.missedConnection
         routeID = leg.routeID
         routeName = leg.routeName
+        transitLineID = leg.transitLineID
+        networkVersion = leg.networkVersion
         storedPathLengthKm = leg.storedPathLengthKm
         distanceOverrideKm = leg.distanceKmOverride
         durationOverrideMinutes = leg.durationMinutesOverride
@@ -99,6 +104,8 @@ struct LegDraft: Identifiable, Equatable {
             missedConnection: missedConnection,
             routeID: routeID,
             routeName: routeName,
+            transitLineID: transitLineID,
+            networkVersion: networkVersion,
             operatorName: operatorName.trimmedOrNil,
             serviceNumber: serviceNumber.trimmedOrNil,
             vehicle: vehicle.trimmedOrNil,
@@ -108,6 +115,26 @@ struct LegDraft: Identifiable, Equatable {
             rating: rating,
             notes: notes.trimmedOrNil
         )
+    }
+
+    /// A ride picked on a transit line: its stops, its line, and the length stop to stop.
+    mutating func apply(_ ride: TransitRide) {
+        mode = .cityTransit
+        origin = ride.origin
+        destination = ride.destination
+        transitLineID = ride.line.id
+        networkVersion = ride.system.networkVersion
+        serviceNumber = ride.line.shortName ?? ride.line.name
+        storedPathLengthKm = ride.lengthKm
+    }
+
+    /// Moving an end by hand takes a ride off its line: the stops in between are no
+    /// longer known, and nor is the length.
+    mutating func leaveTransitLine() {
+        guard transitLineID != nil else { return }
+        transitLineID = nil
+        networkVersion = nil
+        storedPathLengthKm = nil
     }
 
     /// A route's catalogue length stops applying when the user moves an end away from

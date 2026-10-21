@@ -1,0 +1,16 @@
+# Hand corrections to transit lines as Wikidata records them (R-TRAN-2, R-TRAN-5).
+#
+# Wikidata is the source of every station and link; this file only says what to do with
+# the few lines it files under a system that are not lines of that system today. Each
+# row names the line by its Wikidata QID and either drops it or merges its links into the
+# line or lines (separated by ";") that run over them, so a ride on those stations is
+# routed and counted on the line a rider would name. A row whose line is not in the
+# cache any more is reported by the build, so the file shrinks as Wikidata improves.
+#
+# action: drop | merge
+line_qid,action,into,reason
+Q831794,drop,,"East London line: left the Underground in 2007, now London Overground"
+Q12312788,merge,Q1880894;Q1880954,"Frederiksbergbanen: a construction phase of the Copenhagen Metro, served by M1 and M2"
+Q12342035,merge,Q1880894,"Ørestadsbanen: a construction phase of the Copenhagen Metro, served by M1"
+Q16335324,merge,Q1544621,"Etisalat is a station; its link is on the Dubai Metro Green Line"
+Q125502829,merge,Q1147028,"Hōnanchō branch: part of the Marunouchi Line"

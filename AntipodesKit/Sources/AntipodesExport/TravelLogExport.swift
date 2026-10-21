@@ -123,10 +123,11 @@ public enum TravelLogExport {
             "missed_connection", "route_id", "route_name", "registration",
             "from_country_code", "to_country_code",
             "from_place_id", "to_place_id", "distance_override_km", "duration_override_minutes",
+            "transit_line_id", "network_version",
         ], numericColumns: [
             "sequence", "from_latitude", "from_longitude", "to_latitude", "to_longitude",
             "distance_km", "rating", "duration_minutes", "arrival_delay_minutes", "route_id",
-            "distance_override_km", "duration_override_minutes",
+            "distance_override_km", "duration_override_minutes", "transit_line_id",
         ])
         for journey in log.journeys.sorted(by: { $0.date < $1.date }) {
             for (index, leg) in journey.legs.enumerated() {
@@ -173,6 +174,8 @@ public enum TravelLogExport {
                     leg.destination.id.description,
                     leg.distanceKmOverride.map { String(format: "%.3f", $0) },
                     leg.durationMinutesOverride.map(String.init),
+                    leg.transitLineID.map(String.init),
+                    leg.networkVersion,
                 ])
             }
         }

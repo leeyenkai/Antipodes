@@ -26,6 +26,11 @@ public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable
     case notInATrip
     /// At the user's home, for a stat about being away from it.
     case atHome
+    /// A transit ride logged between two places rather than on a line of a transit
+    /// pack, so its segments are unknown (R-TRAN-2).
+    case noTransitLine
+    /// The line's segments do not join the two stops: a gap in the network data.
+    case transitRouteUnknown
 
     public var explanation: String {
         switch self {
@@ -41,6 +46,8 @@ public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable
         case .noEmissionFactor: "no carbon factor for that mode"
         case .notInATrip: "not in a trip"
         case .atHome: "at home"
+        case .noTransitLine: "not logged on a transit line"
+        case .transitRouteUnknown: "stops not joined on the line"
         }
     }
 

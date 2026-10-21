@@ -100,6 +100,10 @@ enum Format {
             .joined()
     }
 
+    static func countryName(_ code: String) -> String {
+        Locale.current.localizedString(forRegionCode: code) ?? code
+    }
+
     static func languageName(_ code: String) -> String {
         Locale.current.localizedString(forLanguageCode: code) ?? code
     }

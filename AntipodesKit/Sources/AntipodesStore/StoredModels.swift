@@ -19,6 +19,9 @@ import SwiftData
 // migration plan, and CloudKit accepts the new fields as additive schema changes. No
 // release has shipped, so no store in the field predates them.
 //
+// The transit line and network version on a leg (R-TRAN-4) were added the same way,
+// optional, before the first release.
+//
 // From the first release on, the schema is versioned: `AntipodesSchemaV1` below is
 // what ships. A later change that is not purely additive gets a `V2` and a stage in
 // `AntipodesMigrationPlan`, written in the same commit as the change.
@@ -180,6 +183,9 @@ public final class StoredLeg {
     public var missedConnection: Bool = false
     public var routeID: Int?
     public var routeName: String?
+    /// The transit line ridden and the network it was logged against (R-TRAN-4).
+    public var transitLineID: Int?
+    public var networkVersion: String?
     public var registration: String?
 
     public var operatorName: String?
