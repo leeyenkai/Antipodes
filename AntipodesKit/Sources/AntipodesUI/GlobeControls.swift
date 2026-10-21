@@ -280,6 +280,7 @@ struct GlobeFilterMenu: View {
                 Text("All years").tag(Int?.none)
                 ForEach(years, id: \.self) { Text(String($0)).tag(Int?.some($0)) }
             }
+            .pickerStyle(.menu)
 
             if !trips.isEmpty {
                 Picker("Trip", selection: $filter.tripID) {
@@ -288,6 +289,7 @@ struct GlobeFilterMenu: View {
                         Text(trip.displayName(model: model)).tag(UUID?.some(trip.id))
                     }
                 }
+                .pickerStyle(.menu)
             }
 
             if !modes.isEmpty {
@@ -298,6 +300,7 @@ struct GlobeFilterMenu: View {
                             .tag(TravelMode?.some(mode))
                     }
                 }
+                .pickerStyle(.menu)
             }
 
             if filter.isFiltering {

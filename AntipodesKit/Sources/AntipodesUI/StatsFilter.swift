@@ -12,6 +12,7 @@ struct StatsFilterMenu: View {
                 Text("All years").tag(Int?.none)
                 ForEach(years, id: \.self) { Text(String($0)).tag(Int?.some($0)) }
             }
+            .pickerStyle(.menu)
             if !model.log.trips.isEmpty {
                 Picker("Trip", selection: $model.statsFilter.tripID) {
                     Text("All trips").tag(UUID?.none)
@@ -19,6 +20,7 @@ struct StatsFilterMenu: View {
                         Text(trip.displayName(model: model)).tag(UUID?.some(trip.id))
                     }
                 }
+                .pickerStyle(.menu)
             }
             if !modes.isEmpty {
                 Picker("Mode", selection: $model.statsFilter.mode) {
@@ -28,11 +30,13 @@ struct StatsFilterMenu: View {
                             .tag(TravelMode?.some(mode))
                     }
                 }
+                .pickerStyle(.menu)
             }
             Picker("Purpose", selection: $model.statsFilter.purpose) {
                 Text("Any purpose").tag(TripPurpose?.none)
                 ForEach(TripPurpose.allCases) { Text($0.displayName).tag(TripPurpose?.some($0)) }
             }
+            .pickerStyle(.menu)
             if model.statsFilter.isActive {
                 Divider()
                 Button("Clear Filters", systemImage: "xmark.circle") {

@@ -157,6 +157,8 @@ struct RecentRides: View {
                                 .foregroundStyle(.tint)
                         }
                     }
+                    .buttonStyle(.plain)
+                    .contentShape(.rect)
                     .accessibilityLabel(
                         "Ride again today: \(ride.leg.origin.name) to \(ride.leg.destination.name)"
                     )

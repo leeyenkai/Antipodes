@@ -288,7 +288,8 @@ is blocked.
   titles — a travel personality, a Year in Review card, onboarding, share cards — are
   in New York. Cards, rings and bars are thinner, badges are flat medallions without a
   glow, Year in Review fades in rather than bouncing, and the globe's arcs and pins are
-  finer with a softer glow. Widgets follow.
+  finer with a softer glow. The mode picker's tiles are neutral, coloured only by their
+  symbol, and the globe and Stats filters open as short submenus. Widgets follow.
 
 - **Release hygiene**:
   - Saving a share card or a Year in Review video to Photos would have ended the app:

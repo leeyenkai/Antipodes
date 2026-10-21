@@ -298,7 +298,7 @@ struct ModeGrid: View {
                 } label: {
                     VStack(alignment: .leading, spacing: 8) {
                         Image(systemName: mode.symbolName)
-                            .font(.title2.weight(.semibold))
+                            .font(.title2.weight(.light))
                             .foregroundStyle(Palette.mode(mode))
                         Text(mode.displayName)
                             .font(.subheadline.weight(.semibold))
@@ -312,10 +312,7 @@ struct ModeGrid: View {
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .background(
-                        Palette.mode(mode).opacity(0.12),
-                        in: .rect(cornerRadius: 16, style: .continuous)
-                    )
+                    .background(.fill.tertiary, in: .rect(cornerRadius: 16, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(mode.displayName)
