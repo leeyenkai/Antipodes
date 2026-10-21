@@ -70,6 +70,10 @@ App/Antipodes/Resources/places.sqlite
 *.sqlite-wal
 *.sqlite-shm
 
+# ---- App icon previews ----
+# Rendered by Tools/icon/render.sh from the .icon documents, which are the source.
+Tools/icon/out/
+
 # ---- Tooling / editors ----
 .vscode/
 .idea/

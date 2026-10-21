@@ -1,19 +1,69 @@
 import SwiftUI
 
-/// The app's mark, drawn as vectors so it is crisp at any size: a place, and the place
-/// exactly opposite it through the Earth. Used where the app signs its work — share
-/// cards and Year in Review — instead of a generic globe symbol.
+/// The app's mark, drawn as vectors so it is crisp at any size: one great circle on the
+/// Earth, carrying a place on its near side and that place's antipode on its far side
+/// — every great circle through a point passes through its antipode. Used where the
+/// app signs its work, share cards and Year in Review, instead of a generic globe.
 ///
-/// It follows the app icon (`Tools/icon/build_icons.py`), simplified for small sizes:
-/// the Earth, the diameter through it, and the two antipodal points.
+/// It is the app icon (`Tools/icon/build_icons.py`, decision D-24) without the glass:
+/// the same circle, tilt and points, for sizes where the icon itself would be a blur.
 struct AppMark: View {
     var size: CGFloat = 20
+
+    /// The icon's geometry, as fractions of the Earth's radius.
+    private static let semiMajor = 0.933
+    private static let semiMinor = 0.373
+    private static let tilt = -32.0 * Double.pi / 180
+    private static let near = 124.0 * Double.pi / 180
+    private static let far = 304.0 * Double.pi / 180
 
     var body: some View {
         Canvas { context, canvas in
             let side = min(canvas.width, canvas.height)
             let centre = CGPoint(x: canvas.width / 2, y: canvas.height / 2)
             let radius = side / 2
+
+            func point(_ angle: Double) -> CGPoint {
+                let x = Self.semiMajor * cos(angle)
+                let y = Self.semiMinor * sin(angle)
+                return CGPoint(
+                    x: centre.x + radius * (x * cos(Self.tilt) - y * sin(Self.tilt)),
+                    y: centre.y + radius * (x * sin(Self.tilt) + y * cos(Self.tilt))
+                )
+            }
+
+            func arc(from start: Double, to end: Double) -> Path {
+                var path = Path()
+                let steps = 48
+                for step in 0 ... steps {
+                    let angle = start + (end - start) * Double(step) / Double(steps)
+                    if step == 0 {
+                        path.move(to: point(angle))
+                    } else {
+                        path.addLine(to: point(angle))
+                    }
+                }
+                return path
+            }
+
+            func dot(at angle: Double, radius dotRadius: CGFloat) -> Path {
+                let centre = point(angle)
+                return Path(ellipseIn: CGRect(
+                    x: centre.x - dotRadius,
+                    y: centre.y - dotRadius,
+                    width: dotRadius * 2,
+                    height: dotRadius * 2
+                ))
+            }
+
+            let line = max(1, side * 0.075)
+            // The far side first, faint, as if seen through the Earth.
+            context.stroke(
+                arc(from: .pi, to: 2 * .pi),
+                with: .color(Palette.pin.opacity(0.4)),
+                style: StrokeStyle(lineWidth: line * 0.8, lineCap: .butt)
+            )
+            context.fill(dot(at: Self.far, radius: side * 0.08), with: .color(.white.opacity(0.45)))
             context.fill(
                 Path(ellipseIn: CGRect(
                     x: centre.x - radius,
@@ -21,41 +71,14 @@ struct AppMark: View {
                     width: side,
                     height: side
                 )),
-                with: .color(Palette.visited.opacity(0.85))
+                with: .color(Palette.visited.opacity(0.8))
             )
-            // Up and to the right at 38° from vertical, as on the icon.
-            let angle = 38.0 * .pi / 180
-            let reach = radius * 0.62
-            let near = CGPoint(x: centre.x + reach * sin(angle), y: centre.y - reach * cos(angle))
-            let far = CGPoint(x: centre.x - reach * sin(angle), y: centre.y + reach * cos(angle))
-            var diameter = Path()
-            diameter.move(to: far)
-            diameter.addLine(to: near)
             context.stroke(
-                diameter,
-                with: .color(.white.opacity(0.75)),
-                style: StrokeStyle(lineWidth: max(1, side * 0.09), lineCap: .round)
+                arc(from: 0, to: .pi),
+                with: .color(Palette.pin),
+                style: StrokeStyle(lineWidth: line, lineCap: .butt)
             )
-            let farRadius = side * 0.11
-            context.fill(
-                Path(ellipseIn: CGRect(
-                    x: far.x - farRadius,
-                    y: far.y - farRadius,
-                    width: farRadius * 2,
-                    height: farRadius * 2
-                )),
-                with: .color(.white.opacity(0.85))
-            )
-            let nearRadius = side * 0.17
-            context.fill(
-                Path(ellipseIn: CGRect(
-                    x: near.x - nearRadius,
-                    y: near.y - nearRadius,
-                    width: nearRadius * 2,
-                    height: nearRadius * 2
-                )),
-                with: .color(Palette.pin)
-            )
+            context.fill(dot(at: Self.near, radius: side * 0.11), with: .color(.white))
         }
         .frame(width: size, height: size)
         .accessibilityHidden(true)

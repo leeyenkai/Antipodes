@@ -86,8 +86,15 @@ is blocked.
   opened; it had gone blank the morning after. Widgets have accessibility labels, and
   the extension has its own privacy manifest. The app writes the widgets' snapshot a
   moment after a burst of edits settles, and only when something changed.
-- A vector mark of the app — a place and its antipode through the Earth — signs share
-  cards and Year in Review instead of a generic globe symbol.
+- **The app icon** (D-24): "Great circle" — one great circle on a glass Earth, carrying a
+  place on its near side and its antipode on the far side. A layered Icon Composer
+  document generated from geometry by `Tools/icon/build_icons.py`, so iPhone, iPad and
+  Mac draw it with Liquid Glass in every appearance (default, dark, clear and tinted).
+  `Tools/icon/render.sh` renders it with Xcode's `ictool`, beside the two concepts it was
+  chosen from. It replaces a flattened PNG with an alpha channel, which App Store Connect
+  rejects, and hand-made Mac sizes.
+- A vector version of the same mark signs share cards and Year in Review instead of a
+  generic globe symbol.
 - Onboarding: what the app does, what it never does with your data, and where home is.
 - Settings: appearance, home, counting rules, units, a JSON backup that can be restored,
   CSV export, imports, a plain-language account of how things are counted, and the data
