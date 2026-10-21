@@ -6,12 +6,12 @@ struct RepeatVisitsView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        List(model.statistics.time.repeatVisits, id: \.place.id) { repeated in
+        List(model.shownStatistics.time.repeatVisits, id: \.place.id) { repeated in
             NavigationLink(value: StatsRoute.visits(
                 title: repeated.place.name,
-                ids: model.log.visits
+                ids: model.shownLog.visits
                     .filter { $0.place.id == repeated.place.id }
-                    .filter { model.rules.countsTowardsCoverage($0.visitType) }
+                    .filter { model.shownRules.countsTowardsCoverage($0.visitType) }
                     .map(\.id)
             )) {
                 HStack {
@@ -30,7 +30,7 @@ struct CountryGapsView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        List(model.statistics.time.countryGaps, id: \.countryCode) { gap in
+        List(model.shownStatistics.time.countryGaps, id: \.countryCode) { gap in
             NavigationLink(value: LogRoute.country(gap.countryCode)) {
                 HStack {
                     Text(Format.flag(gap.countryCode)).font(.title2)
@@ -59,7 +59,8 @@ struct VisitListView: View {
 
     var body: some View {
         let wanted = Set(ids)
-        let visits = model.log.visits.filter { wanted.contains($0.id) }.sorted { $0.date > $1.date }
+        let visits = model.shownLog.visits.filter { wanted.contains($0.id) }
+            .sorted { $0.date > $1.date }
         List {
             ForEach(visits) { visit in
                 NavigationLink(value: LogRoute.visit(visit.id)) {
@@ -79,7 +80,7 @@ struct ContinentListView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let coverage = model.statistics.coverage
+        let coverage = model.shownStatistics.coverage
         let byContinent = Dictionary(grouping: coverage.countriesSortedByName) { country in
             model.catalogue.countries[country.code]?.continent
         }
@@ -130,7 +131,7 @@ struct TripStatsList: View {
                     }
                 }
             }
-            if model.log.trips.isEmpty {
+            if model.shownLog.trips.isEmpty {
                 ContentUnavailableView("No trips yet", systemImage: "suitcase")
             }
         }

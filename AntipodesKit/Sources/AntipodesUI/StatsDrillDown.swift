@@ -21,8 +21,13 @@ struct StatsDrillDown: View {
         case .capitals: PlaceListView(kind: .city, filter: .capitals)
         case .unesco: PlaceListView(kind: .landmark, filter: .unesco)
         case .personality: PersonalityDetailView()
-        case let .legs(mode): LegListView(mode: mode)
-        case let .carbon(mode): LegListView(mode: mode, showsCarbon: true)
+        case let .legs(mode): LegListView(filter: .mode(mode))
+        case let .legFilter(filter): LegListView(filter: filter)
+        case let .carbon(mode): LegListView(filter: .mode(mode), showsCarbon: true)
+        case let .ranked(list): RankedPlacesView(list: list)
+        case let .grouped(list): GroupedAttributeView(list: list)
+        case .operators: OperatorPunctualityView()
+        case .timeByMode: TimeByModeView()
         case .repeats: RepeatVisitsView()
         case .gaps: CountryGapsView()
         case .continents: ContinentListView()
@@ -36,7 +41,7 @@ extension StatsDrillDown {
     /// The number this list explains, as a card to share — or nothing, for a list
     /// that is not one number.
     private var shareCard: ShareCard? {
-        let statistics = model.statistics
+        let statistics = model.shownStatistics
         let system = model.rules.unitSystem
         switch route {
         case .countries:
@@ -93,10 +98,11 @@ extension StatsDrillDown {
             return .stat(
                 title: "CO₂e, estimated",
                 value: Format.carbon(kilograms: total),
-                detail: nil,
+                detail: statistics.carbon.shortCredit,
                 symbol: "leaf.fill"
             )
-        case .personality, .repeats, .gaps, .continents, .trips, .visits:
+        case .personality, .repeats, .gaps, .continents, .trips, .visits, .legFilter, .ranked,
+             .grouped, .operators, .timeByMode:
             return nil
         }
     }
@@ -120,7 +126,7 @@ struct CountryListView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let coverage = model.statistics.coverage
+        let coverage = model.shownStatistics.coverage
         List {
             Section {
                 ForEach(coverage.countriesSortedByName, id: \.code) { country in
@@ -169,8 +175,9 @@ struct CountryDetailView: View {
     let countryCode: String
 
     var body: some View {
-        let ids = Set(model.statistics.coverage.visitIDsByCountry[countryCode] ?? [])
-        let visits = model.log.visits.filter { ids.contains($0.id) }.sorted { $0.date > $1.date }
+        let ids = Set(model.shownStatistics.coverage.visitIDsByCountry[countryCode] ?? [])
+        let visits = model.shownLog.visits.filter { ids.contains($0.id) }
+            .sorted { $0.date > $1.date }
         let facts = model.catalogue.countries[countryCode]
         List {
             Section {
@@ -270,9 +277,10 @@ struct PlaceListView: View {
     /// Unique places reached by counted visits. A landmark implies its city, so the
     /// cities list includes the city of every landmark visited (R-MODEL-6).
     private var grouped: [(place: PlaceReference, visits: [Visit])] {
-        let coverage = model.statistics.coverage
+        let coverage = model.shownStatistics.coverage
         var groups: [String: (place: PlaceReference, visits: [Visit])] = [:]
-        for visit in model.log.visits where model.rules.countsTowardsCoverage(visit.visitType) {
+        for visit in model.shownLog.visits
+            where model.shownRules.countsTowardsCoverage(visit.visitType) {
             let place = visit.place
             switch kind {
             case .city:
@@ -308,7 +316,7 @@ struct PlaceListView: View {
             }
         }
         if kind == .airport {
-            for leg in model.log.allLegs where leg.mode == .flight {
+            for leg in model.shownLog.allLegs where leg.mode == .flight {
                 for end in [leg.origin, leg.destination]
                     where end.kind == .airport && groups[end.id.description] == nil {
                     groups[end.id.description] = (end, [])
@@ -320,82 +328,12 @@ struct PlaceListView: View {
     }
 }
 
-/// Legs, optionally of one mode, with their distance or carbon.
-struct LegListView: View {
-    @Environment(AppModel.self) private var model
-    let mode: TravelMode?
-    var showsCarbon = false
-
-    var body: some View {
-        let carbon = model.statistics.carbon
-        let rows = model.log.journeys.flatMap { journey in
-            journey.legs.filter { mode == nil || $0.mode == mode }
-                .map { (journey: journey, leg: $0) }
-        }
-        .sorted { $0.leg.date > $1.leg.date }
-        List {
-            ForEach(rows, id: \.leg.id) { row in
-                NavigationLink(value: LogRoute.journey(row.journey.id)) {
-                    HStack(spacing: 12) {
-                        SymbolTile(
-                            systemName: row.leg.mode.symbolName,
-                            tint: Palette.mode(row.leg.mode)
-                        )
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("\(row.leg.origin.shortName) → \(row.leg.destination.shortName)")
-                            Text(row.leg.date.displayText)
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                        }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 2) {
-                            if showsCarbon {
-                                Text(carbon.kgByLeg[row.leg.id]
-                                    .map { Format.carbon(kilograms: $0) } ?? "—")
-                                if let saved = carbon.savedByLeg[row.leg.id], saved > 0 {
-                                    Text("saved \(Format.carbon(kilograms: saved))")
-                                        .font(.caption2)
-                                        .foregroundStyle(Palette.visited)
-                                }
-                            } else {
-                                Text(Format.distance(
-                                    row.leg.distanceKm,
-                                    model.rules.unitSystem,
-                                    approximate: row.leg.distanceSource
-                                        .isApproximate
-                                ))
-                                if let minutes = row.leg.durationMinutes {
-                                    Text(Format.duration(minutes: minutes))
-                                        .font(.caption2)
-                                        .foregroundStyle(.secondary)
-                                }
-                            }
-                        }
-                        .font(.subheadline.monospacedDigit())
-                    }
-                }
-                // Not a full swipe: logging a whole journey should take a deliberate tap.
-                .swipeActions(edge: .leading, allowsFullSwipe: false) {
-                    Button("Ride Again", systemImage: "arrow.uturn.forward") {
-                        model.rideAgain(row.leg, tripID: row.journey.tripID)
-                    }
-                    .tint(Palette.visited)
-                }
-            }
-            if rows.isEmpty {
-                ContentUnavailableView("No journeys", systemImage: mode?.symbolName ?? "airplane")
-            }
-        }
-        .navigationTitle(showsCarbon ? "Carbon by leg" : (mode?.displayName ?? "All legs"))
-    }
-}
-
 /// The personality and every score behind it (R-PERS-2).
 struct PersonalityDetailView: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let themes = model.statistics.themes
+        let themes = model.shownStatistics.themes
         List {
             if let personality = themes.personality {
                 Section {
@@ -404,8 +342,7 @@ struct PersonalityDetailView: View {
                             personality.archetype.name,
                             systemImage: personality.archetype.symbolName
                         )
-                        .font(.title.weight(.bold))
-                        .foregroundStyle(Palette.archetype(personality.archetype))
+                        .font(.display(.title))
                         Text(personality.archetype.summary)
                             .foregroundStyle(.secondary)
                     }
@@ -449,8 +386,14 @@ struct PersonalityDetailView: View {
                 }
             }
             Section("Your theme mix") {
+                // Each theme opens the landmarks that carry it.
                 ForEach(themes.shares) { share in
-                    LabeledContent(share.label, value: Format.percent(share.share))
+                    NavigationLink(value: StatsRoute.visits(
+                        title: share.label,
+                        ids: landmarkVisits(theme: share.theme)
+                    )) {
+                        LabeledContent(share.label, value: Format.percent(share.share))
+                    }
                 }
                 if let caveat = themes.input.caveat(counting: "landmarks") {
                     CaveatLabel(text: caveat)
@@ -458,5 +401,16 @@ struct PersonalityDetailView: View {
             }
         }
         .navigationTitle("Travel personality")
+    }
+
+    /// Visits that count, to landmarks tagged with a theme.
+    private func landmarkVisits(theme: String) -> [UUID] {
+        let gazetteer = model.gazetteer
+        return model.shownLog.visits
+            .filter {
+                $0.place.kind == .landmark && model.shownRules.countsTowardsCoverage($0.visitType)
+            }
+            .filter { gazetteer.facts(for: $0.place.id)?.themes.contains(theme) ?? false }
+            .map(\.id)
     }
 }

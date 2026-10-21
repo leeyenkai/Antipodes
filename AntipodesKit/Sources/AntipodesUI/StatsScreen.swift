@@ -11,7 +11,12 @@ enum StatsRoute: Hashable {
     case unesco
     case personality
     case legs(TravelMode?)
+    case legFilter(LegFilter)
     case carbon(TravelMode?)
+    case ranked(RankedList)
+    case grouped(GroupedList)
+    case operators
+    case timeByMode
     case repeats
     case gaps
     case continents
@@ -32,6 +37,9 @@ struct StatsScreen: View {
         NavigationStack {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 28) {
+                    if model.statsFilter.isActive {
+                        StatsFilterBanner()
+                    }
                     if model.log.isEmpty {
                         EmptyStateView(
                             title: "No stats yet",
@@ -39,6 +47,12 @@ struct StatsScreen: View {
                             systemImage: "chart.bar.xaxis",
                             actionTitle: "Log a Place",
                             action: { model.addRequest = AddRequest() }
+                        )
+                    } else if model.statsFilter.isActive, model.shownLog.isEmpty {
+                        ContentUnavailableView(
+                            "Nothing in this slice",
+                            systemImage: "line.3.horizontal.decrease.circle",
+                            description: Text("No visits or journeys match the filter.")
                         )
                     } else {
                         PersonalityHero()
@@ -62,6 +76,11 @@ struct StatsScreen: View {
             .navigationTitle("Stats")
             .addToolbarButton()
             .toolbar {
+                if !model.log.isEmpty {
+                    ToolbarItem(placement: .primaryAction) {
+                        StatsFilterMenu()
+                    }
+                }
                 ToolbarItem(placement: .primaryAction) {
                     Button("Share Globe", systemImage: "square.and.arrow.up") {
                         sharing = ShareItem(card: .globe)
@@ -238,7 +257,7 @@ private struct PersonalityHero: View {
 
     @ViewBuilder
     private var content: some View {
-        let themes = model.statistics.themes
+        let themes = model.shownStatistics.themes
         if let personality = themes.personality {
             let tint = Palette.archetype(personality.archetype)
             VStack(alignment: .leading, spacing: 14) {
@@ -341,7 +360,7 @@ private struct HeadlineGrid: View {
     }
 
     var body: some View {
-        let statistics = model.statistics
+        let statistics = model.shownStatistics
         let coverage = statistics.coverage
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 160), spacing: 12)], spacing: 12) {
             NavigationLink(value: StatsRoute.countries) {

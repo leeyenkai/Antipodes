@@ -8,8 +8,8 @@ import SwiftUI
 struct CoverageSection: View {
     @Environment(AppModel.self) private var model
     var body: some View {
-        let coverage = model.statistics.coverage
-        let extremes = model.statistics.extremes
+        let coverage = model.shownStatistics.coverage
+        let extremes = model.shownStatistics.extremes
         let system = model.rules.unitSystem
         StatsSection(title: "Coverage", symbol: "map", caveat: coverage.input.caveat) {
             StatCardList {
@@ -59,7 +59,7 @@ struct CoverageSection: View {
                 )
                 StatRow(
                     "Airports",
-                    "\(model.statistics.flights.airportsVisited)",
+                    "\(model.shownStatistics.flights.airportsVisited)",
                     symbol: "airplane.departure",
                     route: .places(.airport)
                 )
@@ -115,7 +115,7 @@ private struct AntipodeCard: View {
     @State private var isPickingHome = false
 
     var body: some View {
-        let extremes = model.statistics.extremes
+        let extremes = model.shownStatistics.extremes
         VStack(alignment: .leading, spacing: 8) {
             Label("Your antipode", systemImage: "circle.circle")
                 .font(.headline)
@@ -168,7 +168,7 @@ private struct AntipodeCard: View {
 struct DistanceSection: View {
     @Environment(AppModel.self) private var model
     var body: some View {
-        let statistics = model.statistics
+        let statistics = model.shownStatistics
         let distance = statistics.distance
         let flights = statistics.flights
         let journeys = statistics.journeys
@@ -224,7 +224,9 @@ struct DistanceSection: View {
                         "Time travelling",
                         Format.duration(minutes: journeys.totalMinutes),
                         symbol: "clock",
-                        detail: journeys.durationInput.caveat(counting: "legs"), route: .legs(nil)
+                        detail: journeys.durationInput.caveat(counting: "legs")
+                            ?? hoursByMode(journeys),
+                        route: .timeByMode
                     )
                 }
                 if let busiest = journeys.busiestDay {
@@ -235,7 +237,8 @@ struct DistanceSection: View {
                         detail: [
                             Format.day(busiest.day),
                             journeys.dayInput.caveat(counting: "legs"),
-                        ].compactMap(\.self).joined(separator: "\n"), route: .legs(nil)
+                        ].compactMap(\.self).joined(separator: "\n"),
+                        route: .legFilter(.onDay(busiest.day))
                     )
                 }
                 if let varied = journeys.mostVariedJourney {
@@ -255,7 +258,7 @@ struct DistanceSection: View {
                         detail: """
                         \(Format.ordinalCount(journeys.bordersCrossedOverland, "border")) crossed \
                         by land
-                        """, route: .legs(nil)
+                        """, route: .legFilter(.overland)
                     )
                 }
             }
@@ -313,8 +316,19 @@ struct DistanceSection: View {
         return "\(Format.distance(distance.approximateKm, system)) of it on straight-line estimates"
     }
 
+    /// "Flight 42 h · Rail 12 h", the two modes with the most time.
+    private func hoursByMode(_ journeys: JourneyStatistics) -> String? {
+        guard journeys.minutesByMode.count > 1 else { return nil }
+        return journeys.minutesByMode
+            .sorted { $0.value > $1.value }
+            .prefix(2)
+            .map { "\($0.key.displayName) \(Format.hours(minutes: $0.value))" }
+            .joined(separator: " · ")
+    }
+
     private func journeyRoute(for leg: JourneyLeg) -> LogRoute? {
-        model.log.journeys.first { $0.legs.contains { $0.id == leg.id } }.map { .journey($0.id) }
+        model.shownLog.journeys.first { $0.legs.contains { $0.id == leg.id } }
+            .map { .journey($0.id) }
     }
 }
 
@@ -340,144 +354,5 @@ private struct ModeDistanceChart: View {
         .chartXAxis(.hidden)
         .frame(height: CGFloat(rows.count) * 34 + 10)
         .accessibilityLabel("Distance by mode")
-    }
-}
-
-// MARK: - Rail and punctuality
-
-struct JourneyDetailSection: View {
-    @Environment(AppModel.self) private var model
-
-    var body: some View {
-        let rail = model.statistics.rail
-        let punctuality = model.statistics.punctuality
-        let journeys = model.statistics.journeys
-        if rail.legCount > 0 || punctuality.input.used > 0 || journeys.connectionsMissed > 0 {
-            StatsSection(title: "Rail and punctuality", symbol: "tram") {
-                if rail.legCount > 0 {
-                    StatCardList {
-                        StatRow(
-                            "Rail legs",
-                            "\(rail.legCount)",
-                            symbol: "tram",
-                            route: .legs(.rail)
-                        )
-                        StatRow(
-                            "Rail distance",
-                            Format.distance(rail.kilometres, model.rules.unitSystem),
-                            symbol: "ruler",
-                            detail: rail.kilometreInput.caveat(counting: "rail legs"),
-                            route: .legs(.rail)
-                        )
-                        StatRow(
-                            "Stations",
-                            "\(rail.stations.count)",
-                            symbol: "signpost.right",
-                            route: .legs(.rail)
-                        )
-                        StatRow(
-                            "Operators",
-                            "\(rail.operators.count)",
-                            symbol: "building",
-                            detail: rail.operators.sorted().prefix(4).joined(separator: ", "),
-                            route: .legs(.rail)
-                        )
-                        if !rail.namedServices.isEmpty {
-                            StatRow(
-                                "Named services",
-                                "\(rail.namedServices.count)",
-                                symbol: "star",
-                                detail: rail.namedServices.sorted().joined(separator: ", "),
-                                route: .legs(.rail)
-                            )
-                        }
-                        StatRow(
-                            "Night trains",
-                            "\(rail.overnightLegs)",
-                            symbol: "bed.double",
-                            route: .legs(.rail)
-                        )
-                        StatRow(
-                            "Countries by rail",
-                            "\(rail.countries.count)",
-                            symbol: "flag",
-                            detail: "\(Format.ordinalCount(rail.bordersCrossed, "border")) crossed",
-                            route: .legs(.rail)
-                        )
-                        if let highest = rail.highestPointM {
-                            StatRow(
-                                "Highest by rail",
-                                Format.elevation(highest, model.rules.unitSystem),
-                                symbol: "mountain.2", route: .legs(.rail)
-                            )
-                        }
-                    }
-                }
-                if punctuality.input.used > 0 {
-                    StatCardList {
-                        if let average = punctuality.averageDelayMinutes {
-                            StatRow(
-                                "Average arrival",
-                                Format.delay(minutes: average),
-                                symbol: "clock.badge.exclamationmark",
-                                detail: punctuality.input.caveat(counting: "legs"),
-                                route: .legs(nil)
-                            )
-                        }
-                        if let share = punctuality.onTimeShare {
-                            StatRow(
-                                "On time",
-                                Format.percent(share, digits: 0),
-                                symbol: "checkmark.circle",
-                                detail: """
-                                Within \(PunctualityStatistics.onTimeToleranceMinutes) minutes
-                                """, route: .legs(nil)
-                            )
-                        }
-                        if let best = punctuality.mostPunctualOperator {
-                            StatRow(
-                                "Most punctual",
-                                best.name,
-                                symbol: "hand.thumbsup",
-                                detail: Format.delay(minutes: best.averageDelayMinutes),
-                                route: .legs(nil)
-                            )
-                        }
-                        if let worst = punctuality.leastPunctualOperator,
-                           worst != punctuality.mostPunctualOperator {
-                            StatRow(
-                                "Least punctual",
-                                worst.name,
-                                symbol: "tortoise",
-                                detail: Format.delay(minutes: worst.averageDelayMinutes),
-                                route: .legs(nil)
-                            )
-                        }
-                        if let minutes = punctuality.worstDelayMinutes, minutes > 0 {
-                            StatRow(
-                                "Worst delay",
-                                Format.duration(minutes: minutes),
-                                symbol: "exclamationmark.triangle", route: .legs(nil)
-                            )
-                        }
-                    }
-                }
-                if journeys.multiLegJourneys > 0 {
-                    StatCardList {
-                        StatRow(
-                            "Multi-leg journeys",
-                            "\(journeys.multiLegJourneys)",
-                            symbol: "point.3.connected.trianglepath.dotted", route: .legs(nil)
-                        )
-                        StatRow(
-                            "Connections missed",
-                            "\(journeys.connectionsMissed)",
-                            symbol: "exclamationmark.arrow.triangle.2.circlepath",
-                            route: .legs(nil)
-                        )
-                    }
-                }
-            }
-        }
     }
 }

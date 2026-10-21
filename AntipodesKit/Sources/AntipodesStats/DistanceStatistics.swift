@@ -16,6 +16,8 @@ public struct DistanceStatistics: Hashable, Sendable {
     public let approximateKm: Double
 
     public let longestLeg: JourneyLeg?
+    /// The longest journey of more than one leg. A single long flight is the longest
+    /// leg already; this is the longest trip made of connections.
     public let longestJourney: Journey?
     public let input: StatInputSummary
 
@@ -91,7 +93,9 @@ public struct DistanceStatistics: Hashable, Sendable {
             approximateLegCount: approximateLegCount,
             approximateKm: approximateKm,
             longestLeg: longestLeg,
-            longestJourney: countedJourneys.max { $0.totalDistanceKm < $1.totalDistanceKm },
+            longestJourney: countedJourneys
+                .filter { $0.legs.count > 1 }
+                .max { $0.totalDistanceKm < $1.totalDistanceKm },
             input: input
         )
     }

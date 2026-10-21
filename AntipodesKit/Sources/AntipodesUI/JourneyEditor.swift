@@ -96,6 +96,9 @@ struct JourneyEditor: View {
                         """
                     )
                 }
+                if existing == nil {
+                    RecentRides(tripID: tripID, onDone: onDone)
+                }
             }
 
             ForEach($legs) { $leg in
@@ -138,6 +141,21 @@ struct JourneyEditor: View {
                         Button("Ride Again Today", systemImage: "arrow.uturn.forward") {
                             model.rideAgain(leg, tripID: existing.tripID)
                             onDone()
+                        }
+                    } else {
+                        // Any one leg of a longer journey: the commuter's second train.
+                        Menu {
+                            ForEach(existing.legs) { leg in
+                                Button(
+                                    "\(leg.origin.shortName) → \(leg.destination.shortName)",
+                                    systemImage: leg.mode.symbolName
+                                ) {
+                                    model.rideAgain(leg, tripID: existing.tripID)
+                                    onDone()
+                                }
+                            }
+                        } label: {
+                            Label("Ride a Leg Again Today", systemImage: "arrow.uturn.forward")
                         }
                     }
                     Button("Delete Journey", systemImage: "trash", role: .destructive) {

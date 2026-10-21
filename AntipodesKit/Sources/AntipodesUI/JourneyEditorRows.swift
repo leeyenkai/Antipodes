@@ -123,3 +123,69 @@ struct ConnectionRow: View {
         return parts.joined(separator: " · ")
     }
 }
+
+/// The last few rides, each logged again for today with one tap (R-JLOG-6): the
+/// commuter's train, the ferry taken every summer.
+struct RecentRides: View {
+    @Environment(AppModel.self) private var model
+    let tripID: UUID?
+    let onDone: () -> Void
+
+    var body: some View {
+        let rides = recent
+        if !rides.isEmpty {
+            Section {
+                ForEach(rides, id: \.leg.id) { ride in
+                    Button {
+                        model.rideAgain(ride.leg, tripID: tripID ?? ride.tripID)
+                        onDone()
+                    } label: {
+                        HStack(spacing: 12) {
+                            SymbolTile(
+                                systemName: ride.leg.mode.symbolName,
+                                tint: Palette.mode(ride.leg.mode)
+                            )
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(ride.leg.routeTitle)
+                                    .foregroundStyle(.primary)
+                                Text(ride.leg.date.displayText)
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "arrow.uturn.forward")
+                                .foregroundStyle(.tint)
+                        }
+                    }
+                    .accessibilityLabel(
+                        "Ride again today: \(ride.leg.origin.name) to \(ride.leg.destination.name)"
+                    )
+                }
+            } header: {
+                Text("Ride again today")
+            }
+        }
+    }
+
+    /// The most recent rides by date, each route and mode once.
+    private var recent: [(leg: JourneyLeg, tripID: UUID?)] {
+        var seen: Set<String> = []
+        return model.log.journeys
+            .flatMap { journey in journey.legs.map { (leg: $0, tripID: journey.tripID) } }
+            .sorted { $0.leg.date > $1.leg.date }
+            .filter { ride in
+                seen.insert(
+                    "\(ride.leg.mode.rawValue) \(ride.leg.origin.id) \(ride.leg.destination.id)"
+                ).inserted
+            }
+            .prefix(4)
+            .map(\.self)
+    }
+}
+
+extension JourneyLeg {
+    /// "Oslo → Bergen".
+    var routeTitle: String {
+        "\(origin.shortName) → \(destination.shortName)"
+    }
+}

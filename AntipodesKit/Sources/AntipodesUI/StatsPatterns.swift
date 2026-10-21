@@ -9,7 +9,7 @@ struct AttributesSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let attributes = model.statistics.attributes
+        let attributes = model.shownStatistics.attributes
         let system = model.rules.unitSystem
         StatsSection(title: "Place attributes", symbol: "building.columns") {
             StatCardList {
@@ -20,7 +20,7 @@ struct AttributesSection: View {
                         symbol: "hourglass",
                         detail: attributes.landmarkAgeInput.caveat(counting: "landmarks")
                             ?? attributes.medianLandmarkAgeYears
-                            .map { "Median \(Format.years($0))" }, route: .places(.landmark)
+                            .map { "Median \(Format.years($0))" }, route: .ranked(.landmarkAge)
                     )
                 }
                 if let oldest = attributes.oldestLandmark {
@@ -28,7 +28,7 @@ struct AttributesSection: View {
                         "Oldest",
                         Format.year(Int(oldest.value)),
                         symbol: "scroll",
-                        detail: oldest.place.name, route: .places(.landmark)
+                        detail: oldest.place.name, route: .ranked(.landmarkAge)
                     )
                 }
                 if let newest = attributes.newestLandmark, newest != attributes.oldestLandmark {
@@ -36,7 +36,7 @@ struct AttributesSection: View {
                         "Newest",
                         Format.year(Int(newest.value)),
                         symbol: "sparkle",
-                        detail: newest.place.name, route: .places(.landmark)
+                        detail: newest.place.name, route: .ranked(.landmarkAge)
                     )
                 }
                 if let population = attributes.averageCityPopulation {
@@ -46,7 +46,7 @@ struct AttributesSection: View {
                         symbol: "person.3",
                         detail: attributes.cityPopulationInput.caveat(counting: "cities")
                             ?? attributes.largestCity.map { "Largest: \($0.place.name)" },
-                        route: .places(.city)
+                        route: .ranked(.population)
                     )
                 }
                 if let smallest = attributes.smallestCity, attributes.cityPopulationInput.used > 1 {
@@ -54,7 +54,7 @@ struct AttributesSection: View {
                         "Smallest city",
                         Format.compact(smallest.value) + " people",
                         symbol: "house",
-                        detail: smallest.place.name, route: .places(.city)
+                        detail: smallest.place.name, route: .ranked(.population)
                     )
                 }
                 if let elevation = attributes.averageElevationM {
@@ -65,32 +65,34 @@ struct AttributesSection: View {
                         detail: attributes.highestPlace
                             .map {
                                 "Highest: \($0.place.name), \(Format.elevation($0.value, system))"
-                            }, route: .places(.city)
+                            }, route: .ranked(.elevation)
                     )
                 }
                 StatRow(
                     "Time zones",
                     "\(attributes.timeZones.count)",
                     symbol: "clock",
-                    detail: attributes.timeZoneInput.caveat(counting: "places"), route: .countries
+                    detail: attributes.timeZoneInput.caveat(counting: "places"),
+                    route: .grouped(.timeZones)
                 )
                 StatRow(
-                    "Languages",
+                    "Main languages",
                     "\(attributes.languageCodes.count)",
                     symbol: "character.bubble",
-                    detail: names(attributes.languageCodes, Format.languageName), route: .countries
+                    detail: names(attributes.languageCodes, Format.languageName),
+                    route: .grouped(.languages)
                 )
                 StatRow(
                     "Currencies",
                     "\(attributes.currencyCodes.count)",
                     symbol: "banknote",
                     detail: attributes.currencyCodes.sorted().prefix(6)
-                        .joined(separator: " · "), route: .countries
+                        .joined(separator: " · "), route: .grouped(.currencies)
                 )
             }
             Text("""
-            Temperature in the month you visited needs climate data that hasn't been \
-            licence-cleared yet, so it isn't shown rather than guessed.
+            Temperature in the month you visited, and climate zones, need climate data that \
+            hasn't been licence-cleared yet, so they aren't shown rather than guessed.
             """)
             .font(.caption)
             .foregroundStyle(.secondary)
@@ -110,7 +112,7 @@ struct PatternsSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let time = model.statistics.time
+        let time = model.shownStatistics.time
         StatsSection(title: "Time and patterns", symbol: "calendar") {
             if !time.visitsByYear.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
@@ -174,9 +176,9 @@ struct PatternsSection: View {
                         detail: Format.ordinalCount(busiest.visits, "visit"),
                         route: .visits(
                             title: "\(Format.monthName(busiest.month)) \(String(busiest.year))",
-                            ids: model.log.visits.filter {
+                            ids: model.shownLog.visits.filter {
                                 $0.date.year == busiest.year && $0.date.startMonth == busiest.month
-                                    && model.rules.countsTowardsCoverage($0.visitType)
+                                    && model.shownRules.countsTowardsCoverage($0.visitType)
                             }.map(\.id)
                         )
                     )
@@ -289,7 +291,8 @@ private struct OnThisDayCard: View {
         switch entry.record {
         case let .visit(visit): .visit(visit.id)
         case let .leg(leg):
-            .journey(model.log.journeys.first { $0.legs.contains { $0.id == leg.id } }?.id ?? leg
+            .journey(model.shownLog.journeys.first { $0.legs.contains { $0.id == leg.id } }?
+                .id ?? leg
                 .id)
         }
     }
@@ -301,7 +304,7 @@ struct ThemesSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let themes = model.statistics.themes
+        let themes = model.shownStatistics.themes
         if !themes.shares.isEmpty {
             StatsSection(
                 title: "Culture and themes",
@@ -358,7 +361,7 @@ struct YearInReviewTeaser: View {
     @State private var presentedYear: YearItem?
 
     var body: some View {
-        let years = YearInReview.availableYears(in: model.log)
+        let years = YearInReview.availableYears(in: model.shownLog)
         if !years.isEmpty {
             StatsSection(title: "Year in Review", symbol: "sparkles.rectangle.stack") {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -408,8 +411,10 @@ struct YearInReviewTeaser: View {
 
     private func summary(_ year: Int) -> String {
         let countries = Set(
-            model.log.visits
-                .filter { $0.date.year == year && model.rules.countsTowardsCoverage($0.visitType) }
+            model.shownLog.visits
+                .filter {
+                    $0.date.year == year && model.shownRules.countsTowardsCoverage($0.visitType)
+                }
                 .compactMap(\.place.countryCode)
         ).count
         return "\(Format.ordinalCount(countries, "country", "countries"))"

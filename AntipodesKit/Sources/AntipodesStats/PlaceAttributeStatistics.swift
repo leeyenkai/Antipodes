@@ -44,10 +44,26 @@ public struct PlaceAttributeStatistics: Hashable, Sendable {
     public let timeZoneInput: StatInputSummary
 
     /// Main languages and currencies of the countries visited, from the place
-    /// database's country facts.
+    /// database's country facts. A country's main language is the first GeoNames lists
+    /// for it; its full list runs to every regional language (India's has 25), which
+    /// would turn "languages" into a count of minority languages.
     public let languageCodes: Set<String>
     public let currencyCodes: Set<String>
     public let countryFactsInput: StatInputSummary
+
+    // What each figure above rests on, for the screens behind them ("tap any number").
+
+    /// Landmarks by the year they were built, oldest first.
+    public let landmarksByYear: [MeasuredPlace]
+    /// Cities and airports by elevation, highest first.
+    public let placesByElevation: [MeasuredPlace]
+    /// Cities by population, largest first.
+    public let citiesByPopulation: [MeasuredPlace]
+    /// Places visited in each time zone.
+    public let placesByTimeZone: [String: [PlaceReference]]
+    /// Countries visited, by main language and by currency, as ISO codes.
+    public let countriesByLanguage: [String: [String]]
+    public let countriesByCurrency: [String: [String]]
 
     // Gathers the places once, then measures each attribute.
     // swiftlint:disable function_body_length
@@ -104,11 +120,13 @@ public struct PlaceAttributeStatistics: Hashable, Sendable {
         // Time zones.
         var zoneInput = StatInputSummary()
         var zones: Set<String> = []
+        var placesByZone: [String: [PlaceReference]] = [:]
         for place in ordered where place.kind != .country && place.kind != .route {
             if let zone = place.timeZoneIdentifier ?? gazetteer.facts(for: place.id)?
                 .timeZoneIdentifier {
                 zoneInput.include()
                 zones.insert(zone)
+                placesByZone[zone, default: []].append(place)
             } else {
                 zoneInput.exclude(.attributeUnknown)
             }
@@ -116,8 +134,8 @@ public struct PlaceAttributeStatistics: Hashable, Sendable {
 
         // Languages and currencies, per country.
         var countryInput = StatInputSummary()
-        var languages: Set<String> = []
-        var currencies: Set<String> = []
+        var languages: [String: [String]] = [:]
+        var currencies: [String: [String]] = [:]
         for code in countries.sorted() {
             guard let facts = gazetteer.country(code) else {
                 countryInput.exclude(.attributeUnknown)
@@ -125,10 +143,10 @@ public struct PlaceAttributeStatistics: Hashable, Sendable {
             }
             countryInput.include()
             if let language = facts.primaryLanguage {
-                languages.insert(language)
+                languages[language, default: []].append(code)
             }
             if let currency = facts.currencyCode {
-                currencies.insert(currency)
+                currencies[currency, default: []].append(code)
             }
         }
 
@@ -150,9 +168,17 @@ public struct PlaceAttributeStatistics: Hashable, Sendable {
             cityPopulationInput: populationInput,
             timeZones: zones,
             timeZoneInput: zoneInput,
-            languageCodes: languages,
-            currencyCodes: currencies,
-            countryFactsInput: countryInput
+            languageCodes: Set(languages.keys),
+            currencyCodes: Set(currencies.keys),
+            countryFactsInput: countryInput,
+            landmarksByYear: built.sorted { ($0.value, $0.place.name) < ($1.value, $1.place.name) },
+            placesByElevation: elevations
+                .sorted { ($0.value, $1.place.name) > ($1.value, $0.place.name) },
+            citiesByPopulation: populations
+                .sorted { ($0.value, $1.place.name) > ($1.value, $0.place.name) },
+            placesByTimeZone: placesByZone.mapValues { $0.sorted { $0.name < $1.name } },
+            countriesByLanguage: languages,
+            countriesByCurrency: currencies
         )
     }
 

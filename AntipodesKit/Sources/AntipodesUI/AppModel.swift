@@ -124,6 +124,22 @@ public final class AppModel {
     public var pendingRoute: PendingRoute?
     /// What was just deleted, while the app offers to undo it.
     public var lastDeletion: Deletion?
+    /// Counts rides logged again, so the screen can confirm each one with a tap.
+    public var rideLoggedAgain = 0
+    @ObservationIgnored private var filterGeneration = 0
+
+    /// The slice of the log the Stats screen is showing (§5.7). Not saved: the screen
+    /// opens on the whole log.
+    public var statsFilter = LogFilter.none {
+        didSet {
+            guard statsFilter != oldValue else { return }
+            recomputeFiltered()
+        }
+    }
+
+    /// The statistics of that slice, and the slice itself, while a filter is set.
+    public private(set) var filteredStatistics: TravelStatistics?
+    public private(set) var filteredLog = TravelLog.empty
 
     public init(store: TravelLogStore, placeDatabaseURL: URL?, bordersURL: URL? = nil) {
         self.store = store
@@ -261,6 +277,33 @@ public final class AppModel {
             statisticsRevision += 1
             writeWidgetSnapshot()
         }
+        recomputeFiltered()
+    }
+
+    /// Works out the filtered slice's statistics off the main thread. Until they arrive,
+    /// the screen shows the slice's statistics as empty rather than the whole log's.
+    private func recomputeFiltered() {
+        filterGeneration += 1
+        let generation = filterGeneration
+        guard statsFilter.isActive else {
+            filteredStatistics = nil
+            filteredLog = .empty
+            return
+        }
+        let slice = log.restricted(to: statsFilter)
+        let context = {
+            var context = statisticsContext
+            context.rules = statsFilter.rules(from: rules)
+            return context
+        }()
+        filteredLog = slice
+        Task {
+            let result = await Task.detached(priority: .userInitiated) {
+                StatisticsEngine.compute(for: slice, context: context)
+            }.value
+            guard generation == filterGeneration else { return }
+            filteredStatistics = result
+        }
     }
 
     // MARK: - Choices
@@ -364,10 +407,19 @@ public final class AppModel {
     }
 
     /// Duplicates a leg as a new journey dated today (R-JLOG-6).
+    /// Logs the same ride again, dated today (R-JLOG-6). It joins the original's trip only
+    /// while that trip is still under way — its last record no more than a week ago — so
+    /// a holiday's second tram files with the holiday and a later commute does not.
     public func rideAgain(_ leg: JourneyLeg, tripID: UUID?) {
-        perform {
-            let trip = try tripID.flatMap { try store.trip(id: $0) }
-            try store.logJourney(legs: [leg.rideAgain(on: .day(.today()))], trip: trip)
+        let today = CalendarDate.today()
+        let ongoingTrip = tripID.flatMap { id in
+            dates(ofTrip: id).flatMap { $0.end.days(to: today) <= 7 ? id : nil }
+        }
+        if perform({
+            let trip = try ongoingTrip.flatMap { try store.trip(id: $0) }
+            try store.logJourney(legs: [leg.rideAgain(on: .day(today))], trip: trip)
+        }) {
+            rideLoggedAgain += 1
         }
     }
 

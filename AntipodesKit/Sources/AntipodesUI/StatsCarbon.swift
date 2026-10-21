@@ -9,7 +9,7 @@ struct CarbonSection: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
-        let carbon = model.statistics.carbon
+        let carbon = model.shownStatistics.carbon
         if carbon.input.used > 0 {
             StatsSection(
                 title: "Carbon",
@@ -91,5 +91,17 @@ private struct CarbonByYearChart: View {
             }
         }
         .frame(height: 140)
+    }
+}
+
+extension CarbonStatistics {
+    /// "Estimated with UK DESNZ 2025 factors": the short credit every carbon figure
+    /// carries where the full line will not fit (R-CO2-3).
+    var shortCredit: String {
+        var source = sourceName
+        if let factorYear, !source.contains(String(factorYear)) {
+            source += " \(factorYear)"
+        }
+        return "Estimated with \(source) factors"
     }
 }

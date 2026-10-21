@@ -51,6 +51,7 @@ public struct TravelStatistics: Hashable, Sendable {
     public let themes: ThemeStatistics
     public let journeys: JourneyStatistics
     public let rail: RailStatistics
+    public let roadAndSea: RoadAndSeaStatistics
     public let punctuality: PunctualityStatistics
     public let carbon: CarbonStatistics
     public let collections: [CollectionProgress]
@@ -149,8 +150,9 @@ public enum StatisticsEngine {
                 today: context.today
             ),
             themes: ThemeStatistics.compute(for: log, rules: rules, gazetteer: gazetteer),
-            journeys: JourneyStatistics.compute(for: log, rules: rules),
+            journeys: JourneyStatistics.compute(for: log, rules: rules, routes: context.routes),
             rail: RailStatistics.compute(for: log, rules: rules, routes: context.routes),
+            roadAndSea: RoadAndSeaStatistics.compute(for: log, rules: rules),
             punctuality: PunctualityStatistics.compute(for: log, rules: rules),
             carbon: CarbonStatistics.compute(
                 for: log,

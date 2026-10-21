@@ -189,6 +189,9 @@ private struct TripStatsSection: View {
                     value: Format.carbon(kilograms: stats.carbon.totalKg),
                     systemImage: "leaf"
                 )
+                Text(stats.carbon.shortCredit)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
             if let top = stats.themes.topThemes.first {
                 DetailRow(title: "Top theme", value: top.label, systemImage: "sparkles")

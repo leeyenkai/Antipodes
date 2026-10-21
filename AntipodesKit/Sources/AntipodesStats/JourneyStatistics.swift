@@ -15,7 +15,9 @@ public struct JourneyStatistics: Hashable, Sendable {
     public let dayInput: StatInputSummary
     /// The journey that used the most different modes.
     public let mostVariedJourney: Journey?
-    /// Countries touched by the ends of surface legs.
+    /// Countries reached overland: the ends of surface legs, and every country a
+    /// catalogue route ridden in full runs through — the Trans-Siberian crosses Russia
+    /// and Mongolia whichever two cities it is logged between.
     public let countriesOverland: Set<String>
     /// Surface legs whose two ends are in different countries.
     public let bordersCrossedOverland: Int
@@ -33,8 +35,10 @@ public struct JourneyStatistics: Hashable, Sendable {
 
     public static func compute(
         for log: TravelLog,
-        rules: CountingRules = .default
+        rules: CountingRules = .default,
+        routes: [RouteInfo] = []
     ) -> JourneyStatistics {
+        let routesByID = routes.byID
         var minutes: [TravelMode: Int] = [:]
         var durationInput = StatInputSummary()
         var legsByDay: [CalendarDate: Int] = [:]
@@ -63,6 +67,10 @@ public struct JourneyStatistics: Hashable, Sendable {
                 for code in [leg.origin.countryCode, leg.destination.countryCode]
                     .compactMap(\.self) {
                     overland.insert(code)
+                }
+                if let route = leg.routeID.flatMap({ routesByID[$0] }),
+                   route.isRiddenInFull(by: leg) {
+                    overland.formUnion(route.countryCodes)
                 }
                 if let from = leg.origin.countryCode, let to = leg.destination.countryCode,
                    from != to {
@@ -149,10 +157,7 @@ public struct RailStatistics: Hashable, Sendable {
         var highest: Double?
         var input = StatInputSummary()
         var kilometreInput = StatInputSummary()
-        let routesByID = Dictionary(
-            routes.map { ($0.id, $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
+        let routesByID = routes.byID
 
         for leg in log.allLegs where leg.mode == .rail {
             guard rules.countsInStats(leg.purpose) else {
@@ -191,6 +196,9 @@ public struct RailStatistics: Hashable, Sendable {
             }
             for code in [leg.origin.countryCode, leg.destination.countryCode].compactMap(\.self) {
                 countries.insert(code)
+            }
+            if let route = leg.routeID.flatMap({ routesByID[$0] }), route.isRiddenInFull(by: leg) {
+                countries.formUnion(route.countryCodes)
             }
             if let from = leg.origin.countryCode, let to = leg.destination.countryCode, from != to {
                 borders += 1
@@ -408,5 +416,12 @@ extension String {
     var nonEmpty: String? {
         let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+extension [RouteInfo] {
+    /// The routes by id; a duplicate id keeps the first.
+    var byID: [Int64: RouteInfo] {
+        Dictionary(map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
     }
 }

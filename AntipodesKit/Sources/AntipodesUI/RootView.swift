@@ -100,6 +100,7 @@ public struct RootView: View {
             .fileDropImport()
             .environment(borderStore)
             .environment(imagery)
+            .sensoryFeedback(.success, trigger: model.rideLoggedAgain)
             // The satellite picture is held only while it is the chosen style.
             .task(id: model.globeStyle) {
                 if model.globeStyle == .satellite {

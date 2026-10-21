@@ -33,6 +33,25 @@ public extension AppModel {
         }.value
     }
 
+    // MARK: - What the Stats screen shows
+
+    /// The statistics the Stats screen shows: the filtered slice's while a filter is set
+    /// (§5.7), the whole log's otherwise.
+    var shownStatistics: TravelStatistics {
+        guard statsFilter.isActive else { return statistics }
+        return filteredStatistics ?? emptyStatistics
+    }
+
+    /// The records behind those statistics, for the lists a number opens.
+    var shownLog: TravelLog {
+        statsFilter.isActive ? filteredLog : log
+    }
+
+    /// The rules those statistics were counted by: a commute filter counts commutes.
+    var shownRules: CountingRules {
+        statsFilter.rules(from: rules)
+    }
+
     /// Statistics of nothing, under the current rules — what a screen shows for the
     /// moment before its own numbers arrive.
     var emptyStatistics: TravelStatistics {

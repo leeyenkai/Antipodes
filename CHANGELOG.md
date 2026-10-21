@@ -95,6 +95,20 @@ is blocked.
   rejects, and hand-made Mac sizes.
 - A vector version of the same mark signs share cards and Year in Review instead of a
   generic globe symbol.
+- **Stats can be filtered** by year, trip, mode and purpose (§5.7). A banner says what
+  slice is showing; a mode or purpose keeps journeys only, since places have neither,
+  and asking for commutes counts them whatever the counting rule.
+- **Road and sea** (§5.7): distance driven, ferries taken, the longest sea crossing and
+  the ships sailed on. Rail adds the classes and train types travelled in.
+- **Punctuality by mode and by operator** (§5.7): every operator's average delay, each
+  mode's, and the worst delay's route; time travelling breaks down by mode.
+- **Every figure opens what it rests on** (§7): landmark age, elevation and city size
+  open their places ranked; time zones, main languages and currencies open the places
+  and countries under each; the busiest day opens that day's legs, punctuality its timed
+  arrivals, night trains, overland and connections their own legs; each theme in the
+  personality opens its landmarks.
+- **Ride again in one tap** (R-JLOG-6): the journey sheet lists the last few rides to
+  log again for today, and any leg of a longer journey can be ridden again.
 - **Satellite globe** (D-26, R-GLOBE-1): the globe can be drawn from NASA's Blue Marble
   instead of the vector map — from the globe's toolbar or Settings. One picture of the
   whole Earth ships in the app and is wrapped round the sphere on the device, so it
@@ -318,6 +332,19 @@ is blocked.
 
 ### Fixed
 
+- "Longest journey" took the longest of all journeys, so one long flight hid it; it is
+  the longest journey of more than one leg, as its title says.
+- A ride logged again joins the original's trip only while that trip is under way; it
+  had filed today's ride under a trip from years ago.
+- The Equator and Arctic and Antarctic Circle badges follow each flight's whole arc, so
+  a polar flight counts though neither end is inside the circle; "UNESCO sites in one
+  trip" has its earned-on date.
+- Countries overland and by rail include every country a catalogue route ridden in full
+  runs through, not only its two ends.
+- The lists behind journey figures, and a trip's distance in the Trips list, follow the
+  commute rule like the figures do.
+- Every carbon figure names its factors and their year: a trip's, the carbon-by-leg list
+  and a shared carbon card (R-CO2-3).
 - The globe's trip filter named every trip without a name "Untitled trip"; it uses the
   trip's dates and first place, as the Trips list does.
 - The place database opens as immutable, so SQLite takes no file locks on it. A file

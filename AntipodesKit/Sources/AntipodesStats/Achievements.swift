@@ -310,39 +310,65 @@ public enum AchievementEngine {
             )
         }
 
+        /// Earned on the day the first trip to reach the target reached it: the day of
+        /// its target-th site, counting each site from its first day-precise visit.
         private func unescoInOneTrip(
             _ definition: AchievementDefinition,
             _ target: Double
         ) -> AchievementStatus {
             var best = 0
+            var earnedOn: CalendarDate?
+            let needed = max(1, Int(target.rounded(.up)))
             for trip in log.trips {
-                let sites = Set(counted.filter { visit in
+                let visits = counted.filter { visit in
                     visit.tripID == trip.id && gazetteer.facts(for: visit.place.id)?
                         .isUNESCO == true
-                }.map(\.place.id))
-                best = max(best, sites.count)
+                }
+                best = max(best, Set(visits.map(\.place.id)).count)
+                var firstDay: [PlaceID: CalendarDate] = [:]
+                for visit in visits {
+                    guard let day = visit.date.exactStartDay else { continue }
+                    firstDay[visit.place.id] = min(firstDay[visit.place.id] ?? day, day)
+                }
+                let days = firstDay.values.sorted()
+                if days.count >= needed {
+                    earnedOn = min(earnedOn ?? days[needed - 1], days[needed - 1])
+                }
             }
+            let isEarned = Double(best) >= target
             return AchievementStatus(
                 definition: definition,
                 measure: .count,
                 current: Double(best),
                 target: target,
-                isEarned: Double(best) >= target,
-                earnedOn: nil
+                isEarned: isEarned,
+                earnedOn: isEarned ? earnedOn : nil
             )
         }
 
-        /// Every point the user has demonstrably been at: counted visits and the ends of
-        /// legs, with the day each happened.
+        /// Every point the user has demonstrably been at: counted visits, the ends of
+        /// legs, and the whole arc of every flight, with the day each happened.
+        ///
+        /// A flight's great circle is the path it flew (R-PATH-4), so a polar flight that
+        /// never lands north of 66.56° still crosses the Arctic Circle. A surface leg's
+        /// line is only an approximation of its path, so only its ends count.
         private var points: [(Coordinate, CalendarDate?)] {
             counted
                 .compactMap { visit in
                     visit.place.coordinate.map { ($0, visit.date.exactStartDay) }
                 }
-                + statsLegs.flatMap { leg in
-                    [leg.origin.coordinate, leg.destination.coordinate]
-                        .compactMap(\.self)
-                        .map { ($0, leg.date.exactStartDay) }
+                + statsLegs.flatMap { leg -> [(Coordinate, CalendarDate?)] in
+                    guard let origin = leg.origin.coordinate,
+                          let destination = leg.destination.coordinate
+                    else {
+                        return [leg.origin.coordinate, leg.destination.coordinate]
+                            .compactMap(\.self)
+                            .map { ($0, leg.date.exactStartDay) }
+                    }
+                    let path = leg.mode == .flight
+                        ? GreatCircle.arc(from: origin, to: destination, segments: 90)
+                        : [origin, destination]
+                    return path.map { ($0, leg.date.exactStartDay) }
                 }
         }
 

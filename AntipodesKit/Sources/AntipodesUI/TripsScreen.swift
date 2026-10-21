@@ -183,8 +183,10 @@ private struct TripRow: View {
             parts.append(Format.ordinalCount(countries, "country", "countries"))
         }
         parts.append(Format.ordinalCount(visits.count, "place"))
-        if !journeys.isEmpty {
-            let kilometres = journeys.reduce(0) { $0 + $1.totalDistanceKm }
+        // Commute legs follow the rule too, so this matches the trip's own header.
+        let legs = journeys.flatMap(\.legs).filter { model.rules.countsInStats($0.purpose) }
+        if !legs.isEmpty {
+            let kilometres = legs.reduce(0) { $0 + $1.distanceKm }
             parts.append(Format.distance(kilometres, model.rules.unitSystem))
         }
         let flags = Set(counted.compactMap(\.place.countryCode)).sorted().prefix(5).map(Format.flag)

@@ -126,7 +126,8 @@ struct DistanceStatisticsTests {
         #expect(included.kilometresByMode[.rail] != nil)
     }
 
-    /// LHR→SYD is the longest of the three.
+    /// LHR→SYD is the longest leg, but it is one leg; OSL→LHR→JFK is the longest
+    /// journey made of more than one.
     @Test("Finds the longest leg and the longest multi-leg journey")
     func longest() {
         let shortJourney = Journey(legs: [Fixtures.flight(Fixtures.osl, Fixtures.lhr)])
@@ -140,7 +141,7 @@ struct DistanceStatisticsTests {
             for: TravelLog(journeys: [shortJourney, longLeg, multiLeg])
         )
         #expect(distance.longestLeg?.destination.name == "SYD")
-        #expect(distance.longestJourney?.id == longLeg.id)
+        #expect(distance.longestJourney?.id == multiLeg.id)
     }
 
     @Test("Modes sort by distance, descending")
