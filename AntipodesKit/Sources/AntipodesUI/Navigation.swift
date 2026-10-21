@@ -67,17 +67,7 @@ struct JourneyDetailView: View {
     var body: some View {
         if let journey = model.log.journeys.first(where: { $0.id == journeyID }) {
             JourneyEditor(existing: journey) { dismiss() }
-                .toolbar {
-                    ToolbarItem(placement: .primaryAction) {
-                        ShareLink(
-                            item: ShareCardImage(card: .journey(journey), model: model),
-                            preview: SharePreview(
-                                journey.displayTitle,
-                                image: Image(systemName: "airplane")
-                            )
-                        )
-                    }
-                }
+                .shareCardButton { .journey(journey) }
                 .globeFocus(.journey(journeyID))
         } else {
             ContentUnavailableView("Journey deleted", systemImage: "trash")

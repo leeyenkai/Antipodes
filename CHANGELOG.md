@@ -66,6 +66,16 @@ is blocked.
   Settings ▸ Import; a backup says how many trips, places, journeys and wishlist
   entries it would add, and how many are already in the log, before anything is
   written.
+- **Year in Review as a video** (R-SHARE-3): every card of the year drawn as a 1080 × 1920
+  still and made into a 20-second H.264 film with cross-fades, on the device, nothing
+  uploaded. The same stills can be shared as a set of images, or the year as one card.
+- **Share any card** (R-SHARE-1, §9): every stat card and row on the Stats screen offers
+  "Share…" in its context menu; the Globe tab, trips, journeys and the countries,
+  places, distance and carbon lists have a Share button. Every share opens one sheet
+  with square and story sizes and a preview that is exactly the image shared — drawn
+  once, at a fixed text size, so the reader's text size cannot reflow it.
+- A vector mark of the app — a place and its antipode through the Earth — signs share
+  cards and Year in Review instead of a generic globe symbol.
 - Onboarding: what the app does, what it never does with your data, and where home is.
 - Settings: appearance, home, counting rules, units, a JSON backup that can be restored,
   CSV export, imports, a plain-language account of how things are counted, and the data

@@ -115,7 +115,7 @@ struct ListedCoverageTests {
         #expect(coverage.visitIDsByCountry["NO"]?.count == 1)
     }
 
-    @Test("The first known day in each country is recorded")
+    @Test("The first dated visit to each country is recorded at its own precision")
     func firstDay() {
         let log = TravelLog(visits: [
             Fixtures.visit(Fixtures.oslo, .stayed, .day(V1Fixtures.day("2024-06-10"))),
@@ -123,8 +123,9 @@ struct ListedCoverageTests {
             Fixtures.visit(Fixtures.rome, .stayed, .unknown),
         ])
         let coverage = CoverageStatistics.compute(for: log)
-        #expect(coverage.firstDayByCountry["NO"] == V1Fixtures.day("2019-03-01"))
-        #expect(coverage.firstDayByCountry["IT"] == nil)
+        // March 2019 comes before 10 June 2024, and stays a month: no day was recorded.
+        #expect(coverage.firstVisitByCountry["NO"] == .month(year: 2019, month: 3))
+        #expect(coverage.firstVisitByCountry["IT"] == nil)
     }
 }
 

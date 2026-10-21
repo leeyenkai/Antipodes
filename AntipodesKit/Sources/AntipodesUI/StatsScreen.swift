@@ -39,9 +39,9 @@ struct StatsScreen: View {
                         )
                     } else {
                         PersonalityHero()
-                        HeadlineGrid(share: share)
-                        CoverageSection(share: share)
-                        DistanceSection(share: share)
+                        HeadlineGrid()
+                        CoverageSection()
+                        DistanceSection()
                         JourneyDetailSection()
                         CarbonSection()
                         AttributesSection()
@@ -72,6 +72,7 @@ struct StatsScreen: View {
             .navigationDestination(for: StatsRoute.self) { route in
                 StatsDrillDown(route: route)
             }
+            .environment(\.shareStat, ShareAction { sharing = ShareItem(card: $0) })
             .sheet(item: $sharing) { item in
                 ShareCardSheet(card: item.card)
             }
@@ -79,10 +80,6 @@ struct StatsScreen: View {
                 SettingsScreen()
             }
         }
-    }
-
-    private func share(_ card: ShareCard) {
-        sharing = ShareItem(card: card)
     }
 }
 
@@ -118,6 +115,7 @@ struct StatRow<Destination: Hashable>: View {
     var symbol: String?
     var detail: String?
     var destination: Destination?
+    @Environment(\.shareStat) private var shareStat
 
     var body: some View {
         if let destination {
@@ -156,6 +154,18 @@ struct StatRow<Destination: Hashable>: View {
         .padding(.vertical, 9)
         .contentShape(.rect)
         .accessibilityElement(children: .combine)
+        .contextMenu {
+            if let shareStat {
+                Button("Share…", systemImage: "square.and.arrow.up") {
+                    shareStat(.stat(
+                        title: title.lowercased(),
+                        value: value,
+                        detail: detail?.components(separatedBy: "\n").first,
+                        symbol: symbol ?? "chart.bar.fill"
+                    ))
+                }
+            }
+        }
     }
 }
 
@@ -309,8 +319,6 @@ struct ThemeBars: View {
 
 private struct HeadlineGrid: View {
     @Environment(AppModel.self) private var model
-    let share: (ShareCard) -> Void
-
     /// "24.4% of 193", or a plain warning when the list it measures against could not
     /// be read and every visited code had to be counted.
     private func worldShare(_ coverage: CoverageStatistics) -> String {
@@ -330,18 +338,9 @@ private struct HeadlineGrid: View {
                     value: "\(coverage.listedCountriesVisited)",
                     detail: worldShare(coverage),
                     symbol: "flag.fill",
-                    tint: Palette.visited
+                    tint: Palette.visited,
+                    shareTitle: "countries visited"
                 )
-            }
-            .contextMenu {
-                Button("Share", systemImage: "square.and.arrow.up") {
-                    share(.stat(
-                        title: "countries visited",
-                        value: "\(coverage.listedCountriesVisited)",
-                        detail: "\(Format.percent(coverage.worldFraction)) of the world",
-                        symbol: "flag.fill"
-                    ))
-                }
             }
             NavigationLink(value: StatsRoute.legs(nil)) {
                 StatCard(
@@ -351,20 +350,9 @@ private struct HeadlineGrid: View {
                     \(Format.multiple(statistics.distance.timesRoundTheEarth)) round the Earth
                     """,
                     symbol: "point.topleft.down.to.point.bottomright.curvepath",
-                    tint: Palette.mode(.flight)
+                    tint: Palette.mode(.flight),
+                    shareTitle: "travelled"
                 )
-            }
-            .contextMenu {
-                Button("Share", systemImage: "square.and.arrow.up") {
-                    share(.stat(
-                        title: "travelled",
-                        value: Format.distance(statistics.distance.totalKm, model.rules.unitSystem),
-                        detail: """
-                        \(Format.multiple(statistics.distance.timesRoundTheEarth)) round the Earth
-                        """,
-                        symbol: "globe"
-                    ))
-                }
             }
             StatCard(
                 title: "Continents",

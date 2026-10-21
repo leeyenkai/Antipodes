@@ -32,9 +32,9 @@ public struct CoverageStatistics: Hashable, Sendable {
     /// The visits behind each country, so every number can open the records it rests
     /// on (§7, "every number MUST be tappable").
     public let visitIDsByCountry: [String: [UUID]]
-    /// The earliest known day each country was first visited, for "new countries per
-    /// year" and for when an achievement was earned.
-    public let firstDayByCountry: [String: CalendarDate]
+    /// The date of the earliest dated visit to each country, at the precision it was
+    /// recorded: "March 2019", not "1 March 2019".
+    public let firstVisitByCountry: [String: FlexibleDate]
 
     /// How many countries "% of the world" measures against (Q-4).
     public let worldCountryCount: Int
@@ -141,7 +141,7 @@ public struct CoverageStatistics: Hashable, Sendable {
         var regionNames: [String: String] = [:]
         var cityNames: [Int64: String] = [:]
         var visitIDsByCountry: [String: [UUID]] = [:]
-        var firstDayByCountry: [String: CalendarDate] = [:]
+        var firstVisitByCountry: [String: FlexibleDate] = [:]
         var input = StatInputSummary()
 
         for visit in log.visits {
@@ -158,8 +158,8 @@ public struct CoverageStatistics: Hashable, Sendable {
 
             countryCodes.insert(countryCode)
             visitIDsByCountry[countryCode, default: []].append(visit.id)
-            if let day = visit.date.sortDay, day < (firstDayByCountry[countryCode] ?? day.next) {
-                firstDayByCountry[countryCode] = day
+            if visit.date.isKnown, visit.date < (firstVisitByCountry[countryCode] ?? .unknown) {
+                firstVisitByCountry[countryCode] = visit.date
             }
             if let name = place.countryName {
                 countryNames[countryCode] = name
@@ -218,7 +218,7 @@ public struct CoverageStatistics: Hashable, Sendable {
             regionNames: regionNames,
             cityNames: cityNames,
             visitIDsByCountry: visitIDsByCountry,
-            firstDayByCountry: firstDayByCountry,
+            firstVisitByCountry: firstVisitByCountry,
             worldCountryCount: rules.worldCountryCount,
             countryList: rules.countryList,
             isCountryListAvailable: !gazetteer.countries.isEmpty,

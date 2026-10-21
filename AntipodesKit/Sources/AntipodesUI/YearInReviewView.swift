@@ -13,6 +13,7 @@ struct YearInReviewView: View {
     /// The year's review and its cards, worked out once per change to the log rather
     /// than on every swipe.
     @State private var built: (review: YearInReview, cards: [ReviewCard])?
+    @State private var isSharing = false
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -37,8 +38,13 @@ struct YearInReviewView: View {
             built = (review, pages(review))
         }
         .onAppear { page = 0 }
+        .sheet(isPresented: $isSharing) {
+            if let built {
+                YearInReviewShareSheet(year: year, cards: built.cards)
+            }
+        }
         #if os(macOS)
-            .frame(minWidth: 460, idealWidth: 540, minHeight: 640, idealHeight: 760)
+        .frame(minWidth: 460, idealWidth: 540, minHeight: 640, idealHeight: 760)
         #endif
     }
 
@@ -53,13 +59,10 @@ struct YearInReviewView: View {
             Text("\(String(year)) in review")
                 .font(.headline)
             Spacer()
-            ShareLink(
-                item: ShareCardImage(card: .year(year), model: model, format: .story),
-                preview: SharePreview("\(year) in review", image: Image(systemName: "sparkles"))
-            ) {
-                Image(systemName: "square.and.arrow.up")
-            }
-            .buttonStyle(.glass)
+            Button("Share", systemImage: "square.and.arrow.up") { isSharing = true }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.glass)
+                .disabled(built == nil)
             Button("Close", systemImage: "xmark") { dismiss() }
                 .labelStyle(.iconOnly)
                 .buttonStyle(.glass)

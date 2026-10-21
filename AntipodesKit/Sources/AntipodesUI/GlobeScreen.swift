@@ -32,6 +32,7 @@ struct GlobeScreen: View {
     /// An add request made from inside the selection sheet, opened once it has closed:
     /// one sheet cannot open over another that is still leaving.
     @State private var queuedAdd: AddRequest?
+    @State private var sharingGlobe = false
 
     private let palette = GlobePalette()
 
@@ -69,6 +70,7 @@ struct GlobeScreen: View {
                     self.selection = nil
                 })
         }
+        .sheet(isPresented: $sharingGlobe) { ShareCardSheet(card: .globe) }
         .inspector(isPresented: isInspecting) {
             if let selection {
                 GlobeSelectionInspector(selection: selection) { self.selection = nil }
@@ -226,6 +228,11 @@ struct GlobeScreen: View {
         ToolbarItem(placement: .primaryAction) {
             Button("Drop a Pin", systemImage: "mappin.and.ellipse") {
                 model.addRequest = AddRequest(start: .pin(camera.centre))
+            }
+        }
+        if !model.log.isEmpty {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Share", systemImage: "square.and.arrow.up") { sharingGlobe = true }
             }
         }
     }

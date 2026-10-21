@@ -199,6 +199,9 @@ struct ShareCardView: View {
         }
         .frame(width: format.size.width, height: format.size.height)
         .environment(\.colorScheme, .dark)
+        // A card is a picture of a fixed size: the reader's text size must not reflow
+        // it, or the preview and the image shared would differ.
+        .dynamicTypeSize(.large)
     }
 
     @ViewBuilder
@@ -264,7 +267,7 @@ struct ShareCardView: View {
 
     private var footer: some View {
         HStack(spacing: 6) {
-            Image(systemName: "globe.europe.africa.fill")
+            AppMark(size: 15)
             Text("Antipodes")
                 .font(.footnote.weight(.semibold))
             Spacer()
@@ -286,6 +289,11 @@ struct ShareCardImage: Transferable {
         self.format = format
     }
 
+    init(payload: ShareCardPayload, format: ShareCardFormat) {
+        self.payload = payload
+        self.format = format
+    }
+
     static var transferRepresentation: some TransferRepresentation {
         DataRepresentation(exportedContentType: .png) { item in
             try await item.pngData()
@@ -295,13 +303,39 @@ struct ShareCardImage: Transferable {
 
     @MainActor
     func render() -> CGImage? {
-        let renderer = ImageRenderer(content: ShareCardView(payload: payload, format: format))
-        renderer.scale = 3
-        return renderer.cgImage
+        ShareCardRenderer.render(ShareCardView(payload: payload, format: format))
     }
 
     func pngData() async throws -> Data {
         guard let image = await render() else { throw CocoaError(.fileWriteUnknown) }
+        return try RenderedImage(image: image).pngData()
+    }
+}
+
+enum ShareCardRenderer {
+    /// Draws a card at 3×: 1080 pixels wide, the size every social app takes.
+    @MainActor
+    static func render(_ view: some View) -> CGImage? {
+        let renderer = ImageRenderer(content: view)
+        renderer.scale = 3
+        return renderer.cgImage
+    }
+}
+
+/// An image already drawn, handed to the share sheet as a PNG without drawing it again.
+struct RenderedImage: Transferable, @unchecked Sendable {
+    // CGImage is immutable once made, so sharing it across threads is safe.
+    let image: CGImage
+    var name = "Antipodes"
+
+    static var transferRepresentation: some TransferRepresentation {
+        DataRepresentation(exportedContentType: .png) { item in
+            try item.pngData()
+        }
+        .suggestedFileName { "\($0.name).png" }
+    }
+
+    func pngData() throws -> Data {
         let data = NSMutableData()
         guard let destination = CGImageDestinationCreateWithData(
             data,
@@ -314,51 +348,132 @@ struct ShareCardImage: Transferable {
         guard CGImageDestinationFinalize(destination) else { throw CocoaError(.fileWriteUnknown) }
         return data as Data
     }
+
+    var swiftUIImage: Image {
+        Image(decorative: image, scale: 3)
+    }
 }
 
-/// Previews a card in both sizes and shares the one the user picks.
+/// Previews a card in both sizes and shares the one the user picks (R-SHARE-1).
+///
+/// The card is drawn once per size, when it is first shown in it, and that one image is
+/// both the preview and what is shared — so the two can never differ, and nothing is
+/// drawn while the screen behind is being laid out.
 struct ShareCardSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let card: ShareCard
     @State private var format: ShareCardFormat = .square
+    @State private var payload: ShareCardPayload?
+    @State private var images: [ShareCardFormat: RenderedImage] = [:]
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: 20) {
-                Picker("Size", selection: $format) {
-                    ForEach(ShareCardFormat.allCases) { Text($0.displayName).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
+            ScrollView {
+                VStack(spacing: 20) {
+                    Picker("Size", selection: $format) {
+                        ForEach(ShareCardFormat.allCases) { Text($0.displayName).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
 
-                let image = ShareCardImage(card: card, model: model, format: format)
-                ShareCardView(payload: image.payload, format: format)
-                    .clipShape(.rect(cornerRadius: 24, style: .continuous))
-                    .shadow(color: .black.opacity(0.4), radius: 20, y: 8)
-                    .scaleEffect(format == .story ? 0.72 : 0.92)
-                    .frame(height: format == .story ? 470 : 340)
+                    preview
+                        .frame(height: format == .story ? 470 : 340)
 
-                ShareLink(
-                    item: image,
-                    preview: SharePreview("Antipodes", image: Image(systemName: "globe"))
-                ) {
-                    Label("Share Image", systemImage: "square.and.arrow.up")
-                        .frame(maxWidth: .infinity)
+                    if let image = images[format] {
+                        ShareLink(
+                            item: image,
+                            preview: SharePreview(
+                                payload?.title ?? "Antipodes",
+                                image: image.swiftUIImage
+                            )
+                        ) {
+                            Label("Share Image", systemImage: "square.and.arrow.up")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.glassProminent)
+                        .controlSize(.large)
+                        .padding(.horizontal)
+                    }
                 }
-                .buttonStyle(.glassProminent)
-                .controlSize(.large)
-                .padding(.horizontal)
-                Spacer(minLength: 0)
+                .padding(.vertical)
             }
-            .padding(.top)
             .navigationTitle("Share")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
+                ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
             }
+            .task(id: format) { draw() }
         }
+        #if os(macOS)
+        .frame(minWidth: 420, idealWidth: 460, minHeight: 620, idealHeight: 680)
+        #endif
+    }
+
+    @ViewBuilder
+    private var preview: some View {
+        if let image = images[format] {
+            image.swiftUIImage
+                .resizable()
+                .scaledToFit()
+                .clipShape(.rect(cornerRadius: 24, style: .continuous))
+                .shadow(color: .black.opacity(0.4), radius: 20, y: 8)
+                .padding(.horizontal, 24)
+                .accessibilityLabel("Preview of the card")
+        } else {
+            ProgressView()
+        }
+    }
+
+    private func draw() {
+        if payload == nil {
+            payload = ShareCardPayload(card: card, model: model)
+        }
+        guard images[format] == nil, let payload,
+              let image = ShareCardRenderer.render(ShareCardView(payload: payload, format: format))
+        else { return }
+        images[format] = RenderedImage(image: image, name: "Antipodes \(payload.title)")
+    }
+}
+
+/// Opens the share sheet for a card from anywhere — a toolbar, a context menu.
+struct ShareAction {
+    let id = UUID()
+    let perform: (ShareCard) -> Void
+
+    func callAsFunction(_ card: ShareCard) {
+        perform(card)
+    }
+}
+
+extension EnvironmentValues {
+    /// Set where cards can be shared from: every stat card and row inside offers
+    /// "Share…" in its context menu (§9: "share any card").
+    @Entry var shareStat: ShareAction?
+}
+
+extension View {
+    /// A toolbar button that previews and shares a card.
+    func shareCardButton(_ card: @escaping () -> ShareCard) -> some View {
+        modifier(ShareCardButton(card: card))
+    }
+}
+
+private struct ShareCardButton: ViewModifier {
+    let card: () -> ShareCard
+    @State private var sharing: ShareItem?
+
+    func body(content: Content) -> some View {
+        content
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Share", systemImage: "square.and.arrow.up") {
+                        sharing = ShareItem(card: card())
+                    }
+                }
+            }
+            .sheet(item: $sharing) { ShareCardSheet(card: $0.card) }
     }
 }

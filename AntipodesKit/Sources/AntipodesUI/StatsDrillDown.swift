@@ -9,6 +9,12 @@ struct StatsDrillDown: View {
     let route: StatsRoute
 
     var body: some View {
+        destination
+            .modifier(DrillDownShare(card: shareCard))
+    }
+
+    @ViewBuilder
+    private var destination: some View {
         switch route {
         case .countries: CountryListView()
         case let .places(kind): PlaceListView(kind: kind)
@@ -20,6 +26,89 @@ struct StatsDrillDown: View {
         case .repeats: RepeatVisitsView()
         case .gaps: CountryGapsView()
         case let .year(year): YearInReviewView(year: year)
+        }
+    }
+}
+
+extension StatsDrillDown {
+    /// The number this list explains, as a card to share — or nothing, for a list
+    /// that is not one number.
+    private var shareCard: ShareCard? {
+        let statistics = model.statistics
+        let system = model.rules.unitSystem
+        switch route {
+        case .countries:
+            return .stat(
+                title: "countries visited",
+                value: "\(statistics.coverage.listedCountriesVisited)",
+                detail: "\(Format.percent(statistics.coverage.worldFraction)) of the world",
+                symbol: "flag.fill"
+            )
+        case let .places(kind):
+            let count = switch kind {
+            case .city: statistics.coverage.citiesVisited
+            case .landmark: statistics.coverage.landmarksVisited
+            case .airport: statistics.flights.airportsVisited
+            case .region: statistics.coverage.regionsVisited
+            default: 0
+            }
+            guard count > 0 else { return nil }
+            return .stat(
+                title: kind.pluralName.lowercased(),
+                value: "\(count)",
+                detail: nil,
+                symbol: kind.symbolName
+            )
+        case .capitals:
+            return .stat(
+                title: "capitals",
+                value: "\(statistics.coverage.capitalsVisited)",
+                detail: nil,
+                symbol: "building.columns.fill"
+            )
+        case .unesco:
+            return .stat(
+                title: "UNESCO World Heritage Sites",
+                value: "\(statistics.coverage.unescoSitesVisited)",
+                detail: nil,
+                symbol: "seal.fill"
+            )
+        case let .legs(mode):
+            let kilometres = mode
+                .map { statistics.distance.kilometresByMode[$0] ?? 0 } ?? statistics.distance
+                .totalKm
+            return .stat(
+                title: mode.map { "by \($0.displayName.lowercased())" } ?? "travelled",
+                value: Format.distance(kilometres, system),
+                detail: mode == nil
+                    ? "\(Format.multiple(statistics.distance.timesRoundTheEarth)) round the Earth" :
+                    nil,
+                symbol: mode?.symbolName ?? "globe"
+            )
+        case .carbon:
+            let total = statistics.carbon.totalKg
+            guard total > 0 else { return nil }
+            return .stat(
+                title: "CO₂e, estimated",
+                value: Format.carbon(kilograms: total),
+                detail: nil,
+                symbol: "leaf.fill"
+            )
+        case .personality, .repeats, .gaps, .year:
+            return nil
+        }
+    }
+}
+
+/// A share button for a drill-down that stands for one number.
+private struct DrillDownShare: ViewModifier {
+    let card: ShareCard?
+
+    func body(content: Content) -> some View {
+        if let card {
+            content.shareCardButton { card }
+        } else {
+            content
         }
     }
 }
@@ -38,8 +127,8 @@ struct CountryListView: View {
                             Text(Format.flag(country.code)).font(.title2)
                             VStack(alignment: .leading) {
                                 Text(country.name)
-                                if let first = coverage.firstDayByCountry[country.code] {
-                                    Text("First visited \(Format.day(first))")
+                                if let first = coverage.firstVisitByCountry[country.code] {
+                                    Text("First visited \(first.displayText)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }

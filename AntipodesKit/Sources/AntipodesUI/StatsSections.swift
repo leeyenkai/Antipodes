@@ -7,8 +7,6 @@ import SwiftUI
 
 struct CoverageSection: View {
     @Environment(AppModel.self) private var model
-    let share: (ShareCard) -> Void
-
     var body: some View {
         let coverage = model.statistics.coverage
         let extremes = model.statistics.extremes
@@ -166,8 +164,6 @@ private struct AntipodeCard: View {
 
 struct DistanceSection: View {
     @Environment(AppModel.self) private var model
-    let share: (ShareCard) -> Void
-
     var body: some View {
         let statistics = model.statistics
         let distance = statistics.distance

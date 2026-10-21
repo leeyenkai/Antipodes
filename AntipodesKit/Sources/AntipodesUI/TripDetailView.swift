@@ -79,6 +79,7 @@ struct TripDetailView: View {
         .navigationTitle(trip.displayName(model: model))
         .toolbarTitleDisplayMode(.inline)
         .toolbar { toolbar(trip) }
+        .shareCardButton { .trip(tripID) }
         .globeFocus(.trip(tripID))
         .sheet(isPresented: $isEditing) {
             TripEditor(trip: trip)
@@ -91,15 +92,6 @@ struct TripDetailView: View {
 
     @ToolbarContentBuilder
     private func toolbar(_ trip: Trip) -> some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            ShareLink(
-                item: ShareCardImage(card: .trip(tripID), model: model),
-                preview: SharePreview(
-                    trip.displayName(model: model),
-                    image: Image(systemName: "suitcase")
-                )
-            )
-        }
         ToolbarItem(placement: .primaryAction) {
             Menu {
                 Button("Edit Name and Notes", systemImage: "pencil") { isEditing = true }
