@@ -1,4 +1,5 @@
 import AntipodesCore
+import AntipodesGlobe
 import AntipodesStats
 import Foundation
 
@@ -63,5 +64,16 @@ public extension AppModel {
     /// Wishlist places not yet visited, for the globe's wishlist pins (R-GLOBE-4).
     var openWishlistPlaces: [PlaceReference] {
         statistics.wishlist.filter { !$0.isVisited }.compactMap(\.item.place)
+    }
+
+    /// Catalogue routes still on the wishlist whose two ends are known places, to draw
+    /// as dashed lines on the globe.
+    var openWishlistRoutes: [GlobeWishlistRoute] {
+        statistics.wishlist.filter { !$0.isVisited }.compactMap { status in
+            guard let id = status.item.routeID, let route = route(id: id),
+                  let start = route.start?.coordinate, let end = route.end?.coordinate
+            else { return nil }
+            return GlobeWishlistRoute(id: status.item.id, name: route.name, from: start, to: end)
+        }
     }
 }

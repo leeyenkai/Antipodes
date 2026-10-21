@@ -119,6 +119,10 @@ is blocked.
   CSV. Stations and towns are matched by name to bundled places, airports by code, and
   a list with no mode column is read as whatever the user says it is. Dropping a JSON
   journey list on the Mac window opens the same review.
+- "On this day" on the Lock Screen (R-SHARE-2): a rectangular size with the day's first
+  memory, in the system's monochrome.
+- Wishlisted routes on the globe (R-WISH-1): a catalogue route on the wishlist is drawn
+  dashed between its two ends in the wishlist colour, outside every count.
 - **Ride again in one tap** (R-JLOG-6): the journey sheet lists the last few rides to
   log again for today, and any leg of a longer journey can be ridden again.
 - **Satellite globe** (D-26, R-GLOBE-1): the globe can be drawn from NASA's Blue Marble

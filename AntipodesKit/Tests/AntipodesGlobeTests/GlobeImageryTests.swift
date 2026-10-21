@@ -1,5 +1,6 @@
 import AntipodesCore
 @testable import AntipodesGlobe
+import Foundation
 import Testing
 
 @Suite("Wrapping a picture of the Earth on the globe")
@@ -110,5 +111,25 @@ struct GlobeImageryTests {
     @Test("A picture whose pixels do not match its size is refused")
     func malformed() {
         #expect(EquirectangularImage(width: 4, height: 2, pixels: [0, 0, 0]) == nil)
+    }
+}
+
+@Suite("Wishlisted routes on the globe")
+struct WishlistRouteSceneTests {
+    /// Oslo to Bergen on the wishlist: drawn as a line, counted nowhere.
+    @Test("A wishlisted route is drawn but adds no journey, distance or pin")
+    func wishlistRoute() {
+        let route = GlobeWishlistRoute(
+            id: UUID(),
+            name: "Bergen Line",
+            from: Coordinate(latitude: 59.91, longitude: 10.75),
+            to: Coordinate(latitude: 60.39, longitude: 5.33)
+        )
+        let scene = GlobeSceneBuilder.build(log: .empty, rules: .default, wishlistRoutes: [route])
+        #expect(scene.wishlistRoutes.count == 1)
+        #expect(scene.wishlistRoutes.first?.path.count == 33)
+        #expect(scene.arcs.isEmpty)
+        #expect(scene.pins.isEmpty)
+        #expect(scene.totalDistanceKm == 0)
     }
 }

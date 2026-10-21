@@ -106,6 +106,20 @@ public struct GlobeArc: Identifiable, Sendable {
     }
 }
 
+/// A catalogue route on the wishlist, drawn as a dashed line between its two ends
+/// (R-WISH-1). Not a journey: it adds nothing to any count or distance.
+public struct GlobeWishlistRoute: Identifiable, Hashable, Sendable {
+    public let id: UUID
+    public let name: String
+    public let path: [Coordinate]
+
+    public init(id: UUID, name: String, from start: Coordinate, to end: Coordinate) {
+        self.id = id
+        self.name = name
+        path = GreatCircle.arc(from: start, to: end, segments: 32)
+    }
+}
+
 /// Everything the globe draws, worked out once per change rather than per frame.
 public struct GlobeScene: Sendable {
     public let pins: [GlobePin]
@@ -127,6 +141,8 @@ public struct GlobeScene: Sendable {
     public let pinSummary: StatInputSummary
     public let arcSummary: StatInputSummary
     public let shadingSummary: StatInputSummary
+    /// Routes on the wishlist, outside every count.
+    public var wishlistRoutes: [GlobeWishlistRoute] = []
 
     public static let empty = GlobeScene(
         pins: [],
@@ -157,6 +173,7 @@ public enum GlobeSceneBuilder {
         rules: CountingRules,
         filter: GlobeFilter = .none,
         wishlist: [PlaceReference] = [],
+        wishlistRoutes: [GlobeWishlistRoute] = [],
         home: PlaceReference? = nil,
         arcSegments: Int = defaultArcSegments
     ) -> GlobeScene {
@@ -197,7 +214,8 @@ public enum GlobeSceneBuilder {
             totalDistanceKm: journeys.totalDistanceKm,
             pinSummary: places.pinSummary,
             arcSummary: journeys.summary,
-            shadingSummary: places.shadingSummary
+            shadingSummary: places.shadingSummary,
+            wishlistRoutes: wishlistRoutes
         )
     }
 

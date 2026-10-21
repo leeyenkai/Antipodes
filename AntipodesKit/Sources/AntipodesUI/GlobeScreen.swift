@@ -89,6 +89,7 @@ struct GlobeScreen: View {
             rules: model.rules,
             filter: effectiveFilter,
             wishlist: model.openWishlistPlaces,
+            wishlistRoutes: model.openWishlistRoutes,
             home: model.home
         ), initial: true) {
             rebuild()
@@ -262,6 +263,7 @@ struct GlobeScreen: View {
             rules: model.rules,
             filter: effectiveFilter,
             wishlist: effectiveFilter.replayUpTo == nil ? model.openWishlistPlaces : [],
+            wishlistRoutes: effectiveFilter.replayUpTo == nil ? model.openWishlistRoutes : [],
             home: model.home
         )
     }
@@ -318,6 +320,7 @@ private struct GlobeInputs: Equatable {
     let rules: CountingRules
     let filter: GlobeFilter
     let wishlist: [PlaceReference]
+    let wishlistRoutes: [GlobeWishlistRoute]
     let home: PlaceReference?
 }
 

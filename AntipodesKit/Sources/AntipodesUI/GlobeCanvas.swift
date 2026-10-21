@@ -58,6 +58,7 @@ struct GlobeCanvas: View {
             }
             drawCountryOutlines(in: &context, globe: globe)
         }
+        drawWishlistRoutes(in: &context, globe: globe)
         drawArcs(in: &context, globe: globe)
         drawLimbShading(in: &context, globe: globe)
         drawPins(in: &context, globe: globe)
@@ -258,6 +259,20 @@ struct GlobeCanvas: View {
     }
 
     // MARK: - Journeys
+
+    /// Routes the user wants to ride, dashed in the wishlist colour like its pins.
+    private func drawWishlistRoutes(in context: inout GraphicsContext, globe: OrthographicGlobe) {
+        guard !scene.wishlistRoutes.isEmpty else { return }
+        var path = Path()
+        for route in scene.wishlistRoutes {
+            append(globe.clippedPolyline(route.path), to: &path)
+        }
+        context.stroke(
+            path,
+            with: .color(palette.wishlistPin.opacity(0.85)),
+            style: StrokeStyle(lineWidth: 1.4, lineCap: .round, dash: [2, 4])
+        )
+    }
 
     private func drawArcs(in context: inout GraphicsContext, globe: OrthographicGlobe) {
         for arc in scene.arcs {

@@ -70,7 +70,7 @@ struct SnapshotProvider: TimelineProvider {
     }
 }
 
-private enum WidgetPalette {
+enum WidgetPalette {
     static let visited = Color(red: 0.42, green: 0.75, blue: 0.69)
     static let sky = LinearGradient(
         colors: [
@@ -251,72 +251,6 @@ private struct GlobeImage: View {
                 .padding(12)
                 .accessibilityHidden(true)
         }
-    }
-}
-
-// MARK: - On this day
-
-struct OnThisDayWidget: Widget {
-    var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "on-this-day", provider: SnapshotProvider()) { entry in
-            OnThisDayView(entry: entry)
-        }
-        .configurationDisplayName("On This Day")
-        .description("Where you were on this date in earlier years.")
-        .supportedFamilies([.systemSmall, .systemMedium])
-    }
-}
-
-private struct OnThisDayView: View {
-    @Environment(\.widgetFamily) private var family
-    let entry: SnapshotEntry
-
-    var body: some View {
-        let day = CalendarDate(entry.date) ?? .today()
-        let memories = entry.snapshot.memories(on: day)
-        VStack(alignment: .leading, spacing: 6) {
-            Label("On this day", systemImage: "clock.arrow.circlepath")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(WidgetPalette.visited)
-            if memories.isEmpty {
-                Spacer(minLength: 0)
-                Text("Nothing logged on this date — yet.")
-                    .font(.subheadline)
-                    .foregroundStyle(.white.opacity(0.75))
-                Spacer(minLength: 0)
-            } else {
-                ForEach(
-                    Array(memories.prefix(family == .systemSmall ? 2 : 3).enumerated()),
-                    id: \.offset
-                ) { _, memory in
-                    // Each memory opens its own record; a small widget takes only one
-                    // tap target, so there the first memory stands for the widget.
-                    Link(destination: memory.link ?? DeepLink.trips.url) {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text(memory.title)
-                                .font(.headline)
-                                .foregroundStyle(.white)
-                                .lineLimit(1)
-                            Text(
-                                "\(memory.subtitle) · \(Self.yearsAgo(memory.yearsAgo(on: day)))"
-                            )
-                            .font(.caption2)
-                            .foregroundStyle(.white.opacity(0.7))
-                            .lineLimit(1)
-                        }
-                    }
-                }
-                Spacer(minLength: 0)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .redacted(reason: entry.isPlaceholder ? .placeholder : [])
-        .containerBackground(for: .widget) { WidgetPalette.sky }
-        .widgetURL(memories.first?.link ?? DeepLink.trips.url)
-    }
-
-    private static func yearsAgo(_ years: Int) -> String {
-        years == 1 ? "1 year ago" : "\(years) years ago"
     }
 }
 
