@@ -247,18 +247,21 @@ labelled fallback.
 
 ### 5.6 Journey data sources
 
-> These are candidates recorded from memory. **None has been verified, and each needs a
-> licence review before use.**
+What is in use is licence-reviewed and listed in §6 and
+[Tools/placedb/SOURCES.md](../Tools/placedb/SOURCES.md); the rest are candidates, not yet
+reviewed.
 
-| Data | Candidate sources | Notes |
+| Data | Source | Status |
 |---|---|---|
-| Railway lines, ferry routes, trails, cable cars, tunnels, bridges | OpenStreetMap, including OpenRailwayMap tagging | ODbL share-alike terms apply to a derived database |
-| Rail stations and bus stops | OpenStreetMap, Wikidata, Trainline's open European stations dataset | The same station appears in several sources; needs matching and de-duplication |
-| Transit systems, lines, stops, shapes | GTFS feeds found through the Mobility Database and Transitland catalogues | Licence differs per feed; some cities publish none |
-| Operators, train classes, bus models, ships | Wikidata, manual curation | Coverage varies; rolling stock is well covered for major operators, patchy elsewhere |
-| Airports, airlines, aircraft types | OurAirports, Wikidata | Airlines change often; needs regular refresh |
-| Famous routes | Manual curation | Each route carries its path, stations, highlights and typical duration |
-| Emission factors | Government greenhouse-gas conversion factors (e.g. UK DESNZ), European Environment Agency | Updated yearly; results always shown as estimates |
+| Railways, roads and ferry routes to measure legs along | Natural Earth 1:10m (public domain) | **In use** (D-30) |
+| City transit systems, lines and stops | Wikidata (CC0) | **In use** (D-29) |
+| Airports | OurAirports (public domain) | **In use** |
+| Emission factors | UK DESNZ greenhouse-gas conversion factors (OGL) | **In use** (D-14) |
+| Famous routes | Manual curation | **In use** |
+| Detailed railway lines, trails, cable cars, tunnels, bridges, stations | OpenStreetMap, OpenRailwayMap tagging | Excluded from the bundled database: ODbL (D-8) |
+| Track shapes of transit lines | GTFS feeds through the Mobility Database and Transitland | Not reviewed; licence differs per feed |
+| Operators, train classes, bus models, ships | Wikidata, manual curation | Candidate |
+| Airlines, aircraft types | Wikidata | Candidate; typed by hand today |
 
 ### 5.7 Journey stats
 
