@@ -132,7 +132,9 @@ is blocked.
   map it came from, and the editor says so. The countries a leg passes through count as
   reached overland — Paris to Amsterdam crosses Belgium — and each change of country is
   a border crossed. A leg the map cannot join keeps its straight line, marked
-  approximate, as do hikes, bike tours and cable cars.
+  approximate, as do hikes, bike tours and cable cars. A catalogue route ridden in full
+  keeps its own length and countries, and follows the map only where the map's way is
+  the same route.
 - **Eras for undated landmarks** (R-DB-3): a landmark Wikidata knows only to the century
   or millennium — the Parthenon, 5th century BC — carries that era instead of a made-up
   year, and joins the era spread where the era lies within one period.

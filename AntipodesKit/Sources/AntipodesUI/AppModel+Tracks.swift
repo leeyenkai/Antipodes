@@ -149,9 +149,7 @@ extension AppModel {
     }
 
     nonisolated static func route(_ leg: JourneyLeg, on network: TrackNetwork) -> TrackPath? {
-        guard let origin = leg.origin.coordinate, let destination = leg.destination.coordinate
-        else { return nil }
-        return network.route(from: origin, to: destination)
+        network.route(for: leg)
     }
 }
 

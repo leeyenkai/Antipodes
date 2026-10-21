@@ -49,3 +49,26 @@ public extension TravelMode {
         }
     }
 }
+
+public extension TrackNetwork {
+    /// How far a catalogue route's own length and the network's way may differ before
+    /// the network's way is taken to be a different route.
+    static let catalogueTolerance = 0.15
+
+    /// The way a leg ran on this network, or nil.
+    ///
+    /// A leg that already has a length of another kind — a catalogue route's — keeps it,
+    /// and is drawn along the network only where the network's way agrees with it to
+    /// within ``catalogueTolerance``: the shortest way from Moscow to Vladivostok cuts
+    /// through Kazakhstan, which the Trans-Siberian does not.
+    func route(for leg: JourneyLeg) -> TrackPath? {
+        guard let origin = leg.origin.coordinate, let destination = leg.destination.coordinate,
+              let path = route(from: origin, to: destination)
+        else { return nil }
+        if let known = leg.storedPathLengthKm, !leg.isMeasuredAlongTrack,
+           abs(path.lengthKm - known) > known * Self.catalogueTolerance {
+            return nil
+        }
+        return path
+    }
+}

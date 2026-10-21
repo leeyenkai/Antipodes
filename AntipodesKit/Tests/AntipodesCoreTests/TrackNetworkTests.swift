@@ -204,3 +204,34 @@ struct TrackDetourTests {
         #expect(Self.network(.ferry).route(from: from, to: to) == nil)
     }
 }
+
+@Suite("Catalogue routes on a network")
+struct TrackCatalogueTests {
+    static func leg(storedKm: Double?) -> JourneyLeg {
+        func place(_ latitude: Double, _ longitude: Double) -> PlaceReference {
+            PlaceReference(
+                id: .custom(UUID()),
+                kind: .custom,
+                name: "\(latitude), \(longitude)",
+                coordinate: TrackFixture.at(latitude, longitude)
+            )
+        }
+        // From node 4 (2°N, 1°E) to node 2 (0, 2°E): three degrees of track, 333.585 km.
+        return JourneyLeg(
+            mode: .rail,
+            origin: place(2, 1),
+            destination: place(0, 2),
+            storedPathLengthKm: storedKm
+        )
+    }
+
+    @Test("A catalogue route is drawn along the network only where the two agree")
+    func catalogueAgreement() {
+        // No length of its own: the network's way.
+        #expect(TrackFixture.network.route(for: Self.leg(storedKm: nil)) != nil)
+        // 350 km is within 15% of 333.585: the same route.
+        #expect(TrackFixture.network.route(for: Self.leg(storedKm: 350)) != nil)
+        // 450 km is not: the catalogue route went another way.
+        #expect(TrackFixture.network.route(for: Self.leg(storedKm: 450)) == nil)
+    }
+}
