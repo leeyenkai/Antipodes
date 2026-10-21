@@ -51,12 +51,39 @@ extension AppModel {
         saveRailLengths(found, version: network.version)
     }
 
-    /// A globe scene of part of the log, its rail legs drawn along their track.
+    /// Every leg drawn along its track rather than its great circle: rail legs along
+    /// the railway, transit rides through the stops they passed.
+    var trackPaths: [UUID: [Coordinate]] {
+        railPaths.merging(transitPaths) { rail, _ in rail }
+    }
+
+    /// A globe scene of part of the log, its legs drawn along their track.
     func globeScene(
         of log: TravelLog,
         arcSegments: Int = GlobeSceneBuilder.defaultArcSegments
     ) -> GlobeScene {
-        GlobeSceneBuilder.build(log: log, rules: rules, arcSegments: arcSegments, paths: railPaths)
+        GlobeSceneBuilder.build(log: log, rules: rules, arcSegments: arcSegments, paths: trackPaths)
+    }
+
+    /// The stops each transit ride on a known line passed, so it is drawn from stop to
+    /// stop along its line (R-TRAN-1) rather than as a straight dash.
+    func refreshTransitPaths() {
+        var paths: [UUID: [Coordinate]] = [:]
+        for leg in log.allLegs where leg.mode == .cityTransit {
+            guard let line = leg.transitLineID,
+                  case let .database(.station, start) = leg.origin.id,
+                  case let .database(.station, end) = leg.destination.id,
+                  let stops = transitNetwork.route(onLine: line, from: start, to: end)
+            else { continue }
+            let coordinates = stops.compactMap(transitNetwork.coordinate(of:))
+            if coordinates.count == stops.count {
+                paths[leg.id] = coordinates
+            }
+        }
+        if paths != transitPaths {
+            transitPaths = paths
+            tripSceneCache = [:]
+        }
     }
 
     /// The network, read from the database the first time it is asked for.

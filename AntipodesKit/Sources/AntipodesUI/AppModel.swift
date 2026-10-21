@@ -80,8 +80,10 @@ public final class AppModel {
     @ObservationIgnored var borders: CountryBorders?
     /// The railway network rail legs are measured along, once loaded (D-30).
     @ObservationIgnored var railNetwork: RailNetwork?
-    /// The track each rail leg is drawn along, by leg, and the ends it was found for.
+    /// The track each rail leg is drawn along, by leg, and the ends it was found for;
+    /// and the stops each transit ride passed, in order (R-TRAN-1).
     var railPaths: [UUID: [Coordinate]] = [:]
+    var transitPaths: [UUID: [Coordinate]] = [:]
     @ObservationIgnored var railPathEnds: [UUID: [Coordinate]] = [:]
     @ObservationIgnored var railCountries: [UUID: [String]] = [:]
     #if os(iOS)
@@ -261,6 +263,7 @@ public final class AppModel {
         if changed {
             recompute()
         }
+        refreshTransitPaths()
         await refreshRailways()
     }
 

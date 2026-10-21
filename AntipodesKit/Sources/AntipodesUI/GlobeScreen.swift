@@ -91,7 +91,7 @@ struct GlobeScreen: View {
             wishlist: model.openWishlistPlaces,
             wishlistRoutes: model.openWishlistRoutes,
             home: model.home,
-            railPaths: model.railPaths
+            trackPaths: model.trackPaths
         ), initial: true) {
             rebuild()
             if !hasFramed, !scene.isEmpty {
@@ -266,7 +266,7 @@ struct GlobeScreen: View {
             wishlist: effectiveFilter.replayUpTo == nil ? model.openWishlistPlaces : [],
             wishlistRoutes: effectiveFilter.replayUpTo == nil ? model.openWishlistRoutes : [],
             home: model.home,
-            paths: model.railPaths
+            paths: model.trackPaths
         )
     }
 
@@ -324,7 +324,7 @@ private struct GlobeInputs: Equatable {
     let wishlist: [PlaceReference]
     let wishlistRoutes: [GlobeWishlistRoute]
     let home: PlaceReference?
-    let railPaths: [UUID: [Coordinate]]
+    let trackPaths: [UUID: [Coordinate]]
 }
 
 extension ToolbarItemPlacement {

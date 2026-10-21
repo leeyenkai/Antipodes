@@ -122,7 +122,8 @@ is blocked.
   ride, not coverage), and stations boarded, alighted and passed through. A commute pass
   is one ride dated across its months, with the purpose Commute (R-JLOG-6). Systems
   outside the set are still logged between two places. The leg's distance says it runs
-  along the line rather than calling it a catalogue route.
+  along the line rather than calling it a catalogue route. On the globe a ride runs
+  through the stops it passed, solid, instead of a straight dash (R-TRAN-1).
 - **Trains follow the tracks** (R-PATH-2, R-PATH-5, R-PATH-6, D-30): a rail leg is
   measured along the railway between its two ends, and the globe draws it there, solid
   instead of dashed. London to Edinburgh is 633 km rather than 534 as the crow flies;
