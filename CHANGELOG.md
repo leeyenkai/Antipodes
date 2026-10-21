@@ -226,6 +226,14 @@ is blocked.
 
 ### Changed
 
+- **Release hygiene**:
+  - Saving a share card or a Year in Review video to Photos would have ended the app:
+    the photo-library add-usage string was missing. It is there now.
+  - An app build fails, with instructions, when the place database or either outline
+    file is missing, instead of shipping with empty search and an unshaded globe.
+  - The version and build number are set once, for the app and the widgets together.
+  - `scripts/check.sh` also builds the app for the iOS Simulator and the Mac, and a lint
+    failure now fails the check.
 - **Faster journeys** (R-JLOG-1): choosing a mode opens the search for where the leg
   started, and choosing that opens the search for where it ended — a flight is mode,
   from, to, save. A connecting leg opens straight on its destination.

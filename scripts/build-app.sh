@@ -5,10 +5,15 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 require xcodebuild
 
 DESTINATION="${1:-generic/platform=iOS Simulator}"
+shift || true
 
 if [[ ! -f "$APP_RESOURCE_DB" ]]; then
     note "the bundled place database is missing — building it first"
     "$REPO_ROOT/scripts/build-placedb.sh"
+fi
+if [[ ! -f "$APP_RESOURCE_DIR/borders-50m.antborders" || ! -f "$APP_RESOURCE_DIR/borders-110m.antborders" ]]; then
+    note "the bundled country outlines are missing — building them first"
+    "$REPO_ROOT/scripts/build-borders.sh"
 fi
 
 # The simulator takes an ad-hoc signature, which is what carries the app-group
@@ -29,4 +34,5 @@ xcodebuild \
     -derivedDataPath "$SCRATCH_PATH/DerivedData" \
     -clonedSourcePackagesDirPath "$SCRATCH_PATH/SourcePackages" \
     "${SIGNING[@]}" \
+    "$@" \
     build

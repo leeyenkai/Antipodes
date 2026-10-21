@@ -79,7 +79,7 @@ network access are needed to build.
 ```bash
 git clone https://github.com/leeyenkai/Antipodes.git
 cd Antipodes
-scripts/check.sh            # build the package, run the tests, build the place database
+scripts/check.sh            # data, package, tests, lint, and the iOS and Mac app builds
 ```
 
 Individually:
@@ -90,8 +90,8 @@ Individually:
 | `scripts/test.sh` | Run the full test suite (no simulator, no network) |
 | `scripts/lint.sh` | SwiftFormat + SwiftLint |
 | `scripts/build-placedb.sh` | Build `places.sqlite` from the cached open data (fetches it first if missing) |
-| `scripts/build-app.sh` | Build the iOS app with `xcodebuild` |
-| `scripts/check.sh` | Everything above except the app build |
+| `scripts/build-app.sh` | Build the app with `xcodebuild`; pass `"generic/platform=macOS"` for the Mac |
+| `scripts/check.sh` | Everything above, including the iOS and Mac app builds (`ANTIPODES_SKIP_APP=1` leaves those out) |
 
 To run the app, open `Antipodes.xcodeproj` in Xcode and run the `Antipodes` scheme on
 an iPhone simulator, an iPad simulator or My Mac.

@@ -85,7 +85,9 @@ value type to Core instead.
 | Fetch the globe's borders | `scripts/fetch-borders.sh` |
 | Build the globe's borders | `scripts/build-borders.sh` |
 | Build the iOS app | `scripts/build-app.sh` |
-| Everything CI runs | `scripts/check.sh` |
+| Build the Mac app | `scripts/build-app.sh "generic/platform=macOS"` |
+| Everything CI runs | `scripts/check.sh` (`ANTIPODES_SKIP_APP=1` skips the app builds) |
+| Render the app icon | `Tools/icon/render.sh` |
 
 Underneath, those are just:
 
