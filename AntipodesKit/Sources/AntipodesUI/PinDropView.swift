@@ -11,6 +11,8 @@ struct PinDropView: View {
     @Environment(AppModel.self) private var model
 
     let onContinue: (PlaceReference) -> Void
+    /// Saves the pin as somewhere to go instead of a place been (R-WISH-1).
+    var onWishlist: ((PlaceReference) -> Void)?
 
     @State private var borderStore = GlobeBorderStore()
     @State private var camera: GlobeCamera
@@ -23,8 +25,13 @@ struct PinDropView: View {
     @State private var latitudeText = ""
     @State private var longitudeText = ""
 
-    init(initial: Coordinate?, onContinue: @escaping (PlaceReference) -> Void) {
+    init(
+        initial: Coordinate?,
+        onContinue: @escaping (PlaceReference) -> Void,
+        onWishlist: ((PlaceReference) -> Void)? = nil
+    ) {
         self.onContinue = onContinue
+        self.onWishlist = onWishlist
         _camera = State(initialValue: GlobeCamera(
             centre: initial ?? GlobeCamera.default.centre,
             zoom: initial == nil ? 1.4 : 8
@@ -100,6 +107,19 @@ struct PinDropView: View {
             .buttonStyle(.glassProminent)
             .controlSize(.large)
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            if let onWishlist {
+                Button("Save to Wishlist", systemImage: "star") {
+                    Task {
+                        let place = await model.resolvePin(
+                            at: camera.centre,
+                            name: name.trimmingCharacters(in: .whitespaces)
+                        )
+                        onWishlist(place)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
             if resolved?.countryCode == nil {
                 CaveatLabel(text: "No country here, so this pin won't count towards coverage.")
             }

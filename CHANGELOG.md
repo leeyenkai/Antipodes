@@ -74,6 +74,11 @@ is blocked.
   places, distance and carbon lists have a Share button. Every share opens one sheet
   with square and story sizes and a preview that is exactly the image shared — drawn
   once, at a fixed text size, so the reader's text size cannot reflow it.
+- **Wishlist from anywhere** (R-WISH-1): swipe a search result, or touch and hold it, to
+  add it to the wishlist, with a star on the places already there; a dropped pin — from
+  the add sheet or a long press on the globe — can be saved to the wishlist instead of
+  logged. Wishlisting a route no longer marks its first station as wishlisted. Return
+  in a search field picks the top result.
 - **Widgets open the app where they point** (R-SHARE-2, D-25): Countries opens Stats,
   Globe the globe, a collection its own page, and each "On this day" memory the visit
   or journey it remembers, through `antipodes://` links handled on the device. "On

@@ -124,14 +124,20 @@ struct AddSheet: View {
                     ),
                 ],
                 onPick: pick,
-                onPickSuggestion: { path.append(.visit($0)) }
+                onPickSuggestion: { path.append(.visit($0)) },
+                offersWishlist: true
             )
         case .journey:
             JourneyEditor(start: request.start.journeyStart, tripID: request.tripID) { dismiss() }
         case .pin:
-            PinDropView(initial: request.start.pinCoordinate ?? model.home?.coordinate) { place in
-                path.append(.visit(place))
-            }
+            PinDropView(
+                initial: request.start.pinCoordinate ?? model.home?.coordinate,
+                onContinue: { path.append(.visit($0)) },
+                onWishlist: { place in
+                    model.addToWishlist(place)
+                    dismiss()
+                }
+            )
         }
     }
 
