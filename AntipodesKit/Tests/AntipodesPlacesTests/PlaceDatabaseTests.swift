@@ -440,7 +440,7 @@ extension PlaceDatabase {
     /// Lives in the test target rather than the module because the app has no reason to
     /// ask any of these questions — they are assertions about the build product.
     func count(_ sql: String) throws -> Int {
-        try connection.queryOne(sql) { try $0.int(0) ?? 0 } ?? 0
+        try connection.queryOne(sql) { $0.int(0) ?? 0 } ?? 0
     }
 }
 

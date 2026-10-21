@@ -161,7 +161,7 @@ NATURAL_EARTH = Source(
     attribution=None,
     used_for=(
         "Country list, ISO codes, continents and sovereignty classification; "
-        "the railway network rail legs are measured along"
+        "the railway, road and ferry networks surface legs are measured along"
     ),
     files=(
         RemoteFile(
@@ -173,6 +173,11 @@ NATURAL_EARTH = Source(
             "ne_10m_railroads.geojson",
             f"{NATURAL_EARTH_BASE}/ne_10m_railroads.geojson",
             sha256="a0962d7866060ae3e24df255f6d662389ac9ba7e0df40cf329c2281190b861e6",
+        ),
+        RemoteFile(
+            "ne_10m_roads.geojson",
+            f"{NATURAL_EARTH_BASE}/ne_10m_roads.geojson",
+            sha256="66a0c7b438e92fd124822cc5921cfa11042f48c294ade5e0f03f2c6640fd0248",
         ),
     ),
 )

@@ -55,10 +55,10 @@ sys.path.insert(0, str(HERE))
 
 import climate  # noqa: E402
 import sources as registry  # noqa: E402 - must follow the sys.path line above
-import railways  # noqa: E402
+import tracks  # noqa: E402
 import transit  # noqa: E402
 
-SCHEMA_VERSION = 6
+SCHEMA_VERSION = 7
 
 #: How far round an airport or landmark the build looks for bundled cities when it has
 #: no linked city to take a time zone from. The zone is written only when every city
@@ -190,8 +190,7 @@ class Counts:
     transit_systems: int = 0
     transit_lines: int = 0
     transit_stops: int = 0
-    rail_nodes: int = 0
-    rail_edges: int = 0
+    track_edges: dict[str, int] = dataclass_field(default_factory=dict)
 
     def summary(self) -> str:
         return (
@@ -206,7 +205,7 @@ class Counts:
             f"{self.achievements} achievements, {self.emission_factors} carbon factors, "
             f"{self.climates} place climates, {self.transit_systems} transit systems "
             f"({self.transit_lines} lines, {self.transit_stops} stops), "
-            f"a railway network of {self.rail_edges} stretches between {self.rail_nodes} junctions"
+            + ", ".join(f"{count} {name} edges" for name, count in sorted(self.track_edges.items()))
         )
 
 
@@ -558,7 +557,7 @@ def build(out_path: Path, cities_dataset: str, data_version: str, built_at: str)
         insert_emission_factors(connection, counts)
         insert_climate(connection, counts, coverage)
         insert_transit(connection, by_name, counts, coverage)
-        insert_railways(connection, counts, coverage)
+        insert_tracks(connection, counts, coverage)
 
         counts.indexed = build_search_index(connection, grid, single_zone, coverage)
         write_meta(connection, data_version, built_at, counts, coverage, manifest, cities_dataset)
@@ -710,28 +709,50 @@ def insert_transit(
         coverage.notes.append(f"transit links dropped as too far from their city: {dropped}")
 
 
-def insert_railways(connection: sqlite3.Connection, counts: Counts, coverage: Coverage) -> None:
-    """The railway network rail legs are snapped to (R-PATH-2, D-30)."""
-    path = HERE / "vendor" / "naturalearth" / "ne_10m_railroads.geojson"
-    if not path.exists():
-        raise BuildError(f"Missing {path}. Run fetch_sources.py --only naturalearth.")
-    features = json.loads(path.read_text(encoding="utf-8"))["features"]
-    network = railways.build_network(features)
-    connection.executemany(
-        "INSERT INTO rail_node (id, latitude, longitude) VALUES (?, ?, ?)",
-        [(index + 1, lat, lon) for index, (lat, lon) in enumerate(network.nodes)],
-    )
-    connection.executemany(
-        "INSERT INTO rail_edge (id, node_a, node_b, length_m, points) VALUES (?, ?, ?, ?, ?)",
-        [
-            (index + 1, edge.a, edge.b, edge.length_m, railways.encode_points(edge.points))
-            for index, edge in enumerate(network.edges)
-        ],
-    )
-    counts.rail_nodes = len(network.nodes)
-    counts.rail_edges = len(network.edges)
-    if network.loops_dropped:
-        coverage.notes.append(f"railway rings with no junction left out: {network.loops_dropped}")
+def insert_tracks(connection: sqlite3.Connection, counts: Counts, coverage: Coverage) -> None:
+    """The networks surface legs are measured along (R-PATH-2, D-30)."""
+    folder = HERE / "vendor" / "naturalearth"
+    loaded = {}
+    for name in ("ne_10m_railroads.geojson", "ne_10m_roads.geojson"):
+        path = folder / name
+        if not path.exists():
+            raise BuildError(f"Missing {path}. Run fetch_sources.py --only naturalearth.")
+        loaded[name] = json.loads(path.read_text(encoding="utf-8"))["features"]
+
+    def is_ferry(properties: dict) -> bool:
+        return properties.get("featurecla") == "Ferry" or "Ferry" in (properties.get("type") or "")
+
+    roads = loaded["ne_10m_roads.geojson"]
+    ferries = tracks.lines_of(roads, is_ferry)
+    networks = {
+        # Natural Earth's railways already join where they meet; repairing them would
+        # join lines that only cross on a bridge.
+        "rail": tracks.lines_of(
+            loaded["ne_10m_railroads.geojson"], lambda p: p.get("featurecla") == "Railroad"
+        ),
+        "road": tracks.repair(
+            tracks.lines_of(roads, lambda p: p.get("featurecla") == "Road" and not is_ferry(p))
+            + ferries
+        ),
+        "ferry": tracks.repair(ferries),
+    }
+    for name, lines in networks.items():
+        network = tracks.build_network(lines)
+        connection.executemany(
+            """
+            INSERT INTO track_edge (network, id, node_a, node_b, length_m, points)
+            VALUES (?, ?, ?, ?, ?, ?)
+            """,
+            [
+                (name, index + 1, edge.a, edge.b, edge.length_m, tracks.encode_points(edge.points))
+                for index, edge in enumerate(network.edges)
+            ],
+        )
+        counts.track_edges[name] = len(network.edges)
+        coverage.notes.append(
+            f"{name} network: {len(network.edges)} edges between {len(network.nodes)} junctions"
+            + (f", {network.loops_dropped} rings with no junction left out" if network.loops_dropped else "")
+        )
 
 
 def write_data_sources(connection: sqlite3.Connection, cities_dataset: str) -> dict:
@@ -2082,9 +2103,9 @@ def write_meta(
             scalar("SELECT COUNT(*) FROM country WHERE is_un_member = 1 OR is_un_observer = 1")
         ),
         "country_count_all": str(scalar("SELECT COUNT(*) FROM country")),
-        # Stored with every rail leg measured on the network, as transit rides store
+        # Stored with every surface leg measured on a network, as transit rides store
         # theirs (R-TRAN-4), so a leg says which map its length came from.
-        "rail_network_version": f"naturalearth-{registry.NATURAL_EARTH_TAG}",
+        "track_network_version": f"naturalearth-{registry.NATURAL_EARTH_TAG}",
     }
     connection.executemany(
         "INSERT INTO meta (key, value) VALUES (?, ?)",

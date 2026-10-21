@@ -172,6 +172,9 @@ struct JourneyEditor: View {
             }
         }
         .navigationTitle(existing == nil ? "Log Journey" : "Edit Journey")
+        // Ready by the time both ends are picked, so the leg is measured along its
+        // railway, roads or ferry route straight away (D-30).
+        .task { await model.preloadTrackNetworks() }
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
@@ -249,7 +252,7 @@ struct JourneyEditor: View {
                 }
                 legs[index].leaveTransitLine()
                 legs[index].endpointChanged(route: legs[index].routeID.flatMap(model.route(id:)))
-                legs[index].measureAlongRailways(model.railNetwork)
+                legs[index].measureAlongTracks(model.trackNetworks)
             }
         }
     }
@@ -421,7 +424,7 @@ private struct LegSection: View {
                 Label(mode.displayName, systemImage: mode.symbolName).tag(mode)
             }
         }
-        .onChange(of: draft.mode) { draft.measureAlongRailways(model.railNetwork) }
+        .onChange(of: draft.mode) { draft.measureAlongTracks(model.trackNetworks) }
 
         if draft.mode == .cityTransit {
             TransitLineButton(lineID: draft.transitLineID, action: pickTransit)

@@ -43,7 +43,10 @@ struct ExportSafetyTests {
         let rows = text.components(separatedBy: "\r\n").map { $0.components(separatedBy: ",") }
         let header = rows[0]
         let row = rows[1]
-        let value = { (name: String) in try #require(header.firstIndex(of: name)).map { row[$0] } }
+        let value = { (name: String) throws -> String in
+            let index = try #require(header.firstIndex(of: name))
+            return row[index]
+        }
         #expect(try value("from_code") == "OSL")
         #expect(try value("to_code") == "JFK")
         #expect(try value("from_place_id") == osl.id.description)

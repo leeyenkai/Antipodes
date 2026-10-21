@@ -78,14 +78,14 @@ public final class AppModel {
         scene: GlobeScene
     )] = [:]
     @ObservationIgnored var borders: CountryBorders?
-    /// The railway network rail legs are measured along, once loaded (D-30).
-    @ObservationIgnored var railNetwork: RailNetwork?
-    /// The track each rail leg is drawn along, by leg, and the ends it was found for;
-    /// and the stops each transit ride passed, in order (R-TRAN-1).
-    var railPaths: [UUID: [Coordinate]] = [:]
+    /// The networks surface legs are measured along, each once loaded (D-30).
+    @ObservationIgnored var trackNetworks: [TrackKind: TrackNetwork] = [:]
+    /// The line each measured surface leg is drawn along, by leg, and the ends it was
+    /// found for; and the stops each transit ride passed, in order (R-TRAN-1).
+    var measuredPaths: [UUID: [Coordinate]] = [:]
     var transitPaths: [UUID: [Coordinate]] = [:]
-    @ObservationIgnored var railPathEnds: [UUID: [Coordinate]] = [:]
-    @ObservationIgnored var railCountries: [UUID: [String]] = [:]
+    @ObservationIgnored var measuredEnds: [UUID: [Coordinate]] = [:]
+    @ObservationIgnored var countriesAlong: [UUID: [String]] = [:]
     #if os(iOS)
         @ObservationIgnored var widgetGlobeSignature: Int?
         @ObservationIgnored var widgetWrite: Task<Void, Never>?
@@ -264,7 +264,7 @@ public final class AppModel {
             recompute()
         }
         refreshTransitPaths()
-        await refreshRailways()
+        await refreshTracks()
     }
 
     public var gazetteer: Gazetteer {
@@ -282,7 +282,7 @@ public final class AppModel {
             achievements: catalogue.achievements,
             routes: catalogue.routes,
             transit: transitNetwork,
-            countriesAlongLegs: railCountries
+            countriesAlongLegs: countriesAlong
         )
     }
 

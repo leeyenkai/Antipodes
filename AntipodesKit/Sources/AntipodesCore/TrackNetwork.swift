@@ -1,7 +1,7 @@
 import Foundation
 
-/// A stretch of track between two junctions of a ``RailNetwork``.
-public struct RailEdge: Sendable {
+/// A stretch of track, road or sea lane between two junctions of a ``TrackNetwork``.
+public struct TrackEdge: Sendable {
     /// Node indexes, from zero.
     public let a: Int
     public let b: Int
@@ -29,45 +29,43 @@ public struct RailEdge: Sendable {
     }
 }
 
-/// The way a rail leg ran, measured along the track.
-public struct RailPath: Hashable, Sendable {
+/// The way a surface leg ran, measured along its network.
+public struct TrackPath: Hashable, Sendable {
     /// From the leg's origin to its destination: a straight piece from each end to the
     /// nearest track, and the track between.
     public let coordinates: [Coordinate]
     public let lengthKm: Double
 }
 
-/// The railway network rail legs are measured along (R-PATH-2, R-PATH-5, D-30).
+/// A network surface legs are measured along: railways, roads or ferry routes
+/// (R-PATH-2, R-PATH-5, D-30).
 ///
-/// Each end of a leg is joined to the nearest track within ``snapRadiusKm``, and the leg
+/// Each end of a leg is joined to the nearest line within ``snapRadiusKm``, and the leg
 /// takes the shortest way along the network between the two. A leg with an end too far
 /// from any track, or whose ends the network does not join, has no path and keeps its
 /// straight line, marked approximate (R-PATH-3).
-public struct RailNetwork: Sendable {
+public struct TrackNetwork: Sendable {
+    public let kind: TrackKind
     /// Which map the network was built from, stored with every leg it measured.
     public let version: String
     public let nodes: [Coordinate]
-    public let edges: [RailEdge]
+    public let edges: [TrackEdge]
     private let incident: [[Int]]
     /// Segments by one-degree cell: those of cell `c` are
     /// `segments[cellStart[c] ..< cellStart[c + 1]]`.
     private let cellStart: [Int32]
     private let segments: [SegmentRef]
 
-    /// How far an end may be from the nearest track: a city's centre to its station.
+    /// How far an end may be from the nearest line: a city's centre to its station.
     public static let snapRadiusKm = 25.0
-    /// A path this many times the straight line, plus `detourAllowanceKm`, is a gap in
-    /// the network rather than a route anyone took.
-    static let detourFactor = 3.0
-    static let detourAllowanceKm = 30.0
-
-    public static let empty = RailNetwork(version: "", nodes: [], edges: [])
+    public static let empty = TrackNetwork(kind: .rail, version: "", nodes: [], edges: [])
 
     public var isEmpty: Bool {
         edges.isEmpty
     }
 
-    public init(version: String, nodes: [Coordinate], edges: [RailEdge]) {
+    public init(kind: TrackKind, version: String, nodes: [Coordinate], edges: [TrackEdge]) {
+        self.kind = kind
         self.version = version
         self.nodes = nodes
         self.edges = edges
@@ -83,7 +81,7 @@ public struct RailNetwork: Sendable {
     }
 
     /// Two passes, counting then filling, so the index is two flat arrays.
-    private static func index(_ edges: [RailEdge]) -> ([Int32], [SegmentRef]) {
+    private static func index(_ edges: [TrackEdge]) -> ([Int32], [SegmentRef]) {
         var counts = [Int32](repeating: 0, count: cellCount + 1)
         func visit(_ body: (Int, SegmentRef) -> Void) {
             for (index, edge) in edges.enumerated() {
@@ -114,7 +112,7 @@ public struct RailNetwork: Sendable {
     // MARK: - Routing
 
     /// The shortest way along the track between two places, or nil when there is none.
-    public func route(from origin: Coordinate, to destination: Coordinate) -> RailPath? {
+    public func route(from origin: Coordinate, to destination: Coordinate) -> TrackPath? {
         guard let start = snap(origin), let end = snap(destination) else { return nil }
         var best = Double.infinity
         var bestEnd: Int?
@@ -159,9 +157,9 @@ public struct RailNetwork: Sendable {
         let coordinates = [origin] + track + [destination]
         let length = best + start.offKm + end.offKm
         let straight = GreatCircle.distanceKm(from: origin, to: destination)
-        guard length > 0, length <= straight * Self.detourFactor + Self.detourAllowanceKm
+        guard length > 0, length <= straight * kind.detourFactor + kind.detourAllowanceKm
         else { return nil }
-        return RailPath(coordinates: coordinates.removingRepeats(), lengthKm: length)
+        return TrackPath(coordinates: coordinates.removingRepeats(), lengthKm: length)
     }
 
     // MARK: - Snapping
@@ -401,7 +399,7 @@ private extension [Coordinate] {
     }
 }
 
-public extension RailPath {
+public extension TrackPath {
     /// The countries the path runs through, in order, from a lookup of the country at a
     /// point (R-PATH-6): Paris to Amsterdam is France, Belgium, the Netherlands.
     ///

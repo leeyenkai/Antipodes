@@ -311,24 +311,23 @@ CREATE TABLE transit_segment (
 
 CREATE INDEX idx_transit_line_system ON transit_line (system_id);
 
--- The railway network rail legs are measured along (R-PATH-2, R-PATH-5, D-30), from
--- Natural Earth's 1:10m railroads (public domain). Nodes are junctions and line ends;
--- an edge is the track between two of them, its length measured on the full geometry
--- and `points` its simplified line: little-endian int32 pairs, latitude then
--- longitude, in 1/100,000 of a degree, from node_a to node_b with both ends.
-CREATE TABLE rail_node (
-    id        INTEGER PRIMARY KEY,
-    latitude  REAL NOT NULL,
-    longitude REAL NOT NULL
-);
-
-CREATE TABLE rail_edge (
-    id       INTEGER PRIMARY KEY,
-    node_a   INTEGER NOT NULL REFERENCES rail_node (id),
-    node_b   INTEGER NOT NULL REFERENCES rail_node (id),
+-- The networks surface legs are measured along (R-PATH-2, R-PATH-5, D-30), from
+-- Natural Earth's 1:10m railroads and roads (public domain): `rail`, `road` (with car
+-- ferries) and `ferry`. An edge is the line between two junctions, numbered from 1
+-- within its network, its length measured on the full geometry and `points` its
+-- simplified line from node_a to node_b with both ends: the first point as two
+-- little-endian int32, latitude then longitude, in 1/100,000 of a degree, then each
+-- point as two int16 steps from the one before. A junction is where its edges' ends
+-- are, so it needs no table of its own.
+CREATE TABLE track_edge (
+    network  TEXT NOT NULL,
+    id       INTEGER NOT NULL,
+    node_a   INTEGER NOT NULL,
+    node_b   INTEGER NOT NULL,
     length_m INTEGER NOT NULL,
-    points   BLOB NOT NULL
-);
+    points   BLOB NOT NULL,
+    PRIMARY KEY (network, id)
+) WITHOUT ROWID;
 
 -- Everything searchable, flattened.
 --
