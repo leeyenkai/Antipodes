@@ -114,6 +114,11 @@ is blocked.
 - **Share a personality, a badge or a collection** (R-SHARE-1, §9 "share any card"):
   each has its card, square or story, with its symbol where other cards have a globe;
   share from the personality screen, a badge's sheet, a collection, or the hero's menu.
+- **Rail logs and any journey list import** (R-JLOG-7, R-LOG-8, D-27): the importer
+  reads a mode column, rail-log columns and stated distances, and JSON lists as well as
+  CSV. Stations and towns are matched by name to bundled places, airports by code, and
+  a list with no mode column is read as whatever the user says it is. Dropping a JSON
+  journey list on the Mac window opens the same review.
 - **Ride again in one tap** (R-JLOG-6): the journey sheet lists the last few rides to
   log again for today, and any leg of a longer journey can be ridden again.
 - **Satellite globe** (D-26, R-GLOBE-1): the globe can be drawn from NASA's Blue Marble

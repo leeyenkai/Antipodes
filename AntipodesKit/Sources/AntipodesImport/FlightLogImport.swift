@@ -1,7 +1,8 @@
 import AntipodesCore
 import Foundation
 
-/// One flight read from another app's export, before it is matched to airports.
+/// One leg read from another app's export — a flight, or a train, ferry or any other
+/// mode where the file says so — before it is matched to places.
 public struct FlightImportRow: Hashable, Sendable, Identifiable {
     public var id: Int {
         line
@@ -9,6 +10,8 @@ public struct FlightImportRow: Hashable, Sendable, Identifiable {
 
     /// The row's line in the file, counting the header as line 1, for the review screen.
     public let line: Int
+    /// Flight unless the file has a mode column, or the reader was told otherwise.
+    public var mode: TravelMode = .flight
     public var date: FlexibleDate
     public var originText: String
     public var destinationText: String
@@ -30,6 +33,9 @@ public struct FlightImportRow: Hashable, Sendable, Identifiable {
     public var timeOffsets = LegTimeOffsets()
     /// The flight time the file states, if it has a column for it.
     public var durationMinutes: Int?
+    /// The distance the file states, in kilometres — rail logs often carry the real
+    /// distance along the track, which beats a straight line (R-PATH-5).
+    public var distanceKm: Double?
     /// Flighty records cancelled flights; they were never flown, so they are shown in
     /// the review but not imported.
     public var isCancelled = false
@@ -54,13 +60,16 @@ public enum FlightLogFormat: String, Sendable, CaseIterable {
     case openFlights
     /// Any CSV whose header names a date and two airport columns.
     case generic
+    /// The same, as a JSON list.
+    case json
 
     public var displayName: String {
         switch self {
         case .flighty: "Flighty"
         case .myFlightradar24: "myFlightradar24"
         case .openFlights: "OpenFlights"
-        case .generic: "Flight list (CSV)"
+        case .generic: "Journey list (CSV)"
+        case .json: "Journey list (JSON)"
         }
     }
 }
@@ -95,14 +104,13 @@ public enum FlightLogImport {
     // Column names across the formats, normalised by `CSVTable.normalise`.
     static let dateColumns = ["date", "flightdate", "departuredate", "day"]
     static let fromColumns = [
-        "from",
-        "origin",
-        "departure",
-        "departureairport",
-        "fromairport",
-        "dep",
+        "from", "origin", "departure", "departureairport", "fromairport", "dep",
+        "fromstation", "originstation", "departurestation", "startstation", "start",
     ]
-    static let toColumns = ["to", "destination", "arrival", "arrivalairport", "toairport", "arr"]
+    static let toColumns = [
+        "to", "destination", "arrival", "arrivalairport", "toairport", "arr",
+        "tostation", "destinationstation", "arrivalstation", "endstation", "end",
+    ]
     static let airlineColumns = ["airline", "carrier", "operator", "airlinename"]
     static let flightColumns = ["flight", "flightnumber", "flightno", "flightnum"]
     static let aircraftColumns = [
@@ -151,12 +159,18 @@ public enum FlightLogImport {
     /// `dayFirst` settles dates like 03/04/2021 when nothing in the file does: a value
     /// above 12 in either position decides it for the whole file, and only a file where
     /// every date is ambiguous falls back to the device's convention.
+    ///
+    /// A file with no mode column is taken to be all `defaultMode` — flights, unless the
+    /// user says the list is of trains or ferries.
     public static func parse(
         _ data: Data,
-        dayFirst: Bool
+        dayFirst: Bool,
+        defaultMode: TravelMode = .flight
     ) throws -> (format: FlightLogFormat, rows: [FlightImportRow]) {
-        let table = try CSVTable(data: data)
-        let format = detectFormat(table)
+        let isJSON = CSVTable.looksLikeJSON(data)
+        let table = try isJSON ? CSVTable(json: data) : CSVTable(data: data)
+        let format = isJSON ? .json : detectFormat(table)
+        let modeColumn = table.column(modeColumns)
         guard let dateColumn = table.column(dateColumns) else {
             throw Failure.missingColumns(["date"])
         }
@@ -215,25 +229,35 @@ public enum FlightLogImport {
             offsets.actualDeparture = actualDeparture?.offsetMinutes
             offsets.actualArrival = actualArrival?.offsetMinutes
 
-            let originCode = AirportCode.extract(from: originText)
-            let destinationCode = AirportCode.extract(from: destinationText)
-            if originCode == nil {
+            let modeText = table.value(raw, modeColumn)
+            let mode = modeText.flatMap(TravelMode.init(importText:)) ?? defaultMode
+            if let modeText, TravelMode(importText: modeText) == nil {
+                let reading = mode.displayName.lowercased()
+                problems
+                    .append("\"\(modeText)\" is not a mode Antipodes knows; read as \(reading).")
+            }
+            // Airports carry codes; stations and towns are matched by name instead.
+            let originCode = mode == .flight ? AirportCode.extract(from: originText) : nil
+            let destinationCode = mode == .flight ? AirportCode.extract(from: destinationText) : nil
+            if mode == .flight, originCode == nil {
                 problems.append("No airport code found in \"\(originText)\".")
             }
-            if destinationCode == nil {
+            if mode == .flight, destinationCode == nil {
                 problems.append("No airport code found in \"\(destinationText)\".")
             }
 
             rows.append(
                 FlightImportRow(
                     line: index + 2,
+                    mode: mode,
                     date: date,
                     originText: originText,
                     destinationText: destinationText,
                     originCode: originCode,
                     destinationCode: destinationCode,
                     airline: table.value(raw, table.column(airlineColumns)),
-                    flightNumber: table.value(raw, table.column(flightColumns)),
+                    flightNumber: table.value(raw, table.column(flightColumns))
+                        ?? table.value(raw, table.column(serviceColumns)),
                     aircraft: table.value(raw, table.column(aircraftColumns)),
                     registration: table.value(raw, table.column(registrationColumns)),
                     seat: table.value(raw, table.column(seatColumns)),
@@ -252,6 +276,7 @@ public enum FlightLogImport {
                     timeOffsets: offsets,
                     durationMinutes: table.value(raw, table.column(durationColumns))
                         .flatMap(DateText.durationMinutes),
+                    distanceKm: distanceKm(table, raw),
                     isCancelled: isCancelled,
                     problems: problems
                 )
@@ -288,7 +313,7 @@ public enum FlightLogImport {
             case "5": return nil // "Private"
             default: break
             }
-        case .flighty, .generic:
+        case .flighty, .generic, .json:
             break
         }
         return text

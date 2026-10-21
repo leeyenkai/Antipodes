@@ -4,8 +4,9 @@ import AntipodesStore
 import SwiftUI
 import UniformTypeIdentifiers
 
-/// Imports another app's flight history with a review step for anything that did not
-/// match (R-LOG-8, R-JLOG-7).
+/// Imports another app's journey history — a flight log, a rail log, any list of
+/// journeys as CSV or JSON — with a review step for anything that did not match
+/// (R-LOG-8, R-JLOG-7).
 ///
 /// Either asks for a file, or — when one was dropped on the Mac window (R-NAV-2) — starts
 /// from that file. Nothing is written until the user taps Import.
@@ -22,6 +23,11 @@ struct FlightImportView: View {
     @State private var tripID: UUID?
     @State private var fixing: Fix?
     @State private var failure: String?
+    /// The file, kept so a different mode can be read from it without asking again.
+    @State private var data: Data?
+    /// What a file with no mode column is a list of.
+    @State private var defaultMode = TravelMode.flight
+    @State private var statesModes = true
 
     struct Fix: Identifiable {
         let line: Int
@@ -46,15 +52,16 @@ struct FlightImportView: View {
         NavigationStack {
             Group {
                 if isReading {
-                    ProgressView("Matching airports…")
+                    ProgressView("Matching places…")
                 } else if candidates.isEmpty {
                     EmptyStateView(
-                        title: "Import flights",
+                        title: "Import journeys",
                         message: failure ?? """
-                        Choose a CSV exported from Flighty, myFlightradar24, OpenFlights or a \
-                        spreadsheet with date, from and to columns.
+                        Choose a CSV exported from Flighty, myFlightradar24 or OpenFlights, \
+                        or any CSV or JSON list of journeys with date, from and to — a rail \
+                        log, a spreadsheet. A mode column sorts trains from ferries.
                         """,
-                        systemImage: "airplane.arrival",
+                        systemImage: "point.topleft.down.to.point.bottomright.curvepath",
                         actionTitle: "Choose File",
                         action: { isChoosingFile = true }
                     )
@@ -62,7 +69,7 @@ struct FlightImportView: View {
                     review
                 }
             }
-            .navigationTitle("Import Flights")
+            .navigationTitle("Import Journeys")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -77,18 +84,24 @@ struct FlightImportView: View {
             }
             .fileImporter(
                 isPresented: $isChoosingFile,
-                allowedContentTypes: [.commaSeparatedText, .plainText, .text, .data]
+                allowedContentTypes: [.commaSeparatedText, .json, .plainText, .text, .data]
             ) { result in
                 Task { await read(result) }
             }
             .sheet(item: $fixing) { fix in
+                let isFlight = mode(ofLine: fix.line) == .flight
                 PlacePickerSheet(
-                    title: "Choose airport",
-                    prompt: "Airport name or code",
-                    kinds: [.airport],
-                    fixedKinds: [.airport]
+                    title: isFlight ? "Choose airport" : "Choose place",
+                    prompt: isFlight ? "Airport name or code" : "Town, city or landmark",
+                    kinds: isFlight ? [.airport] : [.city, .landmark, .airport],
+                    fixedKinds: isFlight ? [.airport] : []
                 ) { place in
                     apply(place, to: fix)
+                }
+            }
+            .onChange(of: defaultMode) {
+                if let data {
+                    Task { await match(data) }
                 }
             }
             .task {
@@ -112,20 +125,27 @@ struct FlightImportView: View {
                 if let format {
                     LabeledContent("Format", value: format.displayName)
                 }
-                LabeledContent("Flights found", value: "\(candidates.count)")
+                if !statesModes {
+                    Picker("These are", selection: $defaultMode) {
+                        ForEach(TravelMode.allCases) { mode in
+                            Label(mode.pluralName, systemImage: mode.symbolName).tag(mode)
+                        }
+                    }
+                }
+                LabeledContent("Journeys found", value: "\(candidates.count)")
                 let unmatched = candidates.count { $0.status == .needsAirport }
                 let duplicates = candidates.count { $0.status == .duplicate }
                 let cancelled = candidates.count { $0.status == .cancelled }
                 if unmatched > 0 {
                     Label(
-                        "\(unmatched) need an airport chosen",
+                        "\(unmatched) need a place chosen",
                         systemImage: "exclamationmark.triangle"
                     )
                     .foregroundStyle(Palette.warning)
                 }
                 if duplicates > 0 {
                     Label(
-                        "\(Format.ordinalCount(duplicates, "flight")) already logged, left out",
+                        "\(Format.ordinalCount(duplicates, "journey")) already logged, left out",
                         systemImage: "doc.on.doc"
                     )
                     .foregroundStyle(.secondary)
@@ -139,7 +159,7 @@ struct FlightImportView: View {
                 }
                 TripPicker(selection: $tripID)
             }
-            Section("Flights") {
+            Section("Journeys") {
                 ForEach($candidates) { $candidate in
                     CandidateRow(candidate: $candidate) { end in
                         fixing = Fix(line: candidate.row.line, end: end)
@@ -169,13 +189,22 @@ struct FlightImportView: View {
         isReading = true
         defer { isReading = false }
         do {
-            let (format, candidates) = try await model.readFlightLog(data)
+            self.data = data
+            statesModes = FlightLogImport.statesModes(data)
+            let (format, candidates) = try await model.readJourneyLog(
+                data,
+                defaultMode: defaultMode
+            )
             self.format = format
             self.candidates = candidates
             failure = nil
         } catch {
             failure = error.localizedDescription
         }
+    }
+
+    private func mode(ofLine line: Int) -> TravelMode {
+        candidates.first { $0.row.line == line }?.row.mode ?? defaultMode
     }
 
     private func apply(_ place: PlaceReference, to fix: Fix) {
@@ -224,6 +253,7 @@ private struct CandidateRow: View {
                     )
                 }
                 Text([
+                    candidate.row.mode == .flight ? nil : candidate.row.mode.displayName,
                     candidate.row.date.displayText,
                     candidate.row.airline,
                     candidate.row.flightNumber,
@@ -240,7 +270,9 @@ private struct CandidateRow: View {
                         .font(.caption2).foregroundStyle(.secondary)
                 case .needsAirport:
                     Label(
-                        "Tap the orange code to choose the airport",
+                        candidate.row.mode == .flight
+                            ? "Tap the orange code to choose the airport"
+                            : "Tap the orange name to choose the place",
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.caption2).foregroundStyle(Palette.warning)
@@ -304,5 +336,21 @@ extension BackupPreview {
             """
         }
         return text
+    }
+}
+
+private extension TravelMode {
+    /// What a list of this mode is a list of.
+    var pluralName: String {
+        switch self {
+        case .flight: "Flights"
+        case .rail: "Train journeys"
+        case .cityTransit: "City transit rides"
+        case .coach: "Coach journeys"
+        case .ferry: "Ferry crossings"
+        case .roadTrip: "Road trips"
+        case .humanPowered: "Walks and rides"
+        case .cableAndMountain: "Cable car and mountain rides"
+        }
     }
 }

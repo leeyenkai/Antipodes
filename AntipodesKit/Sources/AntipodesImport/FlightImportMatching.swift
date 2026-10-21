@@ -1,11 +1,11 @@
 import AntipodesCore
 import Foundation
 
-/// A flight read from a file, matched to the bundled airports and ready to review.
+/// A leg read from a file, matched to bundled places and ready to review.
 public struct FlightImportCandidate: Hashable, Sendable, Identifiable {
     public enum Status: Hashable, Sendable {
         case ready
-        /// One or both airports could not be matched; the user can pick them by hand.
+        /// One or both ends could not be matched; the user can pick them by hand.
         case needsAirport
         /// The same flight is already in the log, or earlier in the same file.
         case duplicate
@@ -99,11 +99,12 @@ public struct FlightImportCandidate: Hashable, Sendable, Identifiable {
             actualArrival: local(row.times.actualArrival, offsets.actualArrival, at: destination)
         )
         return JourneyLeg(
-            mode: .flight,
+            mode: row.mode,
             origin: origin,
             destination: destination,
             date: row.date,
             purpose: row.purpose ?? .leisure,
+            distanceKmOverride: row.distanceKm,
             times: times,
             operatorName: row.airline,
             serviceNumber: row.flightNumber,
@@ -117,35 +118,47 @@ public struct FlightImportCandidate: Hashable, Sendable, Identifiable {
 }
 
 public extension FlightLogImport {
-    /// Matches every row's airports by code, and flags flights already in the log.
+    /// Matches every row's ends — airports by code, anything else by name — and flags
+    /// legs already in the log.
     ///
-    /// `airport` looks a code up in the bundled database; it is a parameter so this
-    /// stays testable without one.
+    /// `airport` looks a code up in the bundled database and `place` a station or town by
+    /// name; they are parameters so this stays testable without one.
     static func match(
         _ rows: [FlightImportRow],
         existing: [JourneyLeg],
-        airport: @Sendable (String) async -> PlaceReference?
+        airport: @Sendable (String) async -> PlaceReference?,
+        place: @Sendable (String, TravelMode) async -> PlaceReference? = { _, _ in nil }
     ) async -> [FlightImportCandidate] {
         var cache: [String: PlaceReference?] = [:]
-        func lookUp(_ code: String?) async -> PlaceReference? {
-            guard let code else { return nil }
-            if let cached = cache[code] {
+        func lookUp(_ code: String?, name: String, mode: TravelMode) async -> PlaceReference? {
+            let key = code.map { "code:\($0)" } ?? "name:\(mode.rawValue):\(name.lowercased())"
+            if let cached = cache[key] {
                 return cached
             }
-            let found = await airport(code)
-            cache[code] = found
+            let found: PlaceReference? = if let code {
+                await airport(code)
+            } else if !name.isEmpty, mode != .flight {
+                await place(name, mode)
+            } else {
+                nil
+            }
+            cache[key] = found
             return found
         }
 
-        var known = FlightIndex(existing.filter { $0.mode == .flight })
+        var known = FlightIndex(existing)
         var candidates: [FlightImportCandidate] = []
         for row in rows {
-            let origin = await lookUp(row.originCode)
-            let destination = await lookUp(row.destinationCode)
+            let origin = await lookUp(row.originCode, name: row.originText, mode: row.mode)
+            let destination = await lookUp(
+                row.destinationCode,
+                name: row.destinationText,
+                mode: row.mode
+            )
             var duplicate = false
             if let origin, let destination, !row.isCancelled {
                 let probe = JourneyLeg(
-                    mode: .flight,
+                    mode: row.mode,
                     origin: origin,
                     destination: destination,
                     date: row.date,
@@ -168,14 +181,15 @@ public extension FlightLogImport {
         return candidates
     }
 
-    /// Which flights are already known, for spotting a duplicate.
+    /// Which legs are already known, for spotting a duplicate.
     ///
-    /// Two flights are the same when they share the day and both ends, and their flight
-    /// numbers agree — or either side has none. A flight logged by hand without its
+    /// Two legs are the same when they share the mode, the day and both ends, and their
+    /// service numbers agree — or either side has none. A flight logged by hand without its
     /// number is the same trip as the SK903 an import finds on that day and route;
     /// treating them as two would put the journey in the log twice.
     internal struct FlightIndex {
         struct Route: Hashable {
+            let mode: TravelMode
             let date: FlexibleDate
             let origin: PlaceID
             let destination: PlaceID
@@ -202,7 +216,12 @@ public extension FlightLogImport {
         }
 
         static func route(_ leg: JourneyLeg) -> Route {
-            Route(date: leg.date, origin: leg.origin.id, destination: leg.destination.id)
+            Route(
+                mode: leg.mode,
+                date: leg.date,
+                origin: leg.origin.id,
+                destination: leg.destination.id
+            )
         }
 
         static func number(_ leg: JourneyLeg) -> String? {

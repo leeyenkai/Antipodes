@@ -24,16 +24,43 @@ public extension AppModel {
         return counts
     }
 
-    /// Reads another app's flight history and matches it to bundled airports (R-LOG-8).
-    func readFlightLog(_ data: Data) async throws
+    /// Reads another app's journey history — flights, or a rail log, or any list with a
+    /// date and two ends — and matches it to bundled places (R-LOG-8, R-JLOG-7).
+    /// Airports are matched by code; stations and towns by name.
+    func readJourneyLog(_ data: Data, defaultMode: TravelMode = .flight) async throws
         -> (FlightLogFormat, [FlightImportCandidate]) {
         let dayFirst = Locale.current.region?.identifier != "US"
-        let (format, rows) = try FlightLogImport.parse(data, dayFirst: dayFirst)
-        let candidates = await FlightLogImport
-            .match(rows, existing: log.allLegs) { [weak self] code in
-                await self?.airport(code: code)
-            }
+        let (format, rows) = try FlightLogImport.parse(
+            data,
+            dayFirst: dayFirst,
+            defaultMode: defaultMode
+        )
+        let candidates = await FlightLogImport.match(
+            rows,
+            existing: log.allLegs,
+            airport: { [weak self] code in await self?.airport(code: code) },
+            place: { [weak self] name, _ in await self?.bestPlace(named: name) }
+        )
         return (format, candidates)
+    }
+
+    /// The bundled place a station or town name most likely means: an exact name first,
+    /// then the top result. "Oslo S" or "Bergen stasjon" fall back to fewer words, since
+    /// the database has towns rather than stations (D-8).
+    func bestPlace(named name: String) async -> PlaceReference? {
+        var words = name.split(separator: " ").map(String.init)
+        while !words.isEmpty {
+            let text = words.joined(separator: " ")
+            let results = await search(text, kinds: [.city, .landmark, .airport])
+            if let exact = results.first(where: {
+                $0.name.compare(text, options: [.caseInsensitive, .diacriticInsensitive])
+                    == .orderedSame
+            }) ?? results.first {
+                return exact.placeReference
+            }
+            words.removeLast()
+        }
+        return nil
     }
 
     /// Logs every included candidate as its own one-leg journey, in one save: an import

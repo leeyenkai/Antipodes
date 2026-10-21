@@ -1,3 +1,4 @@
+import AntipodesImport
 import AntipodesStore
 import SwiftUI
 import UniformTypeIdentifiers
@@ -99,8 +100,8 @@ extension View {
         private func receive(_ urls: [URL]) async {
             guard let url = urls.first(where: \.isFileURL) else {
                 model.errorMessage = """
-                Drop a file saved on this Mac — a flight log as CSV, or an Antipodes backup. \
-                Links and text can't be imported.
+                Drop a file saved on this Mac — a journey list as CSV or JSON, or an Antipodes \
+                backup. Links and text can't be imported.
                 """
                 return
             }
@@ -117,16 +118,24 @@ extension View {
                 }.value
                 switch DroppedFileKind(url) {
                 case .backup:
-                    backup = try DroppedBackup(
-                        fileName: url.lastPathComponent,
-                        preview: model.previewBackup(data)
-                    )
+                    do {
+                        backup = try DroppedBackup(
+                            fileName: url.lastPathComponent,
+                            preview: model.previewBackup(data)
+                        )
+                    } catch {
+                        // JSON that is not a backup may be another app's journey list.
+                        guard (try? FlightLogImport.parse(data, dayFirst: true)) != nil else {
+                            throw error
+                        }
+                        flightLog = DroppedFlightLog(data: data)
+                    }
                 case .flightLog:
                     flightLog = DroppedFlightLog(data: data)
                 case nil:
                     model.errorMessage = """
-                    Antipodes can import a flight log saved as CSV, or an Antipodes backup \
-                    (JSON). “\(url.lastPathComponent)” is neither.
+                    Antipodes can import a journey list saved as CSV or JSON, or an Antipodes \
+                    backup. “\(url.lastPathComponent)” is neither.
                     """
                 }
             } catch {

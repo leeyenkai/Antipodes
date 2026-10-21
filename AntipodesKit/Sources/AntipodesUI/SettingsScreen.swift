@@ -230,7 +230,7 @@ struct SettingsScreen: View {
 
     private var importSection: some View {
         Section {
-            Button("Flight History (CSV)…", systemImage: "airplane.arrival") {
+            Button("Flights, Trains and Other Journeys…", systemImage: "airplane.arrival") {
                 isImportingFlights = true
             }
             Button("From Photos…", systemImage: "photo.on.rectangle.angled") {
@@ -243,9 +243,9 @@ struct SettingsScreen: View {
             Text("Import")
         } footer: {
             Text("""
-            Flight lists from Flighty, myFlightradar24, OpenFlights or any CSV with date, from \
-            and to columns. Photos are read on this device for their date and place; nothing \
-            is uploaded or copied.\(dropHint)
+            Flight lists from Flighty, myFlightradar24 or OpenFlights, and rail logs or any \
+            CSV or JSON list of journeys with date, from and to. Photos are read on this \
+            device for their date and place; nothing is uploaded or copied.\(dropHint)
             """)
         }
     }
@@ -253,7 +253,7 @@ struct SettingsScreen: View {
     /// On the Mac, either file can also be dropped on the window (R-NAV-2).
     private var dropHint: String {
         #if os(macOS)
-            " You can also drop a flight list or a backup anywhere on the window."
+            " You can also drop a journey list or a backup anywhere on the window."
         #else
             ""
         #endif
