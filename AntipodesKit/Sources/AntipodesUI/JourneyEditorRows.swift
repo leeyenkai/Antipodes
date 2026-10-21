@@ -30,6 +30,7 @@ struct LegDistanceRow: View {
     private func sourceText(_ source: DistanceSource) -> String {
         switch source {
         case .userOverride: "Your own figure."
+        case .storedPath where leg.transitLineID != nil: "Along the line, stop to stop."
         case .storedPath: "The catalogue route's length\(leg.routeName.map { " (\($0))" } ?? "")."
         case .greatCircleExact: "Great-circle distance between the airports."
         case .greatCircleApproximate: leg.mode.pathSourceDescription

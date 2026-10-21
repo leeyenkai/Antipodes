@@ -121,7 +121,8 @@ is blocked.
   lines ridden, each system's share of segments covered (riding a stretch twice adds a
   ride, not coverage), and stations boarded, alighted and passed through. A commute pass
   is one ride dated across its months, with the purpose Commute (R-JLOG-6). Systems
-  outside the set are still logged between two places.
+  outside the set are still logged between two places. The leg's distance says it runs
+  along the line rather than calling it a catalogue route.
 - **Eras for undated landmarks** (R-DB-3): a landmark Wikidata knows only to the century
   or millennium — the Parthenon, 5th century BC — carries that era instead of a made-up
   year, and joins the era spread where the era lies within one period.
