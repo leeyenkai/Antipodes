@@ -13,6 +13,22 @@ extension AppModel {
     /// Legs logged before the networks existed, imported, or seeded are measured here;
     /// the journey editor measures a leg as its ends are picked.
     func refreshTracks() async {
+        // At launch the log is reloaded and its facts refreshed from more than one
+        // place; a second request while one runs is folded into one more pass, so the
+        // same legs are not searched twice side by side.
+        if isMeasuringTracks {
+            tracksNeedAnotherPass = true
+            return
+        }
+        isMeasuringTracks = true
+        defer { isMeasuringTracks = false }
+        repeat {
+            tracksNeedAnotherPass = false
+            await measurePendingTracks()
+        } while tracksNeedAnotherPass
+    }
+
+    private func measurePendingTracks() async {
         let surface = log.allLegs.filter { $0.mode.trackKind != nil }
         let live = Set(surface.map(\.id))
         measuredEnds = measuredEnds.filter { live.contains($0.key) }

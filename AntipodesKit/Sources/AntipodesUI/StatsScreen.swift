@@ -84,10 +84,10 @@ struct StatsScreen: View {
                     ToolbarItem(placement: .primaryAction) {
                         StatsFilterMenu()
                     }
-                }
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Share Globe", systemImage: "square.and.arrow.up") {
-                        sharing = ShareItem(card: .globe)
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Share", systemImage: "square.and.arrow.up") {
+                            sharing = ShareItem(card: .summary)
+                        }
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {

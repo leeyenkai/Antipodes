@@ -103,4 +103,18 @@ struct LogFilterTests {
         #expect(filter.rules(from: .default).includeCommutes)
         #expect(!LogFilter(mode: .rail).rules(from: .default).includeCommutes)
     }
+
+    @Test(
+        "A filter lets go of a trip that has been deleted, and of everything when the log empties"
+    )
+    func pruning() {
+        let (log, trip) = Self.log()
+        let filter = LogFilter(year: 2023, tripID: trip.id)
+        #expect(filter.pruned(for: log) == filter)
+
+        var withoutTrip = log
+        withoutTrip.trips = []
+        #expect(filter.pruned(for: withoutTrip) == LogFilter(year: 2023))
+        #expect(filter.pruned(for: .empty) == .none)
+    }
 }

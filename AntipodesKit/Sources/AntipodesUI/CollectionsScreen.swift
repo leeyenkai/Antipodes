@@ -369,16 +369,16 @@ private struct WishlistRow: View {
         if status.isVisited {
             return status.firstVisited.map { "Visited \(Format.day($0))" } ?? "Visited"
         }
-        if status.item.routeID != nil {
+        if status.item.isRoute {
             return "Route"
         }
-        return status.item.place?.contextLine ?? ""
+        return status.item.wishedPlace?.contextLine ?? ""
     }
 
     private func log() {
         if let routeID = status.item.routeID, let route = model.route(id: routeID) {
             model.addRequest = AddRequest(start: .route(route))
-        } else if let place = status.item.place {
+        } else if let place = status.item.wishedPlace {
             model.addRequest = AddRequest(start: .place(place))
         }
     }

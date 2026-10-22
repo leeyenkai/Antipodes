@@ -60,6 +60,8 @@ struct GlobeSummaryBar: View {
 
     /// Shaded countries on the list the user counts (Q-4), so this agrees with the
     /// headline on the Stats screen; land off the list is still shaded, just not counted.
+    /// The bar waits for the list (`isReady`) rather than count every code first and
+    /// then drop one a moment later.
     private var countries: Int {
         let facts = model.catalogue.countries
         guard !facts.isEmpty else { return scene.shadedCountryCodes.count }
@@ -67,9 +69,10 @@ struct GlobeSummaryBar: View {
             .count { facts[$0]?.isCounted(on: model.rules.countryList) ?? false }
     }
 
-    /// Wishlist pins and the home markers are not places the user has been.
+    /// Each place once, however often it was visited, as the Stats screen counts them
+    /// (R-CALC-3). Wishlist pins and the home markers are not places the user has been.
     private var places: Int {
-        scene.pins.filter(\.style.isTravel).count
+        Set(scene.pins.filter(\.style.isTravel).map(\.place.id)).count
     }
 
     private var distance: String {

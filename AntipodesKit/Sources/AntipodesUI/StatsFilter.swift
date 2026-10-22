@@ -88,17 +88,8 @@ struct StatsFilterBanner: View {
         .accessibilityElement(children: .combine)
     }
 
-    /// "2023 · Fjords · Rail · Work".
     private var summary: String {
-        let filter = model.statsFilter
-        return [
-            filter.year.map(String.init),
-            filter.tripID.flatMap { model.log.trip(id: $0) }.map { $0.displayName(model: model) },
-            filter.mode?.displayName,
-            filter.purpose?.displayName,
-        ]
-        .compactMap(\.self)
-        .joined(separator: " · ")
+        model.statsFilterSummary ?? ""
     }
 
     private var note: String {

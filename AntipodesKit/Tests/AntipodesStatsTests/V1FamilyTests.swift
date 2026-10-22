@@ -271,6 +271,20 @@ struct TimeStatisticsTests {
         #expect(stats.daysAwayInput.exclusions[.unknownDate] == 1)
     }
 
+    /// A range from 2019 to 2099 is a mistyped year. Spread over days it would add
+    /// eighty years away; instead it is left out, and the caveat says why.
+    @Test("A range of more than ten years is left out of days away, and says why")
+    func overLongRange() throws {
+        let start = try #require(CalendarDate(year: 2019, month: 6, day: 1))
+        let end = try #require(CalendarDate(year: 2099, month: 6, day: 1))
+        let stats = TimeStatistics.compute(
+            for: TravelLog(visits: [Fixtures.visit(Fixtures.rome, .stayed, .span(start, end))]),
+            today: Self.today
+        )
+        #expect(stats.totalDaysAway == 0)
+        #expect(stats.daysAwayInput.exclusions[.dateRangeTooLong] == 1)
+    }
+
     /// Without a home the Bergen month cannot place days: it is excluded as too
     /// imprecise rather than counted as thirty days.
     @Test("A month-only visit is excluded from days away, and says why")

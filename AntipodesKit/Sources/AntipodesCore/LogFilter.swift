@@ -30,6 +30,19 @@ public struct LogFilter: Hashable, Sendable {
         self != .none
     }
 
+    /// The filter with anything the log no longer holds taken off: a trip that has been
+    /// deleted, or every part of it once the log is empty. A filter on a trip that is
+    /// gone would otherwise show an empty slice under a blank name, with no way to see
+    /// what it was.
+    public func pruned(for log: TravelLog) -> LogFilter {
+        guard !log.isEmpty else { return .none }
+        var pruned = self
+        if let tripID, log.trip(id: tripID) == nil {
+            pruned.tripID = nil
+        }
+        return pruned
+    }
+
     /// Whether a leg is in the slice.
     public func includes(_ leg: JourneyLeg, of journey: Journey) -> Bool {
         if let year, leg.date.year != year {

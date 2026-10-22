@@ -41,10 +41,12 @@ struct GlobeScreen: View {
             globe
                 .background(GlobeBackdrop())
                 .overlay(alignment: .top) {
-                    if !model.log.isEmpty {
+                    if !model.log.isEmpty, model.isReady {
                         GlobeSummaryBar(scene: scene)
+                            .transition(.opacity)
                     }
                 }
+                .animation(.easeOut(duration: 0.25), value: model.isReady)
                 .overlay(alignment: .bottom) { bottomControls }
                 .overlay {
                     if model.log.isEmpty {

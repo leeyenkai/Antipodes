@@ -43,7 +43,7 @@ private struct OnThisDayView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             } else {
-                Text("Nothing logged on this date yet")
+                Text(Self.nothingText(entry.snapshot, day: day))
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(2)
@@ -56,6 +56,12 @@ private struct OnThisDayView: View {
         .widgetURL(memories.first?.link ?? DeepLink.trips.url)
     }
 
+    /// Nothing to remember today — or nothing known, once the snapshot's fortnight has
+    /// run out because the app has not been opened.
+    private static func nothingText(_ snapshot: WidgetSnapshot, day: CalendarDate) -> String {
+        snapshot.reaches(day) ? "Nothing logged on this date yet." : "Open Antipodes to catch up."
+    }
+
     private func homeScreen(_ memories: [WidgetSnapshot.Memory], day: CalendarDate) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Label("On this day", systemImage: "clock.arrow.circlepath")
@@ -63,7 +69,7 @@ private struct OnThisDayView: View {
                 .foregroundStyle(WidgetPalette.visited)
             if memories.isEmpty {
                 Spacer(minLength: 0)
-                Text("Nothing logged on this date — yet.")
+                Text(Self.nothingText(entry.snapshot, day: day))
                     .font(.subheadline)
                     .foregroundStyle(.white.opacity(0.75))
                 Spacer(minLength: 0)

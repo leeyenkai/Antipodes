@@ -418,6 +418,28 @@ is blocked.
 
 ### Fixed
 
+- **A wishlisted route is a route** (R-WISH-1, R-WISH-4): it is named after the route,
+  ticked off by riding it rather than by visiting the town it starts from, and no longer
+  leaves a wishlist pin on that town that could not be removed.
+- What the Stats screen shares follows what it shows: with a filter on, a stat card, the
+  personality and the screen's Share button (which no longer reads "Share Globe", and is
+  gone with an empty log) say which slice they are, and a filtered trip list never shows
+  trips beside "No trips yet". Year in Review's tiles count the whole year, as the review
+  does.
+- A Stats filter lets go of a trip that has been deleted, and of everything after Delete
+  Everything, which also withdraws the offer to undo the last deletion.
+- "Days away" leaves out a range of more than ten years — a mistyped year — and says so,
+  instead of quietly trimming it to a decade; the longest journey is measured over the
+  legs the stats count, so a commute switched out of stats no longer lengthens one
+  (R-CALC-5).
+- The globe's summary no longer starts at one country too many and corrects itself a
+  second later: it waits for the country list, and counts each place once, as the Stats
+  screen does. Launch works the statistics out once rather than five to seven times, and
+  measures rail and road legs once rather than twice side by side.
+- Statistics that depend on today's date — on this day, time since a country — move on
+  when the app is brought back on a new day or left open past midnight. The Globe widget
+  redraws when a visit moves, not only when one is added, and "On this day" asks to open
+  the app once its fortnight runs out instead of saying nothing happened.
 - **Damaged figures can no longer crash the app** (R-CALC-5, R-LOG-8, R-LOG-9): a
   distance of infinity or twenty digits — typed, imported or restored — traps no screen
   that formats it. A leg keeps only a distance one leg could cover (up to 100,000 km)

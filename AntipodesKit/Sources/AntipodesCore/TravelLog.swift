@@ -213,8 +213,20 @@ public struct WishlistItem: Identifiable, Hashable, Sendable, Codable {
         self.createdAt = createdAt
     }
 
+    /// A catalogue route on the wishlist. It may also record the place it starts from,
+    /// but that place is not itself on the wishlist.
+    public var isRoute: Bool {
+        routeID != nil
+    }
+
+    /// The place wished for, if the wish is a place: never a route's first station,
+    /// which would otherwise be ticked off, pinned and named as though it were the wish.
+    public var wishedPlace: PlaceReference? {
+        isRoute ? nil : place
+    }
+
     public var title: String {
-        place?.name ?? routeName ?? "Route"
+        isRoute ? routeName ?? "Route" : place?.name ?? routeName ?? "Place"
     }
 }
 

@@ -1,5 +1,6 @@
 import AntipodesCore
 import AntipodesGlobe
+import Combine
 import SwiftUI
 
 /// The app's navigation shell.
@@ -18,6 +19,7 @@ import SwiftUI
 public struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.scenePhase) private var scenePhase
     @State private var borderStore = GlobeBorderStore()
     @State private var imagery = GlobeImageryStore()
     @State private var selection: Destination = .globe
@@ -103,6 +105,18 @@ public struct RootView: View {
                 }
             }
             .fileDropImport()
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active {
+                    model.refreshIfDayChanged()
+                }
+            }
+            // Posted on whatever thread noticed midnight; the model lives on the main one.
+            .onReceive(
+                NotificationCenter.default.publisher(for: .NSCalendarDayChanged)
+                    .receive(on: DispatchQueue.main)
+            ) { _ in
+                model.refreshIfDayChanged()
+            }
             .environment(borderStore)
             .environment(imagery)
             .sensoryFeedback(.success, trigger: model.rideLoggedAgain)

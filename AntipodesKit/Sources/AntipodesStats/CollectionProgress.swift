@@ -61,7 +61,7 @@ public struct CollectionProgress: Hashable, Sendable, Identifiable {
         routes: [RouteInfo] = []
     ) -> [CollectionProgress] {
         let matcher = VisitMatcher(log: log, rules: rules, routes: routes)
-        let wishlisted = Set(log.wishlist.compactMap { $0.place?.id })
+        let wishlisted = Set(log.wishlist.compactMap { $0.wishedPlace?.id })
         let wishlistedRoutes = Set(log.wishlist.compactMap(\.routeID))
 
         return collections.map { collection in
@@ -107,10 +107,10 @@ public struct WishlistStatus: Hashable, Sendable, Identifiable {
         let matcher = VisitMatcher(log: log, rules: rules, routes: routes)
         return log.wishlist.map { item in
             let match: VisitMatcher.Match =
-                if let place = item.place {
-                    matcher.firstMatch(for: place)
-                } else if let route = item.routeID {
+                if let route = item.routeID {
                     matcher.firstRide(of: route)
+                } else if let place = item.place {
+                    matcher.firstMatch(for: place)
                 } else {
                     VisitMatcher.Match(isVisited: false, firstDay: nil)
                 }

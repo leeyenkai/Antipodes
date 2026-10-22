@@ -31,6 +31,9 @@ public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable
     case noTransitLine
     /// The line's segments do not join the two stops: a gap in the network data.
     case transitRouteUnknown
+    /// A date range longer than ten years: almost always a mistyped year, and counting
+    /// it would put a decade into days away.
+    case dateRangeTooLong
 
     public var explanation: String {
         switch self {
@@ -48,6 +51,7 @@ public enum ExclusionReason: String, Sendable, Codable, CaseIterable, Comparable
         case .atHome: "at home"
         case .noTransitLine: "not logged on a transit line"
         case .transitRouteUnknown: "stops not joined on the line"
+        case .dateRangeTooLong: "dated across more than ten years"
         }
     }
 

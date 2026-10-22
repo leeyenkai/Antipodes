@@ -8,7 +8,10 @@ import UniformTypeIdentifiers
 /// What a share card shows (R-SHARE-1).
 enum ShareCard {
     case stat(title: String, value: String, detail: String?, symbol: String)
+    /// The whole log on the globe, with its headline numbers.
     case globe
+    /// The Stats screen's headline numbers, for whatever slice it is showing.
+    case summary
     case trip(UUID)
     case journey(Journey)
     case year(Int)
@@ -69,11 +72,13 @@ extension ShareCardPayload {
         let statistics = model.statistics
         let system = model.rules.unitSystem
         let borders = model.globeBorders
+        // A figure shared from the Stats screen is for the slice it shows, and says so.
+        let sliceEyebrow = model.statsFilterSummary.map { "My travels · \($0)" } ?? "My travels"
         switch card {
         case let .stat(title, value, detail, symbol):
-            let scene = model.globeScene(of: model.log, arcSegments: 32)
+            let scene = model.globeScene(of: model.shownLog, arcSegments: 32)
             self.init(
-                eyebrow: "My travels",
+                eyebrow: sliceEyebrow,
                 title: title,
                 subtitle: detail,
                 bigValue: value,
@@ -82,11 +87,21 @@ extension ShareCardPayload {
                 camera: scene.focusCoordinate.map { GlobeCamera(centre: $0, zoom: 1) },
                 borders: borders
             )
-        case .globe:
-            let scene = model.globeScene(of: model.log, arcSegments: 32)
+        case .globe, .summary:
+            let isSlice = if case .summary = card {
+                true
+            } else {
+                false
+            }
+            let statistics = isSlice ? model.shownStatistics : statistics
+            let scene = model.globeScene(of: isSlice ? model.shownLog : model.log, arcSegments: 32)
             self.init(
-                eyebrow: "My travels",
-                title: "\(statistics.coverage.listedCountriesVisited) countries",
+                eyebrow: isSlice ? sliceEyebrow : "My travels",
+                title: Format.ordinalCount(
+                    statistics.coverage.listedCountriesVisited,
+                    "country",
+                    "countries"
+                ),
                 subtitle: "\(Format.percent(statistics.coverage.worldFraction)) of the world",
                 metrics: [
                     Metric(label: "Continents", value: "\(statistics.coverage.continentsVisited)"),

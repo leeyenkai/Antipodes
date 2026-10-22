@@ -7,7 +7,7 @@ public extension AppModel {
     /// Whether this place is on the wishlist in its own right. A wishlisted route also
     /// records where it starts, but that does not put its first station on the list.
     func isOnWishlist(_ place: PlaceReference) -> Bool {
-        log.wishlist.contains { $0.place?.id == place.id && $0.routeID == nil }
+        log.wishlist.contains { $0.wishedPlace?.id == place.id }
     }
 
     func isOnWishlist(routeID: Int64) -> Bool {
@@ -57,13 +57,13 @@ public extension AppModel {
     }
 
     func removeFromWishlist(place: PlaceReference) {
-        let ids = log.wishlist.filter { $0.place?.id == place.id && $0.routeID == nil }.map(\.id)
+        let ids = log.wishlist.filter { $0.wishedPlace?.id == place.id }.map(\.id)
         removeFromWishlist(ids)
     }
 
     /// Wishlist places not yet visited, for the globe's wishlist pins (R-GLOBE-4).
     var openWishlistPlaces: [PlaceReference] {
-        statistics.wishlist.filter { !$0.isVisited }.compactMap(\.item.place)
+        statistics.wishlist.filter { !$0.isVisited }.compactMap(\.item.wishedPlace)
     }
 
     /// Catalogue routes still on the wishlist whose two ends are known places, to draw

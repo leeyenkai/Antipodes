@@ -45,6 +45,14 @@ public struct DistanceStatistics: Hashable, Sendable {
         system.distance(fromKilometres: totalKm)
     }
 
+    /// A journey's length over the legs the stats count: not a commute switched out of
+    /// them, not a leg with no distance to give.
+    static func countedKm(_ journey: Journey, _ rules: CountingRules) -> Double {
+        journey.legs
+            .filter { rules.countsInStats($0.purpose) && $0.distanceSource != .unavailable }
+            .reduce(0) { $0 + $1.distanceKm }
+    }
+
     public static func compute(
         for log: TravelLog,
         rules: CountingRules = .default
@@ -93,9 +101,11 @@ public struct DistanceStatistics: Hashable, Sendable {
             approximateLegCount: approximateLegCount,
             approximateKm: approximateKm,
             longestLeg: longestLeg,
+            // Measured over the legs the stats count: a commute leg switched out of stats,
+            // or one with no distance, does not lengthen the journey it sits in.
             longestJourney: countedJourneys
                 .filter { $0.legs.count > 1 }
-                .max { $0.totalDistanceKm < $1.totalDistanceKm },
+                .max { countedKm($0, rules) < countedKm($1, rules) },
             input: input
         )
     }

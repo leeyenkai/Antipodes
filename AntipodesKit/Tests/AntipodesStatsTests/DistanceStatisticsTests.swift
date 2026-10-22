@@ -144,6 +144,26 @@ struct DistanceStatisticsTests {
         #expect(distance.longestJourney?.id == multiLeg.id)
     }
 
+    /// OSL→LHR (about 1,200 km) then a commuter train with an override of 9,000 km:
+    /// with commutes switched out, that leg must not make this the longest journey —
+    /// OSL→LHR→JFK (about 6,750 km) is.
+    @Test("The longest journey is measured over the legs the stats count")
+    func longestJourneyCountsOnlyCountedLegs() {
+        var commute = Fixtures.railLeg(Fixtures.oslo, Fixtures.bergen)
+        commute.purpose = .commute
+        commute.distanceKmOverride = 9000
+        let withCommute = Journey(legs: [Fixtures.flight(Fixtures.osl, Fixtures.lhr), commute])
+        let transatlantic = Journey(legs: [
+            Fixtures.flight(Fixtures.osl, Fixtures.lhr),
+            Fixtures.flight(Fixtures.lhr, Fixtures.jfk),
+        ])
+        let distance = DistanceStatistics.compute(
+            for: TravelLog(journeys: [withCommute, transatlantic]),
+            rules: CountingRules(includeCommutes: false)
+        )
+        #expect(distance.longestJourney?.id == transatlantic.id)
+    }
+
     @Test("Modes sort by distance, descending")
     func modeOrdering() {
         let log = TravelLog(journeys: [

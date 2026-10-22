@@ -356,7 +356,9 @@ struct YearInReviewTeaser: View {
     @State private var presentedYear: YearItem?
 
     var body: some View {
-        let years = YearInReview.availableYears(in: model.shownLog)
+        // A year in review is the whole year, whatever slice the screen is filtered to,
+        // so its tiles count the whole log too.
+        let years = YearInReview.availableYears(in: model.log)
         if !years.isEmpty {
             StatsSection(title: "Year in Review", symbol: "sparkles.rectangle.stack") {
                 ScrollView(.horizontal, showsIndicators: false) {
@@ -406,9 +408,9 @@ struct YearInReviewTeaser: View {
 
     private func summary(_ year: Int) -> String {
         let countries = Set(
-            model.shownLog.visits
+            model.log.visits
                 .filter {
-                    $0.date.year == year && model.shownRules.countsTowardsCoverage($0.visitType)
+                    $0.date.year == year && model.rules.countsTowardsCoverage($0.visitType)
                 }
                 .compactMap(\.place.countryCode)
         ).count

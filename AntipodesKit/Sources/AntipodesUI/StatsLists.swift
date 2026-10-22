@@ -118,8 +118,11 @@ struct TripStatsList: View {
     @Environment(AppModel.self) private var model
 
     var body: some View {
+        // The trips in the slice the Stats screen shows, so the list and its "No trips
+        // yet" never disagree.
+        let shown = Set(model.shownLog.trips.map(\.id))
         List {
-            ForEach(model.tripsNewestFirst) { trip in
+            ForEach(model.tripsNewestFirst.filter { shown.contains($0.id) }) { trip in
                 NavigationLink(value: LogRoute.trip(trip.id)) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text(trip.displayName(model: model))

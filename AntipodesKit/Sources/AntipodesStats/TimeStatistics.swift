@@ -167,24 +167,27 @@ public struct TimeStatistics: Hashable, Sendable {
         var input = StatInputSummary()
         var days: Set<CalendarDate> = []
 
-        func addDays(of date: FlexibleDate) -> Bool {
+        /// Adds the record's days, or says why it has none to add.
+        func addDays(of date: FlexibleDate) -> ExclusionReason? {
             switch date {
             case let .day(day):
                 days.insert(day)
-                return true
+                return nil
             case let .range(start, end):
-                // A two-year sabbatical is still a span of days; capped to keep a
-                // mistyped century from allocating millions of dates.
-                let count = max(0, min(start.days(to: end), 3660))
+                // A two-year sabbatical is still a span of days. A range past ten years
+                // is a mistyped year, and is left out and counted as such rather than
+                // trimmed to a decade nobody spent away.
+                let count = start.days(to: end)
+                guard count <= maximumRangeDays else { return .dateRangeTooLong }
                 var day = start
-                for _ in 0 ... count {
+                for _ in 0 ... max(0, count) {
                     days.insert(day)
                     guard let following = day.adding(days: 1) else { break }
                     day = following
                 }
-                return true
+                return nil
             case .month, .year, .unknown:
-                return false
+                return .datePrecisionTooLow
             }
         }
 
@@ -201,10 +204,10 @@ public struct TimeStatistics: Hashable, Sendable {
                 input.exclude(.unknownDate)
                 continue
             }
-            if addDays(of: visit.date) {
-                input.include()
+            if let reason = addDays(of: visit.date) {
+                input.exclude(reason)
             } else {
-                input.exclude(.datePrecisionTooLow)
+                input.include()
             }
         }
         for leg in log.allLegs where rules.countsInStats(leg.purpose) {
@@ -212,10 +215,10 @@ public struct TimeStatistics: Hashable, Sendable {
                 input.exclude(.unknownDate)
                 continue
             }
-            if addDays(of: leg.date) {
-                input.include()
+            if let reason = addDays(of: leg.date) {
+                input.exclude(reason)
             } else {
-                input.exclude(.datePrecisionTooLow)
+                input.include()
             }
         }
 
@@ -225,6 +228,9 @@ public struct TimeStatistics: Hashable, Sendable {
         }
         return (byYear, input)
     }
+
+    /// The longest range "days away" will spread over: ten years and a leap day or two.
+    static let maximumRangeDays = 3660
 
     /// Trips per start year, and each trip's span where its first and last days are
     /// known to the day.

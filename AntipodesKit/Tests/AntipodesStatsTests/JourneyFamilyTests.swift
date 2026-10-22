@@ -328,6 +328,30 @@ struct CollectionTests {
         ))
         #expect(after.first?.isVisited == true)
     }
+
+    /// A wishlisted route records the station it starts from, so it can be drawn; that
+    /// station is not the wish. Visiting Oslo must not tick off the Bergen Line, pin a
+    /// wish on Oslo, or name the entry "Oslo".
+    @Test("A wishlisted route is ticked off by riding it, not by visiting where it starts")
+    func wishlistedRoute() {
+        let wish = WishlistItem(place: Fixtures.oslo, routeID: 1, routeName: "Bergen Line")
+        #expect(wish.title == "Bergen Line")
+        #expect(wish.wishedPlace == nil)
+
+        let visitedStart = WishlistStatus.compute(log: TravelLog(
+            visits: [Fixtures.visit(Fixtures.oslo)],
+            wishlist: [wish]
+        ))
+        #expect(visitedStart.first?.isVisited == false)
+
+        var ride = Fixtures.railLeg(Fixtures.oslo, Fixtures.bergen)
+        ride.routeID = 1
+        let rode = WishlistStatus.compute(log: TravelLog(
+            journeys: [Journey(legs: [ride])],
+            wishlist: [wish]
+        ))
+        #expect(rode.first?.isVisited == true)
+    }
 }
 
 @Suite("Achievements")

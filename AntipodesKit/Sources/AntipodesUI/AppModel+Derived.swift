@@ -47,6 +47,19 @@ public extension AppModel {
         statsFilter.isActive ? filteredLog : log
     }
 
+    /// What the Stats filter keeps, in words — "2023 · Fjords · Rail · Work" — or `nil`
+    /// while there is no filter.
+    var statsFilterSummary: String? {
+        guard statsFilter.isActive else { return nil }
+        let parts = [
+            statsFilter.year.map(String.init),
+            statsFilter.tripID.flatMap { log.trip(id: $0) }.map { $0.displayName(model: self) },
+            statsFilter.mode?.displayName,
+            statsFilter.purpose?.displayName,
+        ]
+        return parts.compactMap(\.self).joined(separator: " · ")
+    }
+
     /// The rules those statistics were counted by: a commute filter counts commutes.
     var shownRules: CountingRules {
         statsFilter.rules(from: rules)

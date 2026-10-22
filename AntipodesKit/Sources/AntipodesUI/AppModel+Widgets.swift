@@ -110,10 +110,18 @@ extension AppModel {
                 .appending(path: WidgetSnapshot.globeImageName) else { return false }
             let scene = GlobeSceneBuilder.build(log: log, rules: rules, home: home, arcSegments: 24)
             var hasher = Hasher()
+            // Where things are, not only how many: moving a visit from Paris to Lyon
+            // must redraw the widget's globe.
             hasher.combine(scene.shadedCountryCodes)
-            hasher.combine(scene.pins.count)
-            hasher.combine(scene.arcs.count)
-            hasher.combine(home?.name)
+            for pin in scene.pins {
+                hasher.combine(pin.coordinate)
+                hasher.combine(pin.style.isTravel)
+            }
+            for arc in scene.arcs {
+                hasher.combine(arc.path.first)
+                hasher.combine(arc.path.last)
+            }
+            hasher.combine(home?.id)
             let signature = hasher.finalize()
             guard signature != widgetGlobeSignature else { return false }
 

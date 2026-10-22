@@ -102,6 +102,13 @@ public struct WidgetSnapshot: Codable, Hashable, Sendable {
         memoryDays.first { $0.day == day.iso }?.memories ?? []
     }
 
+    /// Whether the snapshot reaches this day. Past its fortnight a day has no memories
+    /// because the app has not been opened since, not because nothing happened then.
+    public func reaches(_ day: CalendarDate) -> Bool {
+        guard let first = CalendarDate(generatedAt) else { return false }
+        return (0 ..< Self.memoryDayCount).contains(first.days(to: day))
+    }
+
     /// Whether two snapshots say the same thing, whenever they were written — so the app
     /// only rewrites the file, and reloads the widgets, when something changed.
     public func hasSameContent(as other: WidgetSnapshot) -> Bool {

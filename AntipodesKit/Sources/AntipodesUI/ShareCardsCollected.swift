@@ -9,7 +9,8 @@ extension ShareCardPayload {
     init(collected card: ShareCard, model: AppModel) {
         switch card {
         case .personality:
-            let themes = model.statistics.themes
+            // The personality the Stats screen shows, filtered or not.
+            let themes = model.shownStatistics.themes
             let archetype = themes.personality?.archetype ?? .wanderer
             self.init(
                 eyebrow: "My travel personality",
