@@ -102,11 +102,16 @@ public struct SettingsWindow: View {
     public init() {}
 
     public var body: some View {
-        NavigationStack {
-            SettingsScreen(isDestination: true)
-        }
-        .environment(borderStore)
-        .frame(minWidth: 520, idealWidth: 560, minHeight: 560, idealHeight: 680)
+        // SettingsScreen brings its own navigation stack.
+        SettingsScreen(isDestination: true)
+            .overlay(alignment: .bottom) {
+                // Its own window, so the main window's toast is not here to show what a
+                // restore or an import added.
+                UndoToast()
+                    .padding(.bottom, 16)
+            }
+            .environment(borderStore)
+            .frame(minWidth: 520, idealWidth: 560, minHeight: 560, idealHeight: 680)
         #if os(macOS)
             .formStyle(.grouped)
         #endif

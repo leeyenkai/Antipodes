@@ -46,7 +46,6 @@
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				"Antipodes-iOS.entitlements",
-				Antipodes.entitlements,
 				Info.plist,
 			);
 			target = A100000000000000000000F1 /* Antipodes */;

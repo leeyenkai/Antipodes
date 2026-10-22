@@ -346,6 +346,15 @@ is blocked.
 
 ### Changed
 
+- **The log stays on the device, and the app says so** (R-PRIV-2, R-PRIV-6, D-31):
+  there is no sync. The store no longer reaches for iCloud even if an entitlement were
+  added, the unwired iCloud entitlement is removed, and onboarding, Settings, the
+  privacy section and Delete Everything no longer promise a sync that never happened.
+  Settings opens with **Your data** — Export Backup, Restore from Backup and Export as
+  CSV — and Import beside it, near the top rather than below the counting rules,
+  because a backup file is the only other copy there is. Restoring says what it added
+  in a short confirmation, on the Mac's drop too, where it is now called Restore.
+- "Clear Home" is no longer styled as a destructive action.
 - **A quieter, more refined look.** One sea-glass teal is the brand and the visited
   colour, pins are champagne, and the eight modes share a muted, evenly weighted set
   used identically on the globe, in charts and in lists. Chrome is neutral: row tiles

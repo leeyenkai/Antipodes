@@ -4,9 +4,10 @@ import SwiftData
 
 /// The SwiftData container and the operations the UI performs on it.
 ///
-/// Sync is CloudKit's private database, so the user's travel history never reaches a
-/// server the developer controls (R-PRIV-2). There is no account step: if the user is
-/// signed in to iCloud it syncs, and if not, the app works on-device exactly the same.
+/// The log lives on this device and nowhere else (R-PRIV-2, D-31): no account, no
+/// sync, no server. A backup file the user exports is the way to keep a copy or move to
+/// another device. The models still keep to CloudKit's rules (AGENTS.md §4), so sync
+/// stays a change to this initialiser rather than a migration, should it ever be wanted.
 @MainActor
 public final class TravelLogStore {
     public let container: ModelContainer
@@ -17,16 +18,15 @@ public final class TravelLogStore {
 
     public static let schema = Schema(versionedSchema: AntipodesSchemaV1.self)
 
-    /// Opens the on-disk store, syncing through the user's private iCloud database.
+    /// Opens the on-disk store, on this device only.
     ///
-    /// `cloudKitDatabase: .automatic` uses the entitlement's container when one is
-    /// configured and falls back to local-only when it is not, so a development build
-    /// without iCloud still runs.
+    /// `.none` rather than `.automatic`: with `.automatic` a build that gained an iCloud
+    /// entitlement would start syncing without anyone deciding it should (D-31).
     public init(inMemory: Bool = false) throws {
         let configuration = ModelConfiguration(
             schema: Self.schema,
             isStoredInMemoryOnly: inMemory,
-            cloudKitDatabase: inMemory ? .none : .automatic
+            cloudKitDatabase: .none
         )
         container = try ModelContainer(
             for: Self.schema,
@@ -354,16 +354,12 @@ public final class TravelLogStore {
 
     // MARK: - Delete everything
 
-    /// Erases every record, on this device and — through CloudKit — in the user's
-    /// iCloud (R-PRIV-6).
+    /// Erases every record (R-PRIV-6). The log lives only on this device (D-31), so
+    /// this is all of it.
     ///
-    /// Each object is deleted individually rather than with a batch delete. A batch
-    /// delete goes straight to the store without the change tracking CloudKit mirroring
-    /// exports from, so on some systems the iCloud copy would survive it — exactly the
-    /// failure a "delete everything" button must not have.
-    ///
-    /// Removal propagates only while the device can reach iCloud. The UI must say so
-    /// rather than implying the iCloud copy is already gone.
+    /// Each object is deleted individually rather than with a batch delete, which goes
+    /// straight to the store past the context's change tracking and its relationship
+    /// rules.
     public func deleteEverything() throws {
         for leg in try context.fetch(FetchDescriptor<StoredLeg>()) {
             context.delete(leg)

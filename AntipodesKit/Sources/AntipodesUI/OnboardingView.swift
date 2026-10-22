@@ -87,14 +87,14 @@ struct OnboardingView: View {
         onboardingPage(
             title: "Yours alone",
             message: """
-            No account. No server. No analytics. Your log stays on this device and in your \
-            own iCloud — the developer never sees it.
+            No account. No server. No analytics. Your log stays on this device — nobody \
+            else ever sees it, the developer included.
             """
         ) {
             VStack(alignment: .leading, spacing: 22) {
                 promise("lock.shield", "Nothing to sign up for")
                 promise("wifi.slash", "Search, maps and stats work offline")
-                promise("icloud", "Syncs through your private iCloud")
+                promise("lock", "Stored on this device, nowhere else")
                 promise("square.and.arrow.up", "Export everything, any time")
             }
             .font(.body)

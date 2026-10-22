@@ -38,7 +38,7 @@ AntipodesKit/            Swift package — all logic and UI. This is where you w
                          Review. Pure functions over Core types.
     AntipodesExport/     CSV and JSON export of the user's whole log.
     AntipodesImport/     Flight-log CSV readers and photo clustering. Pure.
-    AntipodesStore/      SwiftData models, CloudKit container, mapping to/from Core.
+    AntipodesStore/      SwiftData models (on the device only, D-31), mapping to/from Core.
     AntipodesGlobe/      Globe geometry: orthographic projection, limb clipping,
                          bundled border decoding, replay timeline. Pure.
     AntipodesUI/         SwiftUI screens.
@@ -132,9 +132,12 @@ the wrong module.
   wrapping SwiftData. Computation belongs in `AntipodesStats`, not in a view.
 - Every screen must work at iPhone-SE width and at Mac window width.
 
-### SwiftData and CloudKit
+### SwiftData
 
-CloudKit mirroring imposes rules that are easy to break and painful to discover late:
+The log stays on the device; there is no sync (D-31). Don't add CloudKit, an iCloud
+entitlement or copy that mentions syncing. The models still keep to CloudKit's rules,
+so sync would be a change to one initialiser rather than a migration if it were ever
+wanted:
 
 - Every property must be optional **or** have a default value.
 - No `@Attribute(.unique)` constraints.

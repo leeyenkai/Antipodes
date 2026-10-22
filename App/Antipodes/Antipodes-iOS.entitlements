@@ -5,7 +5,7 @@
 
   The simulator honours this without a team. A device build needs a team set in
   Signing & Capabilities; with automatic signing Xcode then registers the group.
-  iCloud sync is added separately; see Antipodes.entitlements.
+  There is deliberately no iCloud entitlement: the log stays on the device (D-31).
 -->
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">

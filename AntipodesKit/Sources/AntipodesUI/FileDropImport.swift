@@ -26,10 +26,6 @@ extension View {
         @State private var isTargeted = false
         @State private var flightLog: DroppedFlightLog?
         @State private var backup: DroppedBackup?
-        @State private var outcome: String?
-        /// The result of a restore, held until the confirmation alert has gone: an
-        /// alert asked for from another alert's button would never appear.
-        @State private var pendingOutcome: String?
 
         func body(content: Content) -> some View {
             content
@@ -61,37 +57,13 @@ extension View {
                     presenting: backup
                 ) { backup in
                     if backup.preview.additions.total > 0 {
-                        Button("Import") { restore(backup) }
+                        Button("Restore") { restore(backup) }
                         Button("Cancel", role: .cancel) {}
                     } else {
                         Button("OK", role: .cancel) {}
                     }
                 } message: { backup in
                     Text(backup.message)
-                }
-                .alert(
-                    "Backup imported",
-                    isPresented: Binding(
-                        get: { outcome != nil },
-                        set: {
-                            if !$0 {
-                                outcome = nil
-                            }
-                        }
-                    )
-                ) {
-                    Button("OK") { outcome = nil }
-                } message: {
-                    Text(outcome ?? "")
-                }
-                .onChange(of: backup == nil) { _, isGone in
-                    guard isGone, let pending = pendingOutcome else { return }
-                    pendingOutcome = nil
-                    Task {
-                        // Let the confirmation finish leaving before the next appears.
-                        try? await Task.sleep(for: .milliseconds(300))
-                        outcome = pending
-                    }
                 }
         }
 
@@ -148,10 +120,10 @@ extension View {
         private func restore(_ backup: DroppedBackup) {
             do {
                 let counts = try model.importBackup(backup.preview)
-                pendingOutcome = "Added \(counts.summary)."
+                model.announce("Restored \(counts.summary)")
             } catch {
                 model.errorMessage = """
-                That backup couldn't be imported: \(error.localizedDescription)
+                That backup couldn't be restored: \(error.localizedDescription)
                 """
             }
         }
@@ -188,7 +160,7 @@ extension View {
 
         var title: String {
             preview.additions.total > 0
-                ? "Import “\(fileName)”?"
+                ? "Restore “\(fileName)”?"
                 : "Nothing new in “\(fileName)”"
         }
 
@@ -207,9 +179,9 @@ extension View {
                     Image(systemName: "square.and.arrow.down.on.square")
                         .font(.system(size: 44, weight: .light))
                         .foregroundStyle(Palette.visited)
-                    Text("Drop to Import")
+                    Text("Drop to Import or Restore")
                         .font(.title2.weight(.semibold))
-                    Text("A flight log saved as CSV, or an Antipodes backup (JSON)")
+                    Text("A journey list as CSV or JSON, or an Antipodes backup")
                         .foregroundStyle(.secondary)
                 }
                 .padding(32)

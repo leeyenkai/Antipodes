@@ -22,7 +22,6 @@ struct SettingsScreen: View {
     @State private var isImportingBackup = false
     @State private var isImportingFlights = false
     @State private var isImportingPhotos = false
-    @State private var message: String?
     /// A backup read and compared with the log, waiting for the user's yes.
     @State private var pendingBackup: BackupPreview?
 
@@ -30,11 +29,10 @@ struct SettingsScreen: View {
         NavigationStack {
             Form {
                 appearanceSection
+                dataSection
+                importSection
                 countingSection
                 unitsSection
-                importSection
-                exportSection
-                syncSection
                 databaseSection
                 sourcesSection
                 privacySection
@@ -55,22 +53,18 @@ struct SettingsScreen: View {
                 Button("Cancel", role: .cancel) {}
             } message: {
                 Text("""
-                Every trip, place, journey and wishlist entry is removed from this device. If \
-                you're signed in to iCloud, the copy there is removed as this device syncs — \
-                keep the app open and online for a moment afterwards. This can't be undone.
+                Every trip, place, journey and wishlist entry is removed. Your log is kept \
+                only on this device, so this can't be undone — export a backup first if \
+                you want a copy.
                 """)
             }
-            .alert(
-                "Done",
-                isPresented: Binding(get: { message != nil }, set: {
-                    if !$0 {
-                        message = nil
-                    }
-                })
-            ) {
-                Button("OK") { message = nil }
-            } message: {
-                Text(message ?? "")
+            // A sheet covers the app's own toast, so it shows its own: what a restore or
+            // an import added, or that the log was deleted.
+            .overlay(alignment: .bottom) {
+                if !isDestination {
+                    UndoToast()
+                        .padding(.bottom, 16)
+                }
             }
             .fileExporter(
                 isPresented: Binding(
@@ -175,7 +169,7 @@ struct SettingsScreen: View {
             }
             .buttonStyle(.plain)
             if model.home != nil {
-                Button("Clear Home", role: .destructive) { model.home = nil }
+                Button("Clear Home") { model.home = nil }
             }
         } footer: {
             Text(
@@ -232,16 +226,37 @@ struct SettingsScreen: View {
         }
     }
 
+    /// Where the log is kept, and the ways to keep a copy of it or bring it back
+    /// (R-PRIV-6, R-LOG-9, D-31): there is no other copy anywhere, so these are near
+    /// the top.
+    private var dataSection: some View {
+        Section {
+            Label("Kept on this device only", systemImage: "lock")
+            Button("Export Backup…", systemImage: "arrow.up.doc") { exportJSON() }
+            Button("Restore from Backup…", systemImage: "arrow.down.doc") {
+                isImportingBackup = true
+            }
+            Button("Export as CSV…", systemImage: "tablecells") {
+                exportedCSV = CSVFolderDocument(files: model.exportCSVFiles())
+            }
+        } header: {
+            Text("Your data")
+        } footer: {
+            Text("""
+            No account, no sync and no copy anywhere else. A backup is one JSON file with \
+            every trip, place, journey and wishlist entry: keep it somewhere safe, or \
+            restore it on another device. The CSV files open in any spreadsheet.\(dropHint)
+            """)
+        }
+    }
+
     private var importSection: some View {
         Section {
             Button("Flights, Trains and Other Journeys…", systemImage: "airplane.arrival") {
                 isImportingFlights = true
             }
-            Button("From Photos…", systemImage: "photo.on.rectangle.angled") {
+            Button("Find Visits in Photos…", systemImage: "photo.on.rectangle.angled") {
                 isImportingPhotos = true
-            }
-            Button("Antipodes Backup (JSON)…", systemImage: "arrow.down.doc") {
-                isImportingBackup = true
             }
         } header: {
             Text("Import")
@@ -249,52 +264,18 @@ struct SettingsScreen: View {
             Text("""
             Flight lists from Flighty, myFlightradar24 or OpenFlights, and rail logs or any \
             CSV or JSON list of journeys with date, from and to. Photos are read on this \
-            device for their date and place; nothing is uploaded or copied.\(dropHint)
+            device for their date and place; nothing is uploaded or copied.
             """)
         }
     }
 
-    /// On the Mac, either file can also be dropped on the window (R-NAV-2).
+    /// On the Mac, a journey list or a backup can also be dropped on the window (R-NAV-2).
     private var dropHint: String {
         #if os(macOS)
-            " You can also drop a journey list or a backup anywhere on the window."
+            " You can also drop a backup or a journey list anywhere on the window."
         #else
             ""
         #endif
-    }
-
-    private var exportSection: some View {
-        Section {
-            Button("Export as JSON", systemImage: "curlybraces") { exportJSON() }
-            Button("Export as CSV", systemImage: "tablecells") {
-                exportedCSV = CSVFolderDocument(files: model.exportCSVFiles())
-            }
-        } header: {
-            Text("Export")
-        } footer: {
-            Text("""
-            Every trip, place, journey and wishlist entry, in files you can read without \
-            this app. The JSON export can be imported again as a backup.
-            """)
-        }
-    }
-
-    private var syncSection: some View {
-        Section("iCloud") {
-            if FileManager.default.ubiquityIdentityToken != nil {
-                Label("Syncing through your private iCloud", systemImage: "icloud")
-            } else {
-                Label("Stored on this device only", systemImage: "iphone")
-                Text(
-                    """
-                    Sign in to iCloud to keep your log in step across your devices. The developer \
-                    never sees it.
-                    """
-                )
-                .font(.footnote)
-                .foregroundStyle(.secondary)
-            }
-        }
     }
 
     private var databaseSection: some View {
@@ -370,7 +351,7 @@ struct SettingsScreen: View {
         Section("Privacy") {
             Label("No account, no server, no analytics", systemImage: "lock.shield")
             Label("Searches and maps never leave this device", systemImage: "magnifyingglass")
-            Label("Your log syncs only through your own iCloud", systemImage: "icloud")
+            Label("Your log is stored on this device and nowhere else", systemImage: "lock")
         }
         .font(.callout)
     }
@@ -388,12 +369,7 @@ struct SettingsScreen: View {
         Section {
             Button("Delete Everything", role: .destructive) { isConfirmingDelete = true }
         } footer: {
-            Text(
-                """
-                Removes your whole log from this device and your iCloud. Export first \
-                if you want a copy.
-                """
-            )
+            Text("Removes your whole log. Export a backup first if you want a copy.")
         }
     }
 
@@ -426,11 +402,7 @@ struct SettingsScreen: View {
         do {
             let counts = try model.importBackup(preview)
             pendingBackup = nil
-            Task {
-                // Let the confirmation leave before the result appears.
-                try? await Task.sleep(for: .milliseconds(300))
-                message = "Added \(counts.summary)."
-            }
+            model.announce("Restored \(counts.summary)")
         } catch {
             model.errorMessage = "That backup couldn't be restored. \(error.localizedDescription)"
         }
@@ -439,7 +411,7 @@ struct SettingsScreen: View {
     private func deleteEverything() {
         do {
             try model.deleteEverything()
-            message = "Everything on this device has been deleted."
+            model.announce("Your log has been deleted", systemImage: "trash")
         } catch {
             model.errorMessage = error.localizedDescription
         }
