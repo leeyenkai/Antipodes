@@ -276,6 +276,9 @@ database is built from open data, and the licences differ:
   App Store Connect, and `MARKETING_VERSION` for every release users see.
 - Archive from Xcode with a team set; `scripts/build-app.sh` builds unsigned (Mac and
   device) or ad hoc (simulator) only.
+- Rename `[Unreleased]` in the changelog to the version and date, start a fresh
+  `[Unreleased]`, update the compare links at its foot, and tag that commit with an
+  annotated `vX.Y.Z` tag matching `MARKETING_VERSION`.
 
 **Commits**
 

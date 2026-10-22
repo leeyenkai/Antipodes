@@ -14,8 +14,10 @@ Security, Data (place-database changes).
 
 ## [Unreleased]
 
-The V1 scope is built (decision D-18). §13.1 of the spec records what is done and what
-is blocked.
+## [1.0.0] — 2026-10-23
+
+The first release: the V1 scope is built (decision D-18). §13.1 of the spec records
+what is done and what is blocked.
 
 ### Added
 
@@ -776,15 +778,14 @@ is blocked.
 
 ### Notes
 
-- Blocked, and recorded as such in §13.1 of the spec: city transit lines and packs and
-  path snapping (they need OpenStreetMap-derived packs, which D-8 keeps out of the
-  bundled database), database updates from a host (R-DB-5 needs a host), temperature in
-  the month visited (R-CALC-2 needs a licensed climate-normals source), and Year in
-  Review as video.
-- Owner's tasks before release: set a development team so device and Mac builds sign,
-  enable the iCloud capability (the keys are in `App/Antipodes/Antipodes.entitlements`),
-  and check the name (R-NAME-1).
-- The hand-entered development seed is gone: the pipeline now builds from Natural
-  Earth, GeoNames, OurAirports and Wikidata, and the licence review behind R-DB-7 is
-  complete. See `Tools/placedb/SOURCES.md`.
-- No release has been made. Version numbers begin at the first tagged build.
+- Blocked, and recorded as such in §13.1 of the spec: trail legs and catalogue route
+  geometry and elevation (they need OpenStreetMap-derived packs, which D-8 keeps out of
+  the bundled database), and database updates from a static host (R-DB-5 needs a host).
+- Owner's tasks before an App Store release: set a development team so device and Mac
+  builds sign, check the name (R-NAME-1), and write the listing (R-PLAT-4). The log is
+  stored on the device only (D-31), so no iCloud capability is needed.
+- The place database builds from Natural Earth, GeoNames, OurAirports and Wikidata,
+  and the licence review behind R-DB-7 is complete. See `Tools/placedb/SOURCES.md`.
+
+[Unreleased]: https://github.com/leeyenkai/Antipodes/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/leeyenkai/Antipodes/releases/tag/v1.0.0
