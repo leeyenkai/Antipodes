@@ -180,6 +180,31 @@ struct TrackMeasurement: Sendable {
 }
 
 extension LegDraft {
+    /// The draft measured along its network, worked out off the main actor: two ends
+    /// the network cannot join make the search explore all of it, which would stall
+    /// the form the user is typing in.
+    static func measured(
+        _ draft: LegDraft,
+        along networks: [TrackKind: TrackNetwork]
+    ) async -> LegDraft {
+        await Task.detached(priority: .userInitiated) {
+            var copy = draft
+            copy.measureAlongTracks(networks)
+            return copy
+        }.value
+    }
+
+    /// Takes the length found for `original`, if this draft is still the leg that was
+    /// measured: the user may have changed an end or the mode while it was worked out.
+    mutating func adoptMeasurement(_ measured: LegDraft, madeFrom original: LegDraft) {
+        guard mode == original.mode, origin?.id == original.origin?.id,
+              destination?.id == original.destination?.id,
+              transitLineID == original.transitLineID, routeID == original.routeID,
+              distanceOverrideKm == original.distanceOverrideKm else { return }
+        storedPathLengthKm = measured.storedPathLengthKm
+        networkVersion = measured.networkVersion
+    }
+
     /// A rail, road or ferry leg with no length of its own is measured along its
     /// network as its ends are picked (D-30); one that stops being such a leg, or whose
     /// ends the network does not join, drops a length it was given that way.

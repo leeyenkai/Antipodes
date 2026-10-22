@@ -53,15 +53,44 @@ enum YearInReviewVideo {
         let url = FileManager.default.temporaryDirectory
             .appending(path: "Antipodes \(year) in review.mp4")
         try? FileManager.default.removeItem(at: url)
-        try await Task.detached(priority: .userInitiated) {
+        // Detached to keep the encoding off the main actor, but tied to the caller: the
+        // sheet closing cancels it rather than leaving it to run on, unseen, and write a
+        // file nobody will share.
+        let encoding = Task.detached(priority: .userInitiated) {
             try await write(stills.images, to: url, progress: progress)
-        }.value
+        }
+        do {
+            try await withTaskCancellationHandler {
+                try await encoding.value
+            } onCancel: {
+                encoding.cancel()
+            }
+        } catch {
+            try? FileManager.default.removeItem(at: url)
+            throw error
+        }
         return url
     }
 
     /// CGImage is immutable once made, so a list of them can cross to the encoder.
     struct Stills: @unchecked Sendable {
         let images: [CGImage]
+    }
+
+    /// Each card holds, then fades into the next; the last one only holds.
+    private static func framePlan(cardCount: Int) -> [(from: Int, to: Int, mix: Double)] {
+        var plan: [(from: Int, to: Int, mix: Double)] = []
+        for index in 0 ..< cardCount {
+            plan += Array(repeating: (index, index, 0), count: holdFrames)
+            if index < cardCount - 1 {
+                plan += (1 ... fadeFrames).map { (
+                    index,
+                    index + 1,
+                    Double($0) / Double(fadeFrames + 1)
+                ) }
+            }
+        }
+        return plan
     }
 
     private static func write(
@@ -92,20 +121,13 @@ enum YearInReviewVideo {
         }
         writer.startSession(atSourceTime: .zero)
 
-        // Each card holds, then fades into the next; the last one only holds.
-        var plan: [(from: Int, to: Int, mix: Double)] = []
-        for index in images.indices {
-            plan += Array(repeating: (index, index, 0), count: holdFrames)
-            if index < images.count - 1 {
-                plan += (1 ... fadeFrames).map { (
-                    index,
-                    index + 1,
-                    Double($0) / Double(fadeFrames + 1)
-                ) }
-            }
-        }
+        let plan = framePlan(cardCount: images.count)
 
         for (frame, step) in plan.enumerated() {
+            if Task.isCancelled {
+                writer.cancelWriting()
+                throw CancellationError()
+            }
             while !input.isReadyForMoreMediaData {
                 try await Task.sleep(for: .milliseconds(5))
             }
@@ -332,6 +354,8 @@ struct YearInReviewShareSheet: View {
                 .encode(.init(images: stills), year: year) { fraction in
                     Task { @MainActor in progress = fraction }
                 }
+        } catch is CancellationError {
+            // The sheet closed; there is no one to tell.
         } catch {
             failure = error.localizedDescription
         }

@@ -257,7 +257,14 @@ struct JourneyEditor: View {
                 }
                 legs[index].leaveTransitLine()
                 legs[index].endpointChanged(route: legs[index].routeID.flatMap(model.route(id:)))
-                legs[index].measureAlongTracks(model.trackNetworks)
+                let draft = legs[index]
+                let networks = model.trackNetworks
+                Task {
+                    let measured = await LegDraft.measured(draft, along: networks)
+                    if let index = legs.firstIndex(where: { $0.id == draft.id }) {
+                        legs[index].adoptMeasurement(measured, madeFrom: draft)
+                    }
+                }
             }
         }
     }
@@ -440,7 +447,14 @@ private struct LegSection: View {
                 Label(mode.displayName, systemImage: mode.symbolName).tag(mode)
             }
         }
-        .onChange(of: draft.mode) { draft.measureAlongTracks(model.trackNetworks) }
+        .onChange(of: draft.mode) {
+            let original = draft
+            let networks = model.trackNetworks
+            Task {
+                let measured = await LegDraft.measured(original, along: networks)
+                draft.adoptMeasurement(measured, madeFrom: original)
+            }
+        }
 
         if draft.mode == .cityTransit {
             TransitLineButton(lineID: draft.transitLineID, action: pickTransit)

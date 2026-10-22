@@ -119,7 +119,7 @@ struct TripsScreen: View {
         guard !query.isEmpty else { return trips }
         return trips.filter { trip in
             trip.displayName(model: model).lowercased().contains(query)
-                || model.log.visits(inTrip: trip.id)
+                || model.visits(inTrip: trip.id)
                 .contains { $0.place.name.lowercased().contains(query) }
         }
     }
@@ -172,8 +172,8 @@ private struct TripRow: View {
     }
 
     private var summary: String {
-        let visits = model.log.visits(inTrip: trip.id)
-        let journeys = model.log.journeys(inTrip: trip.id)
+        let visits = model.visits(inTrip: trip.id)
+        let journeys = model.journeys(inTrip: trip.id)
         // The same rule as the trip's own header and every other count: a layover does
         // not add a country unless the user counts layovers.
         let counted = visits.filter { model.rules.countsTowardsCoverage($0.visitType) }

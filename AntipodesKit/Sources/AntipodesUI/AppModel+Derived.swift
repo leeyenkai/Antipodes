@@ -19,6 +19,22 @@ public extension AppModel {
         )
     }
 
+    /// The same, worked out off the main thread, for the review's own screen.
+    func computeYearInReview(_ year: Int) async -> YearInReview {
+        let (log, rules, gazetteer, factors, home) =
+            (log, rules, gazetteer, catalogue.emissionFactors, home)
+        return await Task.detached(priority: .userInitiated) {
+            YearInReview.compute(
+                year: year,
+                log: log,
+                rules: rules,
+                gazetteer: gazetteer,
+                factors: factors,
+                home: home
+            )
+        }.value
+    }
+
     /// Statistics for one trip, by the same engine and rules as the whole log.
     func statistics(forTrip tripID: UUID) -> TravelStatistics {
         StatisticsEngine.compute(for: log.restricted(toTrip: tripID), context: statisticsContext)
@@ -71,13 +87,28 @@ public extension AppModel {
         StatisticsEngine.compute(for: .empty, context: StatisticsContext(rules: rules))
     }
 
+    /// Each trip's records and dates, worked out once per change to the log.
+    var tripIndex: TripIndex {
+        if let cached = tripIndexCache, cached.revision == logRevision {
+            return cached
+        }
+        let index = TripIndex(log: log, revision: logRevision)
+        tripIndexCache = index
+        return index
+    }
+
+    func visits(inTrip tripID: UUID) -> [Visit] {
+        tripIndex.visits[tripID] ?? []
+    }
+
+    func journeys(inTrip tripID: UUID) -> [Journey] {
+        tripIndex.journeys[tripID] ?? []
+    }
+
     /// When a trip happened, from its earliest to its latest dated record, at the
     /// precision its records were dated to.
     func dates(ofTrip tripID: UUID) -> TripDates? {
-        TripDates(
-            log.visits(inTrip: tripID).map(\.date)
-                + log.journeys(inTrip: tripID).flatMap { $0.legs.map(\.date) }
-        )
+        tripIndex.dates[tripID]
     }
 
     /// Trips newest first: by start date, then undated trips by when they were made.
@@ -102,6 +133,36 @@ public extension AppModel {
 ///
 /// A trip whose visits are dated only "2019" happened in 2019; it did not run from
 /// 1 January to 31 December, and it was not 365 days long.
+/// Each trip's records and dates, from one pass over the log. A list of trips asks for
+/// these once per row and per sort comparison; filtering the whole log each time made
+/// the Trips screen slow down with the square of the log's size.
+public struct TripIndex: Sendable {
+    let revision: Int
+    let visits: [UUID: [Visit]]
+    let journeys: [UUID: [Journey]]
+    let dates: [UUID: TripDates]
+
+    init(log: TravelLog, revision: Int) {
+        self.revision = revision
+        var visits: [UUID: [Visit]] = [:]
+        var journeys: [UUID: [Journey]] = [:]
+        var dates: [UUID: [FlexibleDate]] = [:]
+        for visit in log.visits {
+            guard let trip = visit.tripID else { continue }
+            visits[trip, default: []].append(visit)
+            dates[trip, default: []].append(visit.date)
+        }
+        for journey in log.journeys {
+            guard let trip = journey.tripID else { continue }
+            journeys[trip, default: []].append(journey)
+            dates[trip, default: []].append(contentsOf: journey.legs.map(\.date))
+        }
+        self.visits = visits
+        self.journeys = journeys
+        self.dates = dates.compactMapValues(TripDates.init)
+    }
+}
+
 public struct TripDates: Hashable, Sendable {
     /// The earliest day it could have started, for ordering trips.
     public let start: CalendarDate

@@ -28,15 +28,17 @@ struct AllRecordsView: View {
     }
 
     var body: some View {
+        // Formatted and sorted once per redraw, not once for each place that reads them.
+        let shown = rows
         Group {
             if sizeClass == .compact {
-                List(rows, selection: $selection) { row in
+                List(shown, selection: $selection) { row in
                     NavigationLink(value: LogRoute.visit(row.id)) {
                         VisitRow(visit: row.visit)
                     }
                 }
             } else {
-                Table(rows, selection: $selection, sortOrder: $sortOrder) {
+                Table(shown, selection: $selection, sortOrder: $sortOrder) {
                     TableColumn("Place", value: \.name)
                     TableColumn("Country", value: \.country)
                     TableColumn("Type", value: \.type)
@@ -53,7 +55,7 @@ struct AllRecordsView: View {
             }
         }
         .overlay {
-            if rows.isEmpty {
+            if shown.isEmpty {
                 if searchText.trimmingCharacters(in: .whitespaces).isEmpty {
                     ContentUnavailableView(
                         "No places logged",

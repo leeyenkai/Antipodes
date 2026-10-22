@@ -33,8 +33,11 @@ struct YearInReviewView: View {
         }
         .environment(\.colorScheme, .dark)
         .foregroundStyle(.white)
-        .task(id: ReviewInputs(log: model.log, rules: model.rules, year: year)) {
-            let review = model.yearInReview(year)
+        // Worked out again when the statistics are — after any change to the log, its
+        // rules or home — and off the main thread, so a long year does not stall the
+        // cover as it opens.
+        .task(id: ReviewInputs(revision: model.statisticsRevision, year: year)) {
+            let review = await model.computeYearInReview(year)
             built = (review, pages(review))
         }
         .onAppear { page = 0 }
@@ -49,8 +52,7 @@ struct YearInReviewView: View {
     }
 
     private struct ReviewInputs: Equatable {
-        let log: TravelLog
-        let rules: CountingRules
+        let revision: Int
         let year: Int
     }
 

@@ -48,6 +48,9 @@ final class GlobeImageryStore {
             let decoded = await Task.detached(priority: .userInitiated) {
                 Self.decode(url)
             }.value
+            // Switched back to the standard globe meanwhile: keep none of the 33 MB, and
+            // leave `loading` to whatever load may have started since.
+            guard !Task.isCancelled else { return }
             image = decoded
             failure = decoded == nil ? Self.unavailable(detail: "could not decode it.") : nil
             loading = nil

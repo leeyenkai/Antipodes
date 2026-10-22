@@ -14,6 +14,7 @@ struct GlobeSurface: View {
     @Environment(GlobeBorderStore.self) private var borderStore
     @Environment(AppModel.self) private var model
     @Environment(GlobeImageryStore.self) private var imagery: GlobeImageryStore?
+    @Environment(\.accessibilityVoiceOverEnabled) private var isVoiceOverOn
 
     let scene: GlobeScene
     @Binding var camera: GlobeCamera
@@ -74,8 +75,12 @@ struct GlobeSurface: View {
         Button("Turn west") { turn(longitude: -30) }
         Button("Turn north") { turn(latitude: 20) }
         Button("Turn south") { turn(latitude: -20) }
-        ForEach(nearestPins) { pin in
-            Button("Open \(pin.place.name)") { onSelect(.pin(pin)) }
+        // Measuring every pin is wasted work on each frame of a drag unless VoiceOver
+        // is there to offer them.
+        if isVoiceOverOn {
+            ForEach(nearestPins) { pin in
+                Button("Open \(pin.place.name)") { onSelect(.pin(pin)) }
+            }
         }
     }
 

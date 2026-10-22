@@ -348,7 +348,7 @@ extension Trip {
             return name
         }
         if let dates = model.dates(ofTrip: id) {
-            let place = model.log.visits(inTrip: id).first?.place.name
+            let place = model.visits(inTrip: id).first?.place.name
             return [place, dates.text].compactMap(\.self).joined(separator: ", ")
         }
         return "Untitled trip"

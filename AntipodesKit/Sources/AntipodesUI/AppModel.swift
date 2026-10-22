@@ -89,6 +89,8 @@ public final class AppModel {
         rules: CountingRules,
         scene: GlobeScene
     )] = [:]
+    /// Each trip's records and dates, for the revision of the log they were read from.
+    @ObservationIgnored var tripIndexCache: TripIndex?
     @ObservationIgnored var borders: CountryBorders?
     /// The networks surface legs are measured along, each once loaded (D-30).
     @ObservationIgnored var trackNetworks: [TrackKind: TrackNetwork] = [:]

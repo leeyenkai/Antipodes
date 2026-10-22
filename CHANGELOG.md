@@ -418,6 +418,16 @@ is blocked.
 
 ### Fixed
 
+- **Smoother with a long log** (R-PLAT-1): a trip's records and dates are worked out
+  once per change to the log instead of once per row and sort comparison, so Trips and
+  every trip picker no longer slow with the square of the log; a leg is measured along
+  its railway or road off the main thread, so two ends the map cannot join no longer
+  freeze the form; Year in Review is worked out off the main thread; the globe builds
+  its scene once per replay step rather than twice; and All Records formats its rows
+  once per redraw.
+- Closing Year in Review's share sheet stops the video being made and removes the half-
+  written file; switching back from the satellite globe while its picture is still
+  loading no longer keeps the 33 MB picture in memory.
 - "Log Between Two Places Instead", in the city transit picker, now opens the place
   search it promised; it did nothing (R-JLOG-5). A system's lines that cannot be read
   say so instead of spinning for ever, and a transit search with no match says that.

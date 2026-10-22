@@ -3,7 +3,7 @@ import Foundation
 
 /// A leg while it is being entered or edited. Only mode and the two ends are required
 /// (R-LEG-1); the rest stays empty until the user adds it (R-LEG-2).
-struct LegDraft: Identifiable, Equatable {
+struct LegDraft: Identifiable, Equatable, Sendable {
     var id = UUID()
     var mode: TravelMode
     var origin: PlaceReference?

@@ -125,7 +125,7 @@ extension ShareCardPayload {
                 subtitle: model.dates(ofTrip: tripID)?.text,
                 metrics: [
                     Metric(label: "Countries", value: "\(stats.coverage.countriesVisited)"),
-                    Metric(label: "Places", value: "\(model.log.visits(inTrip: tripID).count)"),
+                    Metric(label: "Places", value: "\(model.visits(inTrip: tripID).count)"),
                     Metric(
                         label: "Travelled",
                         value: Format.distance(stats.distance.totalKm, system)

@@ -33,6 +33,8 @@ struct GlobeScreen: View {
     /// one sheet cannot open over another that is still leaving.
     @State private var queuedAdd: AddRequest?
     @State private var sharingGlobe = false
+    /// What the scene was last built from.
+    @State private var builtFrom: GlobeInputs?
 
     private let palette = GlobePalette()
 
@@ -86,15 +88,7 @@ struct GlobeScreen: View {
             }
             pendingSelection = nil
         }
-        .onChange(of: GlobeInputs(
-            log: model.log,
-            rules: model.rules,
-            filter: effectiveFilter,
-            wishlist: model.openWishlistPlaces,
-            wishlistRoutes: model.openWishlistRoutes,
-            home: model.home,
-            trackPaths: model.trackPaths
-        ), initial: true) {
+        .onChange(of: inputs, initial: true) {
             rebuild()
             if !hasFramed, !scene.isEmpty {
                 hasFramed = true
@@ -257,7 +251,25 @@ struct GlobeScreen: View {
         return combined
     }
 
+    private var inputs: GlobeInputs {
+        GlobeInputs(
+            log: model.log,
+            rules: model.rules,
+            filter: effectiveFilter,
+            wishlist: model.openWishlistPlaces,
+            wishlistRoutes: model.openWishlistRoutes,
+            home: model.home,
+            trackPaths: model.trackPaths
+        )
+    }
+
+    /// Rebuilds the scene, unless it was already built from exactly these inputs: a
+    /// replay step asks for it twice, once to turn the camera and once as its inputs
+    /// change, and a scene is the heaviest thing this screen makes.
     private func rebuild() {
+        let inputs = inputs
+        guard inputs != builtFrom else { return }
+        builtFrom = inputs
         // The timeline is built from the user's filter but not from the replay
         // position, or scrubbing would shorten the thing being scrubbed.
         timeline = GlobeTimeline(log: model.log, rules: model.rules, filter: filter)

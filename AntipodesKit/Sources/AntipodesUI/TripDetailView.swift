@@ -24,8 +24,8 @@ struct TripDetailView: View {
 
     private func content(_ trip: Trip) -> some View {
         let tripStats = stats ?? model.emptyStatistics
-        let visits = model.log.visits(inTrip: tripID).sorted { $0.date < $1.date }
-        let journeys = model.log.journeys(inTrip: tripID).sorted { $0.date < $1.date }
+        let visits = model.visits(inTrip: tripID).sorted { $0.date < $1.date }
+        let journeys = model.journeys(inTrip: tripID).sorted { $0.date < $1.date }
 
         return List {
             Section {
