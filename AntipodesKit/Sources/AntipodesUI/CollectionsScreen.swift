@@ -367,15 +367,16 @@ private struct WishlistRow: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            // The words are one element; the Log button stays one of its own.
+            .accessibilityElement(children: .combine)
             Spacer()
             if !status.isVisited {
-                Button("Log", systemImage: "plus.circle") { log() }
+                Button("Log \(status.item.title)", systemImage: "plus.circle") { log() }
                     .labelStyle(.iconOnly)
                     .buttonStyle(.borderless)
                     .font(.title3)
             }
         }
-        .accessibilityElement(children: .combine)
     }
 
     private var subtitle: String {

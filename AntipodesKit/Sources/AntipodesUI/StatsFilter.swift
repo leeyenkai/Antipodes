@@ -79,13 +79,14 @@ struct StatsFilterBanner: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
+            // The words are one element; Clear stays a button of its own.
+            .accessibilityElement(children: .combine)
             Spacer(minLength: 8)
-            Button("Clear") { model.statsFilter = .none }
+            Button("Clear Filters") { model.statsFilter = .none }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
         }
         .card(padding: 14)
-        .accessibilityElement(children: .combine)
     }
 
     private var summary: String {

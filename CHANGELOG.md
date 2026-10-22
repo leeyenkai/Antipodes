@@ -383,8 +383,10 @@ is blocked.
   code, which reads only by colour, and no "Tap to see why" on the Mac.
 - Accessibility: charts give VoiceOver a summary before their bars; the pin dropper can
   be moved and zoomed with VoiceOver actions; the replay's close button is a full 44
-  points; the globe's and the Stats screen's icon buttons have tooltips on the Mac. The
-  mode tiles keep their titles in line and their descriptions whole.
+  points; the globe's and the Stats screen's icon buttons have tooltips on the Mac; a
+  wishlist row's Log button and the Stats filter's Clear Filters are reachable on their
+  own rather than folded into the row. The mode tiles keep their titles in line and
+  their descriptions whole.
 - **One type scale** (D-34): SF Pro on the system's text styles throughout, with New
   York kept for display titles only — a personality, onboarding, Year in Review, share
   cards. Every number takes one of four figure roles that grow with the reader's text
