@@ -18,6 +18,9 @@ struct Pager<Page: View>: View {
             }
             .tabViewStyle(.page(indexDisplayMode: .always))
         #else
+            // Clamped: the pages can shrink while one is showing — a year's cards when the
+            // log changes under Year in Review — and an index past the end would trap.
+            let page = min(max(0, page), max(0, count - 1))
             VStack(spacing: 12) {
                 content(page)
                     .id(page)

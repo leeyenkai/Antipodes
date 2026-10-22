@@ -19,6 +19,8 @@ struct AddSheet: View {
     /// Whether the journey being built here has anything in it to lose.
     @State private var hasEdits = false
     @State private var isConfirmingCancel = false
+    /// A different kind of entry asked for while the current one holds unsaved work.
+    @State private var pendingEntry: Entry?
 
     enum Entry: String, CaseIterable, Identifiable {
         case place
@@ -76,7 +78,7 @@ struct AddSheet: View {
                         }
                     }
                     ToolbarItem(placement: .principal) {
-                        Picker("What are you logging?", selection: $entry) {
+                        Picker("What are you logging?", selection: entrySelection) {
                             ForEach(Entry.allCases) { Text($0.title).tag($0) }
                         }
                         .pickerStyle(.segmented)
@@ -94,6 +96,34 @@ struct AddSheet: View {
         }
         .presentationDetents([.large])
         .confirmingDiscard(isPresented: $isConfirmingCancel) { dismiss() }
+        .confirmingDiscard(isPresented: Binding(
+            get: { pendingEntry != nil },
+            set: {
+                if !$0 {
+                    pendingEntry = nil
+                }
+            }
+        )) {
+            if let pendingEntry {
+                entry = pendingEntry
+            }
+            pendingEntry = nil
+        }
+    }
+
+    /// Switching between a place, a journey and a pin replaces what is on screen, so a
+    /// half-built journey or a named pin is asked about first.
+    private var entrySelection: Binding<Entry> {
+        Binding(
+            get: { entry },
+            set: { new in
+                if hasEdits, new != entry {
+                    pendingEntry = new
+                } else {
+                    entry = new
+                }
+            }
+        )
     }
 
     @ViewBuilder

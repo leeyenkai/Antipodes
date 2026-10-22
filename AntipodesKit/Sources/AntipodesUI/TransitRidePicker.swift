@@ -53,6 +53,11 @@ struct TransitRidePicker: View {
                     }
                 }
             }
+            .overlay {
+                if filtered.isEmpty, !search.trimmingCharacters(in: .whitespaces).isEmpty {
+                    ContentUnavailableView.search(text: search)
+                }
+            }
             .searchable(text: $search, prompt: "City or system")
             .navigationTitle("City Transit")
             .toolbarTitleDisplayMode(.inline)
@@ -94,6 +99,7 @@ private struct TransitLineList: View {
     let system: TransitSystemInfo
 
     @State private var network: TransitNetwork?
+    @State private var hasLoaded = false
 
     var body: some View {
         List {
@@ -103,6 +109,15 @@ private struct TransitLineList: View {
                         TransitLineLabel(line: line)
                     }
                 }
+            } else if hasLoaded {
+                ContentUnavailableView(
+                    "Lines unavailable",
+                    systemImage: "tram",
+                    description: Text("""
+                    This system's lines couldn't be read. Log the ride between two places \
+                    instead.
+                    """)
+                )
             } else {
                 ProgressView()
             }
@@ -110,6 +125,7 @@ private struct TransitLineList: View {
         .navigationTitle(system.name)
         .task {
             network = await model.transitNetwork(forSystem: system.id)
+            hasLoaded = true
         }
     }
 

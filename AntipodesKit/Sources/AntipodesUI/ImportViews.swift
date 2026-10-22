@@ -21,6 +21,7 @@ struct FlightImportView: View {
     @State private var candidates: [FlightImportCandidate] = []
     @State private var isReading = false
     @State private var tripID: UUID?
+    @State private var newTripName: String?
     @State private var fixing: Fix?
     @State private var failure: String?
     /// The file, kept so a different mode can be read from it without asking again.
@@ -157,7 +158,7 @@ struct FlightImportView: View {
                     )
                     .foregroundStyle(.secondary)
                 }
-                TripPicker(selection: $tripID)
+                TripPicker(selection: $tripID, newTripName: $newTripName)
             }
             Section("Journeys") {
                 ForEach($candidates) { $candidate in
@@ -213,16 +214,20 @@ struct FlightImportView: View {
         case .origin: candidates[index].origin = place
         case .destination: candidates[index].destination = place
         }
+        // A row fixed by hand may now name a journey already logged, or one earlier in
+        // the file, so every row is checked again.
+        candidates = FlightLogImport.recheckDuplicates(candidates, existing: model.log.allLegs)
         candidates[index].include = candidates[index].leg != nil && !candidates[index].isDuplicate
             && !candidates[index].row.isCancelled
     }
 
     private func importSelected() {
         do {
+            let tripID = try model.resolveTrip(tripID, newTripName: newTripName)
             let count = try model.importFlights(candidates, tripID: tripID)
             model.errorMessage = nil
             dismiss()
-            _ = count
+            model.announce("Added \(Format.ordinalCount(count, "journey"))")
         } catch {
             model.errorMessage = error.localizedDescription
         }

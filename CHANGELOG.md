@@ -418,6 +418,37 @@ is blocked.
 
 ### Fixed
 
+- "Log Between Two Places Instead", in the city transit picker, now opens the place
+  search it promised; it did nothing (R-JLOG-5). A system's lines that cannot be read
+  say so instead of spinning for ever, and a transit search with no match says that.
+- Place search no longer shows the results of what was typed a moment before — typing
+  "bergen" quickly once listed what "berg" had found (R-LOG-1).
+- "Add Connecting Leg" asks which mode the next leg is, the last one first, so a flight
+  followed by a train no longer opens an airport search; a flight after a train starts
+  by asking which airport it left from (R-JLOG-4).
+- A rail, coach, ferry or road leg's search says "From: search towns and cities" — the
+  database has no stations, and the title hides while the field is in use — instead of
+  "Search station or citys", and its suggestions are the ends of earlier legs by the
+  same mode and the cities visited, not last year's airports.
+- Switching between Place, Journey and Pin in the Log sheet asks before throwing away a
+  half-built journey or a named pin, as Cancel does.
+- A widget's link no longer replaces a half-edited form without asking.
+- "New Trip…" in a form names the trip and creates it only when the form is saved, so
+  cancelling no longer leaves an empty "Untitled trip" behind (R-MODEL-3).
+- Choosing a place for an import row by hand checks it against the log again, so a
+  journey already logged is not imported twice; finishing an import of journeys or
+  photo visits says how many were added; a refusal of Photos access offers to open
+  Settings (R-LOG-7, R-LOG-8).
+- The globe beside the lists on iPad and Mac draws rail, road and transit legs along
+  their lines and wishlisted routes dashed, as the Globe tab does; tapping a wishlist
+  pin there offers to log it. Settings offers the satellite globe only when the picture
+  is in the app.
+- On the Mac, every window no longer reads the place database again, and Year in Review
+  cannot step past its last card when the log changes under it.
+- Copy: "1 Country" and "1 City" on a trip, "1 place" to VoiceOver on the globe; the
+  carbon credit no longer reads "Conversion Factors 2025 (DESNZ) factors"; Year in
+  Review's longest leg is called a leg; "How Antipodes counts" describes legs measured
+  along railways and roads rather than straight lines (D-30).
 - **A wishlisted route is a route** (R-WISH-1, R-WISH-4): it is named after the route,
   ticked off by riding it rather than by visiting the town it starts from, and no longer
   leaves a wishlist pin on that town that could not be removed.

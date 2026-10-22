@@ -181,6 +181,38 @@ public extension FlightLogImport {
         return candidates
     }
 
+    /// Every candidate checked for duplicates again, in file order — after the user has
+    /// chosen a place for a row by hand, which may make it a journey already logged or
+    /// one listed earlier in the file. A duplicate is taken out of the import; a row that
+    /// stops being one keeps whatever the user chose for it.
+    static func recheckDuplicates(
+        _ candidates: [FlightImportCandidate],
+        existing: [JourneyLeg]
+    ) -> [FlightImportCandidate] {
+        var known = FlightIndex(existing)
+        return candidates.map { candidate in
+            var candidate = candidate
+            guard let origin = candidate.origin, let destination = candidate.destination,
+                  !candidate.row.isCancelled else {
+                candidate.isDuplicate = false
+                return candidate
+            }
+            let probe = JourneyLeg(
+                mode: candidate.row.mode,
+                origin: origin,
+                destination: destination,
+                date: candidate.row.date,
+                serviceNumber: candidate.row.flightNumber
+            )
+            candidate.isDuplicate = known.contains(probe)
+            known.insert(probe)
+            if candidate.isDuplicate {
+                candidate.include = false
+            }
+            return candidate
+        }
+    }
+
     /// Which legs are already known, for spotting a duplicate.
     ///
     /// Two legs are the same when they share the mode, the day and both ends, and their

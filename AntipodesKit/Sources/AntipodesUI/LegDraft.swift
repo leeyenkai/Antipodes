@@ -72,10 +72,15 @@ struct LegDraft: Identifiable, Equatable {
     }
 
     /// The draft for the next leg of a journey: it starts where this one ended, on the
-    /// same day, by the same mode (R-JLOG-4).
-    func connecting() -> LegDraft {
-        var next = LegDraft(mode: mode)
-        next.origin = destination
+    /// same day (R-JLOG-4), by whichever mode the traveller changed to — fly, then take
+    /// the train. A flight starts only at an airport, so after a train into a city it
+    /// starts with no origin, to be picked.
+    func connecting(by nextMode: TravelMode? = nil) -> LegDraft {
+        let nextMode = nextMode ?? mode
+        var next = LegDraft(mode: nextMode)
+        if nextMode != .flight || destination?.kind == .airport {
+            next.origin = destination
+        }
         next.date = date
         next.purpose = purpose
         return next

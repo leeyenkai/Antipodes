@@ -18,6 +18,10 @@ import SwiftUI
 struct GlobeBesideStack<Root: View>: View {
     @Environment(AppModel.self) private var model
     @State private var context = GlobeBesideContext()
+    /// Whether a form open in the stack holds unsaved edits.
+    @State private var hasEdits = false
+    /// A widget's link that arrived over unsaved edits, held until the user decides.
+    @State private var heldRoute: PendingRoute?
     private let tab: PendingRoute.Tab
     private let root: Root
 
@@ -34,14 +38,37 @@ struct GlobeBesideStack<Root: View>: View {
 
     var body: some View {
         stack
-            // A widget's link opens its record here, on top of the list itself.
+            .onPreferenceChange(UnsavedEditsKey.self) { hasEdits = $0 }
+            // A widget's link opens its record here, on top of the list itself — but not
+            // over a half-edited form without asking, since it replaces the whole stack.
             .onChange(of: model.pendingRoute, initial: true) { _, pending in
                 guard let pending, pending.tab == tab else { return }
-                var path = NavigationPath()
-                path.append(pending.route)
-                context.path = path
                 model.pendingRoute = nil
+                if hasEdits {
+                    heldRoute = pending
+                } else {
+                    open(pending)
+                }
             }
+            .confirmingDiscard(isPresented: Binding(
+                get: { heldRoute != nil },
+                set: {
+                    if !$0 {
+                        heldRoute = nil
+                    }
+                }
+            )) {
+                if let heldRoute {
+                    open(heldRoute)
+                }
+                heldRoute = nil
+            }
+    }
+
+    private func open(_ pending: PendingRoute) {
+        var path = NavigationPath()
+        path.append(pending.route)
+        context.path = path
     }
 
     @ViewBuilder
@@ -254,7 +281,7 @@ private struct CompanionGlobe: View {
         // the top of this pane, which has no navigation bar to push content below it.
         .overlay(alignment: .bottom) {
             VStack(spacing: 10) {
-                if !model.log.isEmpty {
+                if !model.log.isEmpty, model.isReady {
                     GlobeSummaryBar(scene: scene)
                 }
                 caption
@@ -267,7 +294,9 @@ private struct CompanionGlobe: View {
             rules: model.rules,
             focus: focus,
             wishlist: model.openWishlistPlaces,
-            home: model.home
+            wishlistRoutes: model.openWishlistRoutes,
+            home: model.home,
+            trackPaths: model.trackPaths
         ), initial: true) {
             rebuild()
             // Reframed when the focus moves, not on every edit: turning the globe and
@@ -322,12 +351,16 @@ private struct CompanionGlobe: View {
     }
 
     private func rebuild() {
+        // The same scene the Globe tab draws: legs along their railways, roads and
+        // transit lines, wishlisted routes dashed.
         scene = GlobeSceneBuilder.build(
             log: model.log,
             rules: model.rules,
             filter: GlobeFilter(tripID: tripID),
             wishlist: tripID == nil ? model.openWishlistPlaces + collectionStillToVisit : [],
-            home: model.home
+            wishlistRoutes: tripID == nil ? model.openWishlistRoutes : [],
+            home: model.home,
+            paths: model.trackPaths
         )
     }
 
@@ -399,12 +432,14 @@ private struct CompanionGlobe: View {
         model.statistics.collections.first { $0.id == id }
     }
 
-    /// A tap on a place or a journey opens it in the list beside the globe. Wishlist and
-    /// home markers are not records, so they stay put.
+    /// A tap on a place or a journey opens it in the list beside the globe. A wishlist
+    /// place is not a record yet, so a tap offers to log it; home markers stay put.
     private func select(_ selection: GlobeSelection?) {
         switch selection {
         case let .pin(pin) where pin.style.isTravel:
             open(.visit(pin.id))
+        case let .pin(pin) where pin.style == .wishlist:
+            model.addRequest = AddRequest(start: .place(pin.place))
         case let .arc(arc):
             if let journey = model.log.journeys
                 .first(where: { $0.legs.contains { $0.id == arc.id } }) {
@@ -422,5 +457,7 @@ private struct Inputs: Equatable {
     let rules: CountingRules
     let focus: GlobeFocus?
     let wishlist: [PlaceReference]
+    let wishlistRoutes: [GlobeWishlistRoute]
     let home: PlaceReference?
+    let trackPaths: [UUID: [Coordinate]]
 }

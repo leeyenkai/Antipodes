@@ -12,6 +12,17 @@ public extension AppModel {
         var refile: (trip: UUID, visits: [UUID], journeys: [UUID])?
     }
 
+    /// A short confirmation, shown for a few seconds.
+    struct Notice: Identifiable {
+        public let id = UUID()
+        public let message: String
+        public var systemImage = "checkmark.circle"
+    }
+
+    func announce(_ message: String, systemImage: String = "checkmark.circle") {
+        notice = Notice(message: message, systemImage: systemImage)
+    }
+
     func offerUndo(_ deletion: Deletion) {
         lastDeletion = deletion
     }

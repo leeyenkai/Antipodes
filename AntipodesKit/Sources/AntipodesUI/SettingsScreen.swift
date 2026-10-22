@@ -158,8 +158,12 @@ struct SettingsScreen: View {
             Picker("Appearance", selection: $model.appearance) {
                 ForEach(AppearancePreference.allCases) { Text($0.displayName).tag($0) }
             }
-            Picker("Globe", selection: $model.globeStyle) {
-                ForEach(GlobeStyle.allCases) { Text($0.displayName).tag($0) }
+            // Only where the satellite picture is in the bundle, as on the globe's own
+            // menu; without it the choice would quietly fall back to the standard globe.
+            if GlobeImageryStore().isAvailable {
+                Picker("Globe", selection: $model.globeStyle) {
+                    ForEach(GlobeStyle.allCases) { Text($0.displayName).tag($0) }
+                }
             }
             Button {
                 isPickingHome = true

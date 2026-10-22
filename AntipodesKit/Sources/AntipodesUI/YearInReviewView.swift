@@ -127,7 +127,7 @@ struct YearInReviewView: View {
         ))
         if let longest = review.longestLeg {
             cards.append(ReviewCard(
-                eyebrow: "Longest journey",
+                eyebrow: "Longest leg",
                 value: Format.distance(longest.distanceKm, system),
                 title: "\(longest.origin.name) → \(longest.destination.name)",
                 detail: longest.date.displayText,
@@ -161,7 +161,9 @@ struct YearInReviewView: View {
                 eyebrow: "Carbon (estimate)",
                 value: Format.carbon(kilograms: carbon),
                 title: "from every leg you logged",
-                detail: "Estimated from \(model.catalogue.emissionFactors.sourceName) factors.",
+                detail: """
+                Estimated from \(Format.factorSource(model.catalogue.emissionFactors.sourceName)).
+                """,
                 symbol: "leaf.fill"
             ))
         }

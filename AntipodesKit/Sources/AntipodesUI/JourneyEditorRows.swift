@@ -194,3 +194,75 @@ extension JourneyLeg {
         "\(origin.shortName) → \(destination.shortName)"
     }
 }
+
+/// The eight modes as a grid of tiles (§5.1).
+struct ModeGrid: View {
+    let pick: (TravelMode) -> Void
+
+    var body: some View {
+        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
+            ForEach(TravelMode.loggable) { mode in
+                Button {
+                    pick(mode)
+                } label: {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Image(systemName: mode.symbolName)
+                            .font(.title2.weight(.light))
+                            .foregroundStyle(Palette.mode(mode))
+                        Text(mode.displayName)
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundStyle(.primary)
+                        Text(mode.examples)
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2, reservesSpace: true)
+                        Spacer(minLength: 0)
+                            .multilineTextAlignment(.leading)
+                    }
+                    .padding(12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .background(.fill.tertiary, in: .rect(cornerRadius: 16, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(mode.displayName)
+                .accessibilityHint(mode.examples)
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+/// One end of a leg in its form: the place chosen, or a prompt to choose one.
+struct EndpointButton: View {
+    let label: String
+    let place: PlaceReference?
+    let mode: TravelMode
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            LabeledContent(label) {
+                if let place {
+                    HStack(spacing: 6) {
+                        if let code = place.code, place.kind == .airport {
+                            Text(code).font(.callout.monospaced().weight(.semibold))
+                        }
+                        Text(place.name).lineLimit(1)
+                    }
+                    .foregroundStyle(.primary)
+                } else {
+                    Text("Choose \(mode.endpointNoun)")
+                        .foregroundStyle(.tint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .contentShape(.rect)
+    }
+}
+
+/// One end of a leg.
+enum LegEnd: String {
+    case origin
+    case destination
+}

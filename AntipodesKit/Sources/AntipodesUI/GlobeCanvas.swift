@@ -426,9 +426,11 @@ struct GlobeCanvas: View {
 
     private var accessibilityLabel: String {
         let countries = scene.shadedCountryCodes.count
-        let places = scene.pins.filter(\.style.isTravel).count
-        return "Globe showing \(places) places in \(countries) countries, "
-            + "and \(scene.arcs.count) journeys."
+        let places = Set(scene.pins.filter(\.style.isTravel).map(\.place.id)).count
+        guard places > 0 || !scene.arcs.isEmpty else { return "Globe" }
+        return "Globe showing \(Format.ordinalCount(places, "place")) in "
+            + "\(Format.ordinalCount(countries, "country", "countries")), "
+            + "and \(Format.ordinalCount(scene.arcs.count, "leg"))."
     }
 }
 

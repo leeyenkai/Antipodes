@@ -17,6 +17,7 @@ struct JourneyEditor: View {
     @State private var expandedLeg: UUID?
     @State private var title: String
     @State private var tripID: UUID?
+    @State private var newTripName: String?
     @State private var isConfirmingDelete = false
     @State private var saved = false
     /// What the editor held when it opened, so it knows whether there is anything to
@@ -126,19 +127,24 @@ struct JourneyEditor: View {
 
             if let last = legs.last {
                 Section {
-                    Button("Add Connecting Leg", systemImage: "plus.circle.fill") {
-                        let next = last.connecting()
-                        legs.append(next)
-                        expandedLeg = next.id
-                        // It starts where the last leg ended; where it goes is the question.
-                        picking = EndpointRequest(legID: next.id, end: .destination)
+                    // A connection is often a change of mode — land, then take the train —
+                    // so the next leg's mode is the first question, the last one's first.
+                    Menu {
+                        ForEach([last.mode] + TravelMode.loggable
+                            .filter { $0 != last.mode }) { mode in
+                                Button(mode.displayName, systemImage: mode.symbolName) {
+                                    addConnectingLeg(after: last, by: mode)
+                                }
+                            }
+                    } label: {
+                        Label("Add Connecting Leg", systemImage: "plus.circle.fill")
                     }
                     .disabled(!last.isComplete)
                 }
 
                 Section("Journey") {
                     TextField("Title (optional)", text: $title)
-                    TripPicker(selection: $tripID)
+                    TripPicker(selection: $tripID, newTripName: $newTripName)
                 }
             }
 
@@ -194,7 +200,9 @@ struct JourneyEditor: View {
             discard: onDone
         )
         .sensoryFeedback(.success, trigger: saved)
-        .sheet(item: $pickingTransit) { pick in
+        // Either sheet can hand over to the place picker once it has gone: one sheet
+        // cannot open over another that is still leaving.
+        .sheet(item: $pickingTransit, onDismiss: openNextPick) { pick in
             TransitRidePicker { ride in
                 if let index = legs.firstIndex(where: { $0.id == pick.id }) {
                     legs[index].apply(ride)
@@ -203,14 +211,9 @@ struct JourneyEditor: View {
                 nextPick = EndpointRequest(legID: pick.id, end: .origin)
             }
         }
-        .sheet(item: $picking, onDismiss: {
-            if let nextPick {
-                picking = nextPick
-                self.nextPick = nil
-            }
-        }, content: { request in
+        .sheet(item: $picking, onDismiss: openNextPick) { request in
             endpointPicker(request)
-        })
+        }
         .confirmationDialog(
             "Delete this journey?",
             isPresented: $isConfirmingDelete,
@@ -236,7 +239,9 @@ struct JourneyEditor: View {
             let mode = legs[index].mode
             PlacePickerSheet(
                 title: request.end == .origin ? "From" : "To",
-                prompt: "Search \(mode.endpointNoun)s",
+                // The title hides while the search field has the keyboard, so the prompt
+                // says which end this is too.
+                prompt: endpointPrompt(request.end, mode),
                 kinds: mode == .flight ? [.airport] : [.city, .landmark, .airport],
                 fixedKinds: mode.endpointKinds,
                 suggestions: endpointSuggestions(for: mode)
@@ -257,6 +262,32 @@ struct JourneyEditor: View {
         }
     }
 
+    private func addConnectingLeg(after last: LegDraft, by mode: TravelMode) {
+        let next = last.connecting(by: mode)
+        legs.append(next)
+        expandedLeg = next.id
+        if mode == .cityTransit {
+            pickingTransit = TransitPick(id: next.id)
+        } else if next.origin == nil {
+            // A flight after a train: the airport it left from, then where it went.
+            picking = EndpointRequest(legID: next.id, end: .origin)
+        } else {
+            // It starts where the last leg ended; where it goes is the question.
+            picking = EndpointRequest(legID: next.id, end: .destination)
+        }
+    }
+
+    private func endpointPrompt(_ end: LegEnd, _ mode: TravelMode) -> String {
+        "\(end == .origin ? "From" : "To"): search \(mode.endpointPluralNoun)"
+    }
+
+    private func openNextPick() {
+        if let nextPick {
+            picking = nextPick
+            self.nextPick = nil
+        }
+    }
+
     /// A city transit ride starts at its line (R-JLOG-5); anything else at "From?".
     private func askForFirstEnd(of draft: LegDraft) {
         if draft.mode == .cityTransit {
@@ -266,18 +297,24 @@ struct JourneyEditor: View {
         }
     }
 
-    /// Home, then the places the user's recent legs went through — usually where the
-    /// next leg starts or ends.
+    /// Home, then the ends of recent legs by the same mode, then — for anything but a
+    /// flight — cities recently visited, then other legs' ends of the right kind: a
+    /// train's suggestions are towns, not the airports of last year's flights.
     private func endpointSuggestions(for mode: TravelMode) -> [PlaceReference] {
-        var seen: Set<PlaceID> = []
-        var places: [PlaceReference] = []
-        let recent = model.log.allLegs.reversed().flatMap { [$0.destination, $0.origin] }
-            .filter { mode != .flight || $0.kind == .airport }
+        let legs = model.log.allLegs.reversed()
+        let ends = { (legs: [JourneyLeg]) in legs.flatMap { [$0.destination, $0.origin] } }
+        let fits = { (place: PlaceReference) in (place.kind == .airport) == (mode == .flight) }
+        let sameMode = ends(legs.filter { $0.mode == mode }).filter { mode != .flight || fits($0) }
+        let otherModes = ends(legs.filter { $0.mode != mode }).filter(fits)
         let home = mode == .flight ? [] : [model.home].compactMap(\.self)
-        for place in home + recent where seen.insert(place.id).inserted {
-            places.append(place)
-        }
-        return Array(places.prefix(8))
+        let visitedCities = mode == .flight ? [] : model.log.visits
+            .sorted { ($0.createdAt ?? .distantPast) > ($1.createdAt ?? .distantPast) }
+            .map(\.place)
+            .filter { $0.kind == .city }
+        var seen: Set<PlaceID> = []
+        return Array((home + sameMode + visitedCities + otherModes)
+            .filter { seen.insert($0.id).inserted }
+            .prefix(8))
     }
 
     /// Removes a leg once any field in it has let go of the keyboard. A text field still
@@ -298,12 +335,22 @@ struct JourneyEditor: View {
     private func save() {
         let built = legs.compactMap(\.leg)
         guard built.count == legs.count, !built.isEmpty else { return }
+        // Nothing changed: nothing to write, and nothing stale to write over.
+        if existing != nil, Fields(legs: legs, title: title, tripID: tripID) == baseline {
+            onDone()
+            return
+        }
+        let tripID: UUID?
+        do {
+            tripID = try model.resolveTrip(self.tripID, newTripName: newTripName)
+        } catch {
+            model.errorMessage = AppModel.tripNotCreated(error)
+            return
+        }
+        // Created now; a save that fails below and is tried again must not make another.
+        self.tripID = tripID
+        newTripName = nil
         if var journey = existing {
-            // Nothing changed: nothing to write, and nothing stale to write over.
-            guard Fields(legs: legs, title: title, tripID: tripID) != baseline else {
-                onDone()
-                return
-            }
             let current = model.log.journeys.first { $0.id == journey.id }?.legs ?? []
             journey.legs = built.map { $0.keepingMeasurement(from: current) }
             journey.title = title.trimmedOrNil
@@ -319,43 +366,6 @@ struct JourneyEditor: View {
         }
         saved = true
         onDone()
-    }
-}
-
-/// The eight modes as a grid of tiles (§5.1).
-struct ModeGrid: View {
-    let pick: (TravelMode) -> Void
-
-    var body: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
-            ForEach(TravelMode.loggable) { mode in
-                Button {
-                    pick(mode)
-                } label: {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Image(systemName: mode.symbolName)
-                            .font(.title2.weight(.light))
-                            .foregroundStyle(Palette.mode(mode))
-                        Text(mode.displayName)
-                            .font(.subheadline.weight(.semibold))
-                            .foregroundStyle(.primary)
-                        Text(mode.examples)
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                            .lineLimit(2, reservesSpace: true)
-                        Spacer(minLength: 0)
-                            .multilineTextAlignment(.leading)
-                    }
-                    .padding(12)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .background(.fill.tertiary, in: .rect(cornerRadius: 16, style: .continuous))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel(mode.displayName)
-                .accessibilityHint(mode.examples)
-            }
-        }
-        .padding(.vertical, 4)
     }
 }
 
@@ -457,38 +467,4 @@ private struct LegSection: View {
         }
         .onAppear { showsDetails = draft.hasDetails }
     }
-}
-
-private struct EndpointButton: View {
-    let label: String
-    let place: PlaceReference?
-    let mode: TravelMode
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            LabeledContent(label) {
-                if let place {
-                    HStack(spacing: 6) {
-                        if let code = place.code, place.kind == .airport {
-                            Text(code).font(.callout.monospaced().weight(.semibold))
-                        }
-                        Text(place.name).lineLimit(1)
-                    }
-                    .foregroundStyle(.primary)
-                } else {
-                    Text("Choose \(mode.endpointNoun)")
-                        .foregroundStyle(.tint)
-                }
-            }
-        }
-        .buttonStyle(.plain)
-        .contentShape(.rect)
-    }
-}
-
-/// One end of a leg.
-enum LegEnd: String {
-    case origin
-    case destination
 }

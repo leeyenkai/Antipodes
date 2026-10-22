@@ -123,17 +123,22 @@ public enum TravelMode: String, Sendable, Codable, CaseIterable, Identifiable {
         }
     }
 
-    /// What the origin and destination usually are, for the search prompt.
+    /// What an origin or destination is, for a button that picks one. The database has
+    /// no stations, stops or ports (D-8), so a surface leg ends at a town or city.
     public var endpointNoun: String {
         switch self {
         case .flight: "airport"
-        case .rail: "station or city"
-        case .cityTransit: "stop or city"
-        case .coach: "stop or city"
-        case .ferry: "port or city"
-        case .roadTrip: "town"
-        case .humanPowered: "start or end point"
-        case .cableAndMountain: "station"
+        case .rail, .cityTransit, .coach, .ferry, .roadTrip: "town or city"
+        case .humanPowered, .cableAndMountain: "place"
+        }
+    }
+
+    /// The same, for a search prompt: "Search airports".
+    public var endpointPluralNoun: String {
+        switch self {
+        case .flight: "airports"
+        case .rail, .cityTransit, .coach, .ferry, .roadTrip: "towns and cities"
+        case .humanPowered, .cableAndMountain: "places"
         }
     }
 

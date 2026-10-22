@@ -65,6 +65,11 @@ struct PinDropView: View {
         }
         .navigationTitle("Drop a Pin")
         .toolbarTitleDisplayMode(.inline)
+        // A typed name is something to lose: the add sheet asks before closing over it.
+        .preference(
+            key: UnsavedEditsKey.self,
+            value: !name.trimmingCharacters(in: .whitespaces).isEmpty
+        )
         .onAppear { borderStore.loadCoarse() }
         .task(id: camera.centre) {
             try? await Task.sleep(for: .milliseconds(250))

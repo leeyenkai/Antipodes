@@ -19,6 +19,7 @@ struct VisitForm: View {
     @State private var visitType: VisitType
     @State private var date: FlexibleDate
     @State private var tripID: UUID?
+    @State private var newTripName: String?
     @State private var rating: Int?
     @State private var notes: String
     @State private var isConfirmingDelete = false
@@ -117,7 +118,7 @@ struct VisitForm: View {
             }
 
             Section("Trip") {
-                TripPicker(selection: $tripID)
+                TripPicker(selection: $tripID, newTripName: $newTripName)
             }
 
             Section("Notes") {
@@ -179,11 +180,22 @@ struct VisitForm: View {
         if finalPlace.kind == .custom {
             finalPlace.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         }
+        // Nothing changed: nothing to write.
+        if existing != nil, fields == baseline {
+            onDone()
+            return
+        }
+        let tripID: UUID?
+        do {
+            tripID = try model.resolveTrip(self.tripID, newTripName: newTripName)
+        } catch {
+            model.errorMessage = AppModel.tripNotCreated(error)
+            return
+        }
+        // Created now; a save that fails below and is tried again must not make another.
+        self.tripID = tripID
+        newTripName = nil
         if var visit = existing {
-            guard fields != baseline else {
-                onDone()
-                return
-            }
             visit.place = finalPlace
             visit.visitType = visitType
             visit.date = date

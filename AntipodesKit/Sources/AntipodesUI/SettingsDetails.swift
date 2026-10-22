@@ -39,9 +39,12 @@ struct CountingExplainer: View {
                     """
                 )
                 Text("""
-                Distances for flights follow the great circle. Other modes are straight lines \
-                between the ends, marked approximate, unless you enter the distance or ride a \
-                catalogue route.
+                Flights follow the great circle between the airports. Trains, road trips, \
+                coaches and ferries are measured along the railways, roads and ferry routes \
+                of Natural Earth's map, and city transit stop by stop along its line. Where \
+                no route joins the ends — and for hikes, bike tours and cable cars — the leg \
+                is a straight line marked approximate, unless you enter the distance or ride \
+                a catalogue route.
                 """)
             }
         }

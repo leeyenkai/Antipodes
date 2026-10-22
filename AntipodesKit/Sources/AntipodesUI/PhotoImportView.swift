@@ -2,6 +2,9 @@ import AntipodesCore
 import AntipodesImport
 import AntipodesStore
 import SwiftUI
+#if os(iOS)
+    import UIKit
+#endif
 import UniformTypeIdentifiers
 #if canImport(Photos)
     import Photos
@@ -16,11 +19,13 @@ import UniformTypeIdentifiers
 struct PhotoImportView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.openURL) private var openURL
 
     @State private var state: LoadState = .idle
     @State private var suggestions: [VisitSuggestion] = []
     @State private var selected: Set<String> = []
     @State private var tripID: UUID?
+    @State private var newTripName: String?
     @State private var scanTask: Task<Void, Never>?
 
     enum LoadState: Equatable {
@@ -52,10 +57,12 @@ struct PhotoImportView: View {
                     EmptyStateView(
                         title: "No access to Photos",
                         message: """
-                        Allow Antipodes to read your photos in Settings, or choose selected \
-                        photos only.
+                        Allow Antipodes to read your photos in \(Self.settingsName), or \
+                        choose selected photos only.
                         """,
-                        systemImage: "lock"
+                        systemImage: "lock",
+                        actionTitle: "Open \(Self.settingsName)",
+                        action: openPrivacySettings
                     )
                 case .done:
                     review
@@ -90,7 +97,7 @@ struct PhotoImportView: View {
                 )
             } else {
                 Section {
-                    TripPicker(selection: $tripID)
+                    TripPicker(selection: $tripID, newTripName: $newTripName)
                     Button(selected.count == fresh.count ? "Deselect All" : "Select All") {
                         selected = selected.count == fresh.count ? [] : Set(fresh.map(\.id))
                     }
@@ -205,13 +212,36 @@ struct PhotoImportView: View {
         }
     #endif
 
+    /// What the system's settings are called where the user will find the switch.
+    private static var settingsName: String {
+        #if os(macOS)
+            "System Settings"
+        #else
+            "Settings"
+        #endif
+    }
+
+    /// Antipodes' own page in Settings on iPhone and iPad, where Photos access is; the
+    /// Photos privacy pane on the Mac.
+    private func openPrivacySettings() {
+        #if os(macOS)
+            let address = "x-apple.systempreferences:com.apple.preference.security?Privacy_Photos"
+        #else
+            let address = UIApplication.openSettingsURLString
+        #endif
+        if let url = URL(string: address) {
+            openURL(url)
+        }
+    }
+
     private func importSelected() {
         do {
-            _ = try model.importSuggestions(
+            let count = try model.importSuggestions(
                 suggestions.filter { selected.contains($0.id) },
-                tripID: tripID
+                tripID: model.resolveTrip(tripID, newTripName: newTripName)
             )
             dismiss()
+            model.announce("Added \(Format.ordinalCount(count, "visit"))")
         } catch {
             model.errorMessage = error.localizedDescription
         }

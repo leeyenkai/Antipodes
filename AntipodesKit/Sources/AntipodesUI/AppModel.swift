@@ -149,6 +149,9 @@ public final class AppModel {
     public var pendingRoute: PendingRoute?
     /// What was just deleted, while the app offers to undo it.
     public var lastDeletion: Deletion?
+    /// What just happened, said briefly where the undo offer appears: an import's
+    /// result, a backup restored.
+    public var notice: Notice?
     /// Counts rides logged again, so the screen can confirm each one with a tap.
     public var rideLoggedAgain = 0
     @ObservationIgnored private var filterGeneration = 0

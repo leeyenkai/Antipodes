@@ -137,7 +137,11 @@ struct PlaceSearchList: View {
         // Debounce: a keystroke cancels the previous task, so only a pause hits SQLite.
         try? await Task.sleep(for: .milliseconds(90))
         guard !Task.isCancelled else { return }
-        results = await model.search(query, kinds: effectiveKinds)
+        let found = await model.search(query, kinds: effectiveKinds)
+        // A search the next keystroke overtook must not land on top of the newer one:
+        // typing "bergen" quickly once showed what "berg" had found.
+        guard !Task.isCancelled, query == text else { return }
+        results = found
         isSearching = false
     }
 

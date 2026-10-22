@@ -102,6 +102,14 @@ extension CarbonStatistics {
         if let factorYear, !source.contains(String(factorYear)) {
             source += " \(factorYear)"
         }
-        return "Estimated with \(source) factors"
+        return "Estimated with \(Format.factorSource(source))"
+    }
+}
+
+extension Format {
+    /// "UK DESNZ 2025 factors", or a source's own name when it already says "factors"
+    /// ("UK Government GHG Conversion Factors 2025") rather than "… Factors factors".
+    static func factorSource(_ name: String) -> String {
+        name.localizedCaseInsensitiveContains("factor") ? name : "\(name) factors"
     }
 }

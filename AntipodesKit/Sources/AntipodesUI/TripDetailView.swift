@@ -129,9 +129,15 @@ private struct TripHeader: View {
                     .shadow(color: .black.opacity(0.8), radius: 6)
                 }
             HStack(spacing: 0) {
-                metric("\(stats.coverage.countriesVisited)", "Countries")
+                metric(
+                    "\(stats.coverage.countriesVisited)",
+                    stats.coverage.countriesVisited == 1 ? "Country" : "Countries"
+                )
                 Divider().frame(height: 32)
-                metric("\(stats.coverage.citiesVisited)", "Cities")
+                metric(
+                    "\(stats.coverage.citiesVisited)",
+                    stats.coverage.citiesVisited == 1 ? "City" : "Cities"
+                )
                 Divider().frame(height: 32)
                 metric(Format.distance(stats.distance.totalKm, model.rules.unitSystem), "Travelled")
             }

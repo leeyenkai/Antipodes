@@ -292,34 +292,51 @@ struct RatingPicker: View {
 
 /// Assigning a trip is optional — a visit can stand alone and be filed later
 /// (R-MODEL-3).
+///
+/// "New Trip…" only names the trip: it is created when the form is saved, through
+/// `AppModel.resolveTrip`, so a form cancelled afterwards leaves no empty trip behind.
 struct TripPicker: View {
     @Environment(AppModel.self) private var model
     @Binding var selection: UUID?
+    /// The name of a trip to create on save, while one is chosen.
+    @Binding var newTripName: String?
     @State private var isCreating = false
-    @State private var newTripName = ""
+    @State private var typedName = ""
+
+    /// Stands in the picker for the trip that does not exist yet.
+    static let newTripTag = UUID(uuid: (0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1))
 
     var body: some View {
         Picker("Trip", selection: $selection) {
             Text("None").tag(UUID?.none)
+            if let newTripName {
+                Text("\(newTripName) (new)").tag(UUID?.some(Self.newTripTag))
+            }
             ForEach(model.tripsNewestFirst) { trip in
                 Text(trip.displayName(model: model)).tag(UUID?.some(trip.id))
             }
         }
         Button("New Trip…", systemImage: "plus") { isCreating = true }
-            .alert("New Trip", isPresented: $isCreating) {
-                TextField("Name", text: $newTripName)
-                Button("Cancel", role: .cancel) { newTripName = "" }
-                Button("Create") {
-                    do {
-                        selection = try model.createTrip(name: newTripName).id
-                    } catch {
-                        model.errorMessage = AppModel.tripNotCreated(error)
-                    }
-                    newTripName = ""
+            .alert("New trip", isPresented: $isCreating) {
+                TextField("Name", text: $typedName)
+                Button("Cancel", role: .cancel) { typedName = "" }
+                Button("Add") {
+                    newTripName = typedName.trimmedOrNil ?? "Untitled trip"
+                    selection = Self.newTripTag
+                    typedName = ""
                 }
             } message: {
-                Text("Give the trip a name, such as \"Japan 2025\".")
+                Text("Give the trip a name, such as \"Japan 2025\". It's created when you save.")
             }
+    }
+}
+
+extension AppModel {
+    /// The trip a form chose, creating the one it named with "New Trip…" now that the
+    /// form is being saved.
+    func resolveTrip(_ id: UUID?, newTripName: String?) throws -> UUID? {
+        guard id == TripPicker.newTripTag else { return id }
+        return try createTrip(name: newTripName).id
     }
 }
 
