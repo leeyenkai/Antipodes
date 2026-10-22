@@ -19,6 +19,11 @@ is blocked.
 
 ### Added
 
+- **Open source under the MIT licence** (`LICENSE`); the curation stays CC0 and the open
+  data keeps its own licences. The README is rewritten to be short and current — the
+  icon, six screenshots from the app in `docs/images/`, what it does, how to build it
+  and the data credits — and no longer describes iCloud sync (D-31).
+  `.gitattributes` keeps text in LF and the docs out of GitHub's language figures.
 - **Bring in your history from the first minute** (R-LOG-7, R-LOG-8): the last page of
   onboarding offers "Import Flights" and "From Photos", the empty Globe, Trips and Stats
   screens offer the same beside "Log", and the Trips menu has Import. Before, both lay

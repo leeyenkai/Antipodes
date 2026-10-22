@@ -49,6 +49,7 @@ Antipodes.xcodeproj      Thin app project; depends on the local AntipodesKit pac
 Tools/placedb/           Python pipeline that builds the read-only places.sqlite
                          from open data. curation/ is tracked; vendor/ and out/ are not.
 docs/                    SPECIFICATION.md and any design notes.
+  images/                The README's icon and screenshots (iPhone, 600 px wide).
 scripts/                 Repo-level build, test and lint helpers.
 ```
 
@@ -205,7 +206,9 @@ commit.
 
 ## 5. Data and licensing
 
-The place database is built from open data, and the licences differ:
+The code is MIT-licensed ([LICENSE](LICENSE)), and the curation in
+`Tools/placedb/curation/` is CC0. The licence does not reach the data: the place
+database is built from open data, and the licences differ:
 
 | Source | Licence | Obligation | In use |
 |---|---|---|---|

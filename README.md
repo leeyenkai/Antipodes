@@ -1,135 +1,107 @@
-# Antipodes
+<p align="center">
+  <img src="docs/images/icon.png" width="128" height="128" alt="The Antipodes app icon: a glass Earth with a gold great circle running to the antipode">
+</p>
 
-A free, privacy-first travel logger for iPhone, iPad and Mac. Log every place and
-journey you have travelled, and get unusually deep statistics out of it.
+<h1 align="center">Antipodes</h1>
 
-Flight loggers cover one mode deeply. Country-checklist apps cover everywhere
-shallowly. Antipodes covers **every mode** — places, flights, rail, road, sea,
-trails — with flight-logger depth, and keeps all of it on your own devices.
+<p align="center">
+  A private travel log for iPhone, iPad and Mac.<br>
+  Every place, flight, train and ferry on one globe, with statistics worth reading.
+</p>
 
-> **Status: pre-release.** The v1 feature set is built and tested; nothing is
-> released yet. What is still blocked, and why, is in §13.1 of the
-> [specification](docs/SPECIFICATION.md#131-v1-status).
+<p align="center">
+  <img alt="iOS, iPadOS and macOS 26" src="https://img.shields.io/badge/platforms-iOS%20%7C%20iPadOS%20%7C%20macOS%2026-3d9a8b">
+  <img alt="Swift 6" src="https://img.shields.io/badge/Swift-6-F05138?logo=swift&logoColor=white">
+  <a href="LICENSE"><img alt="MIT licence" src="https://img.shields.io/badge/licence-MIT-2ea44f"></a>
+  <img alt="Privacy: data not collected" src="https://img.shields.io/badge/privacy-data%20not%20collected-555">
+</p>
 
----
+<table align="center">
+  <tr>
+    <td><img src="docs/images/globe.jpg" width="240" alt="The globe, with visited countries shaded and journeys drawn as arcs"></td>
+    <td><img src="docs/images/journey.jpg" width="240" alt="A journey card for Oslo to Helsinki to Tokyo Haneda"></td>
+    <td><img src="docs/images/stats.jpg" width="240" alt="Stats: travel personality, countries, distance, continents and cities"></td>
+  </tr>
+  <tr>
+    <td><img src="docs/images/trips.jpg" width="240" alt="Trips grouped by year, each with a small map"></td>
+    <td><img src="docs/images/trip.jpg" width="240" alt="A trip to Rome, Florence and Venice with its map and figures"></td>
+    <td><img src="docs/images/collections.jpg" width="240" alt="Collections: New 7 Wonders, Nordic capitals, European capitals"></td>
+  </tr>
+</table>
 
-## What it does
+## Features
 
-- **Log fast.** Search a database bundled inside the app and tap. No typing out
-  coordinates, no looking up airport codes.
-- **Every mode of travel.** Flights, intercity and regional rail, city transit,
-  coaches, ferries and cruises, road trips, hikes and trails, cable cars and
-  funiculars — each with its own detail, multi-leg journeys with connection times, and
-  famous routes such as the Glacier Express ready to ride.
-- **Statistics nobody else offers.** Not just countries counted: the average age of
-  the landmarks you have seen, flight hours and punctuality, days away per year, the
-  longest gap since you last saw a country, an estimate of your carbon and what going
-  overland saved, and a rule-based "travel personality" that always shows its working.
-- **Collections and badges.** The New 7 Wonders, the Nordic capitals, every US national
-  park; a wishlist that ticks itself off; badges for the Arctic Circle and the Equator.
-- **Bring your history with you.** Import flights from Flighty, myFlightradar24 or
-  OpenFlights, and find past trips in the dates and places of your photos — on the
-  device, with nothing stored about any photo.
-- **Share it.** Cards for a stat, a trip or a year, a Year in Review, and Home and
-  Lock Screen widgets.
-- **A globe, not a list.** The home screen is a 3D globe with your countries shaded,
-  your pins placed and your journeys drawn as arcs.
-- **Private by design.** No account. No server. No analytics. Your travel history
-  lives on your device and in your own iCloud, and the developer never sees it. The
-  target App Store privacy label is *Data Not Collected*.
+- **Every way you travel.** Places, flights, rail, coaches, ferries, road trips, hikes,
+  city transit and cable cars, with multi-leg journeys and connections. Rail and road
+  legs are measured along the real network, not as straight lines.
+- **Fast to log.** Search a bundled offline database of cities, airports, stations and
+  landmarks, and tap. No account, no typing coordinates.
+- **Statistics with substance.** Countries and continents, distance and time in the air,
+  days away per year, the age of the landmarks you've seen, your carbon footprint, and a
+  travel personality that shows its working.
+- **Trips, collections and badges.** Group journeys into trips, tick off the New 7
+  Wonders or every US national park, and keep a wishlist that ticks itself off.
+- **Bring your history.** Import from Flighty, myFlightradar24, OpenFlights or a rail
+  log CSV, or find past trips in your photos, on the device.
+- **Share it.** Cards for a stat, a trip or a year, Year in Review, and Home and Lock
+  Screen widgets.
 
-Full requirements: [docs/SPECIFICATION.md](docs/SPECIFICATION.md).
-
-## What it deliberately does not do
-
-No social feed, no friends or following. No live flight tracking — this app logs
-journeys, it does not follow them in real time. No booking, no recommendations, no
-itinerary planning. No Android or web version.
-
----
-
-## Repository layout
-
-```
-AntipodesKit/        Swift package: all logic and UI
-  Sources/
-    AntipodesCore/     Value types, flexible dates, great-circle maths, counting rules
-    AntipodesPlaces/   Read-only place database (SQLite + FTS5 search)
-    AntipodesStats/    Every statistic, badge and collection (pure, no persistence)
-    AntipodesExport/   CSV and JSON export
-    AntipodesImport/   Flight-log and photo import (pure)
-    AntipodesStore/    SwiftData models and CloudKit sync
-    AntipodesGlobe/    Globe geometry and replay (pure, no SwiftUI or MapKit)
-    AntipodesUI/       SwiftUI screens
-  Tests/               One suite per pure module
-App/Antipodes/       App shell: entry point, Info.plist, assets, bundled resources
-App/AntipodesWidgets/ Home and Lock Screen widgets
-Antipodes.xcodeproj  Thin app project depending on the local package
-Tools/placedb/       Python pipeline that builds the read-only place database
-docs/                Specification and design notes
-scripts/             Build, test and lint helpers
-```
+**Private by design.** Your log is stored only on your device. There is no account,
+no server, no analytics and no sync. A JSON backup in Settings is how you keep a copy or
+move to a new device.
 
 ## Building
 
-**Requirements:** macOS with Xcode 27 or later (Swift 6.4), and `python3` for the data
-pipeline. There are no third-party Swift dependencies, so no package resolution and no
-network access are needed to build.
+Antipodes isn't on the App Store; you build it from source. You need macOS with
+**Xcode 27** (Swift 6.4) and `python3`. There are no third-party Swift dependencies.
 
 ```bash
 git clone https://github.com/leeyenkai/Antipodes.git
 cd Antipodes
-scripts/check.sh            # data, package, tests, lint, and the iOS and Mac app builds
+scripts/build-app.sh   # fetches and builds the place database, borders and imagery on first run
+open Antipodes.xcodeproj
 ```
 
-Individually:
+Then run the `Antipodes` scheme on an iPhone or iPad simulator, or on My Mac; a real
+iPhone needs your own signing team. The first build downloads the open data the app
+bundles (a few hundred MB, cached in `Tools/placedb/vendor/`).
 
-| | |
+| Script | What it does |
 |---|---|
-| `scripts/build.sh` | Build the `AntipodesKit` package |
-| `scripts/test.sh` | Run the full test suite (no simulator, no network) |
-| `scripts/lint.sh` | SwiftFormat + SwiftLint |
-| `scripts/build-placedb.sh` | Build `places.sqlite` from the cached open data (fetches it first if missing) |
-| `scripts/fetch-imagery.sh` | Download NASA's Blue Marble once and scale it for the satellite globe |
-| `scripts/build-app.sh` | Build the app with `xcodebuild`; pass `"generic/platform=macOS"` for the Mac (fetches anything bundled that is missing) |
-| `scripts/check.sh` | Everything above, including the iOS and Mac app builds (`ANTIPODES_SKIP_APP=1` leaves those out) |
+| `scripts/check.sh` | Everything: data, package, tests, lint, and the iOS and Mac app builds |
+| `scripts/test.sh` | The test suite, with no simulator and no network |
+| `scripts/lint.sh` | SwiftFormat and SwiftLint |
+| `scripts/build-placedb.sh` | Builds `places.sqlite` from the cached open data |
 
-To run the app, open `Antipodes.xcodeproj` in Xcode and run the `Antipodes` scheme on
-an iPhone simulator, an iPad simulator or My Mac.
+## Project layout
 
-> Run `scripts/build-placedb.sh`, `scripts/build-borders.sh` and
-> `scripts/fetch-imagery.sh` before the first Xcode build (or `scripts/build-app.sh`
-> once, which runs whichever is needed) — the app bundles the place database, the
-> country outlines and the satellite picture, which are build products and are not
-> committed.
+```
+AntipodesKit/    Swift package with all the logic and UI, one module per concern
+App/             The thin app shell and the widgets extension
+Tools/placedb/   Python pipeline that builds the offline place database
+docs/            The product specification
+scripts/         Build, test and lint helpers
+```
 
-## Architecture in one paragraph
+The [specification](docs/SPECIFICATION.md) holds the requirements and the decisions
+behind them. [AGENTS.md](AGENTS.md) covers the architecture, conventions and the module
+dependency rule, for people and coding agents alike. Changes are recorded in the
+[changelog](CHANGELOG.md).
 
-Everything lives in a local Swift package so the whole test suite runs from the command
-line in milliseconds, with no simulator. `AntipodesCore` holds the value types and the
-maths and depends on nothing. `AntipodesStats` is a set of pure functions over those
-types — it never touches SwiftData, which is what makes the statistics (the substance
-of the product) cheap to test exhaustively. `AntipodesStore` owns the SwiftData models
-and CloudKit mirroring and maps between the two worlds. `AntipodesPlaces` reads a
-read-only SQLite file built offline by `Tools/placedb/`, searched with FTS5. The Xcode
-project is a thin shell that hosts the `@main` entry point and bundles resources.
+## Data and credits
 
-See [AGENTS.md](AGENTS.md) for the conventions, the module dependency rule and the
-project-specific traps.
-
-## Data and attribution
-
-The place database is built from open data: Natural Earth, GeoNames, OurAirports,
-Wikidata and the UK Government's carbon conversion factors. Every source's licence and
-what it obliges is recorded in [Tools/placedb/SOURCES.md](Tools/placedb/SOURCES.md), and
-the required credits are shown in the app under Settings.
-
-## Contributing
-
-This is a solo project for now. [AGENTS.md](AGENTS.md) is the working agreement for
-both humans and AI coding agents; read it before making changes. Release notes go in
-[CHANGELOG.md](CHANGELOG.md).
+The place database is built from open data: [Natural Earth](https://www.naturalearthdata.com),
+[GeoNames](https://www.geonames.org) (CC BY 4.0), [OurAirports](https://ourairports.com),
+[Wikidata](https://www.wikidata.org), the UK Government's
+[GHG conversion factors](https://www.gov.uk/government/collections/government-conversion-factors-for-company-reporting)
+(OGL v3.0) and [TerraClimate](https://www.climatologylab.org/terraclimate.html). The
+satellite globe uses NASA's
+[Blue Marble Next Generation](https://visibleearth.nasa.gov/collection/1484/blue-marble).
+Each source's licence and what it requires are set out in
+[Tools/placedb/SOURCES.md](Tools/placedb/SOURCES.md), and the app credits them in
+Settings.
 
 ## Licence
 
-Not yet chosen. All rights reserved until a licence is added.
+The code is released under the [MIT licence](LICENSE). The curated lists in
+`Tools/placedb/curation/` are CC0. The open data keeps its own licence, as above.

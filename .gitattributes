@@ -1,0 +1,10 @@
+# Text files are stored with LF endings whatever the platform.
+* text=auto eol=lf
+
+# Images and the icon's previews are binary.
+*.png binary
+*.jpg binary
+
+# Keep the spec, changelog and screenshots out of GitHub's language statistics.
+docs/** linguist-documentation
+CHANGELOG.md linguist-documentation
