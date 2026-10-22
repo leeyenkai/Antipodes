@@ -266,3 +266,27 @@ enum LegEnd: String {
     case origin
     case destination
 }
+
+/// "Also log a stay in Tokyo": a journey's arrival logged as a visit, so the country it
+/// reached counts — coverage comes from visits (R-CALC-1, D-32).
+struct ArrivalSection: View {
+    let arrivals: [Arrival]
+    @Binding var isOn: Bool
+
+    private var names: String {
+        arrivals.map(\.place.name).formatted(.list(type: .and))
+    }
+
+    var body: some View {
+        Section {
+            Toggle(isOn: $isOn) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Also log a stay in \(names)")
+                    Text("So the places you arrived at count towards your countries and cities.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+}

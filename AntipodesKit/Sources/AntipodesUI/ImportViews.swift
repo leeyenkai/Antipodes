@@ -22,6 +22,9 @@ struct FlightImportView: View {
     @State private var isReading = false
     @State private var tripID: UUID?
     @State private var newTripName: String?
+    /// Log where each journey arrived as a stay, so imported flights add countries (D-32).
+    @State private var logsArrivals = true
+    @State private var isImporting = false
     @State private var fixing: Fix?
     @State private var failure: String?
     /// The file, kept so a different mode can be read from it without asking again.
@@ -79,7 +82,7 @@ struct FlightImportView: View {
                 if !candidates.isEmpty {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Import \(includedCount)", action: importSelected)
-                            .disabled(includedCount == 0)
+                            .disabled(includedCount == 0 || isImporting)
                     }
                 }
             }
@@ -159,6 +162,17 @@ struct FlightImportView: View {
                     .foregroundStyle(.secondary)
                 }
                 TripPicker(selection: $tripID, newTripName: $newTripName)
+                Toggle(isOn: $logsArrivals) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Also log where each journey arrived")
+                        Text("""
+                        As a stay, so the places count towards your countries and cities. \
+                        Connections, home and places already logged that day are left out.
+                        """)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                    }
+                }
             }
             Section("Journeys") {
                 ForEach($candidates) { $candidate in
@@ -222,14 +236,26 @@ struct FlightImportView: View {
     }
 
     private func importSelected() {
-        do {
-            let tripID = try model.resolveTrip(tripID, newTripName: newTripName)
-            let count = try model.importFlights(candidates, tripID: tripID)
-            model.errorMessage = nil
-            dismiss()
-            model.announce("Added \(Format.ordinalCount(count, "journey"))")
-        } catch {
-            model.errorMessage = error.localizedDescription
+        isImporting = true
+        Task {
+            defer { isImporting = false }
+            // Airports are looked up for the cities they serve before anything is written,
+            // so the journeys and their arrivals land in one save.
+            let legs = candidates.filter(\.include).compactMap(\.leg)
+            let arrivals = logsArrivals ? await model.arrivals(for: legs) : []
+            do {
+                let tripID = try model.resolveTrip(tripID, newTripName: newTripName)
+                let count = try model.importFlights(candidates, tripID: tripID, arrivals: arrivals)
+                model.errorMessage = nil
+                dismiss()
+                let added = [
+                    Format.ordinalCount(count, "journey"),
+                    arrivals.isEmpty ? nil : Format.ordinalCount(arrivals.count, "visit"),
+                ].compactMap(\.self)
+                model.announce("Added \(added.formatted(.list(type: .and)))")
+            } catch {
+                model.errorMessage = error.localizedDescription
+            }
         }
     }
 }

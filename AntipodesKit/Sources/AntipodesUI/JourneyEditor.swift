@@ -18,6 +18,9 @@ struct JourneyEditor: View {
     @State private var title: String
     @State private var tripID: UUID?
     @State private var newTripName: String?
+    /// Where a new journey arrived, to log as a stay so it counts (D-32), and whether to.
+    @State private var arrivals: [Arrival] = []
+    @State private var logsArrivals = true
     @State private var isConfirmingDelete = false
     @State private var saved = false
     /// What the editor held when it opened, so it knows whether there is anything to
@@ -146,6 +149,10 @@ struct JourneyEditor: View {
                     TextField("Title (optional)", text: $title)
                     TripPicker(selection: $tripID, newTripName: $newTripName)
                 }
+
+                if existing == nil, !arrivals.isEmpty {
+                    ArrivalSection(arrivals: arrivals, isOn: $logsArrivals)
+                }
             }
 
             if let existing {
@@ -176,6 +183,10 @@ struct JourneyEditor: View {
                     }
                 }
             }
+        }
+        .task(id: existing == nil ? legs.compactMap(\.leg) : []) {
+            guard existing == nil else { return }
+            arrivals = await model.arrivals(for: legs.compactMap(\.leg))
         }
         .navigationTitle(existing == nil ? "Log Journey" : "Edit Journey")
         // Ready by the time both ends are picked, so the leg is measured along its
@@ -365,7 +376,12 @@ struct JourneyEditor: View {
             guard model.updateJourney(journey) else { return }
         } else {
             do {
-                try model.logJourney(legs: built, tripID: tripID, title: title)
+                try model.logJourney(
+                    legs: built,
+                    tripID: tripID,
+                    title: title,
+                    arrivals: logsArrivals ? arrivals : []
+                )
             } catch {
                 model.errorMessage = error.localizedDescription
                 return

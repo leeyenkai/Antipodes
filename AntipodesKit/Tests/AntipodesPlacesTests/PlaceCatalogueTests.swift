@@ -190,3 +190,39 @@ struct PlaceCatalogueTests {
         #expect(sentinels == 0)
     }
 }
+
+/// The city behind an airport, for logging where a flight arrived (D-32). Many big
+/// airports carry no city link in OurAirports, so the fallbacks matter as much as the
+/// link: these are the cases each rule exists for.
+@Suite("The city an airport serves", .enabled(if: PlaceDatabaseFixture.exists))
+struct AirportCityTests {
+    func city(serving code: String) async throws -> String? {
+        let database = try PlaceDatabaseFixture.open()
+        let airport = try #require(try await database.airport(code: code))
+        guard case let .database(.airport, row) = airport.id else { return nil }
+        return try await database.city(servingAirport: row)?.name
+    }
+
+    @Test("A linked city is used as it is")
+    func linked() async throws {
+        #expect(try await city(serving: "HND") == "Tokyo")
+        #expect(try await city(serving: "BGO") == "Bergen")
+    }
+
+    /// "Helsinki (Vantaa)", "Oslo (Gardermoen)", "Sydney (Mascot)": the municipality
+    /// names the city, rather than the suburb the runway is in.
+    @Test("An unlinked airport takes the city its municipality names")
+    func named() async throws {
+        #expect(try await city(serving: "HEL") == "Helsinki")
+        #expect(try await city(serving: "OSL") == "Oslo")
+        #expect(try await city(serving: "SYD") == "Sydney")
+    }
+
+    /// JFK's municipality is "New York", which begins New York City's name; Charles de
+    /// Gaulle's is "Paris (Roissy-en-France…)", and Paris itself beats its arrondissements.
+    @Test("A name that begins a city's, and an exact name over a longer one")
+    func weighed() async throws {
+        #expect(try await city(serving: "JFK") == "New York City")
+        #expect(try await city(serving: "CDG") == "Paris")
+    }
+}

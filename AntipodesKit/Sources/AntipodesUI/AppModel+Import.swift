@@ -65,11 +65,21 @@ public extension AppModel {
 
     /// Logs every included candidate as its own one-leg journey, in one save: an import
     /// lands whole or not at all.
-    func importFlights(_ candidates: [FlightImportCandidate], tripID: UUID?) throws -> Int {
+    /// Logs the included rows as journeys of one leg each and, where given, the places
+    /// they arrived at as stays (D-32), all in one save.
+    func importFlights(
+        _ candidates: [FlightImportCandidate],
+        tripID: UUID?,
+        arrivals: [Arrival] = []
+    ) throws -> Int {
         let legs = candidates.filter(\.include).compactMap(\.leg)
         defer { reload() }
         let trip = try tripID.flatMap { try store.trip(id: $0) }
-        try store.logJourneys(legs.map { [$0] }, trip: trip)
+        try store.logJourneys(
+            legs.map { [$0] },
+            trip: trip,
+            arrivals: arrivals.map { (place: $0.place, visitType: .stayed, date: $0.date) }
+        )
         return legs.count
     }
 

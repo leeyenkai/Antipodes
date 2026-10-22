@@ -174,6 +174,14 @@ public final class TravelLogStore {
         _ visits: [(place: PlaceReference, visitType: VisitType, date: FlexibleDate)],
         trip: StoredTrip? = nil
     ) throws {
+        insertVisits(visits, trip: trip)
+        try saveOrRollBack()
+    }
+
+    private func insertVisits(
+        _ visits: [(place: PlaceReference, visitType: VisitType, date: FlexibleDate)],
+        trip: StoredTrip?
+    ) {
         for visit in visits {
             let stored = StoredVisit()
             stored.apply(place: visit.place)
@@ -182,7 +190,6 @@ public final class TravelLogStore {
             stored.trip = trip
             context.insert(stored)
         }
-        try saveOrRollBack()
     }
 
     /// Writes every field of an edited visit back, including which trip it is in.
@@ -231,22 +238,31 @@ public final class TravelLogStore {
 
     // MARK: - Journeys
 
+    /// Logs a journey, and the visits its arrival implies (D-32), in one save.
     @discardableResult
     public func logJourney(
         legs: [JourneyLeg],
         trip: StoredTrip? = nil,
-        title: String? = nil
+        title: String? = nil,
+        arrivals: [(place: PlaceReference, visitType: VisitType, date: FlexibleDate)] = []
     ) throws -> StoredJourney {
         let journey = insertJourney(legs: legs, trip: trip, title: title)
+        insertVisits(arrivals, trip: trip)
         try saveOrRollBack()
         return journey
     }
 
-    /// Logs many journeys in one save, so an import lands whole or not at all.
-    public func logJourneys(_ journeys: [[JourneyLeg]], trip: StoredTrip? = nil) throws {
+    /// Logs many journeys, and the visits their arrivals imply (D-32), in one save, so
+    /// an import lands whole or not at all.
+    public func logJourneys(
+        _ journeys: [[JourneyLeg]],
+        trip: StoredTrip? = nil,
+        arrivals: [(place: PlaceReference, visitType: VisitType, date: FlexibleDate)] = []
+    ) throws {
         for legs in journeys {
             insertJourney(legs: legs, trip: trip, title: nil)
         }
+        insertVisits(arrivals, trip: trip)
         try saveOrRollBack()
     }
 

@@ -19,6 +19,14 @@ is blocked.
 
 ### Added
 
+- **Journeys add the places they arrive at** (R-LOG-6, R-JLOG-7, D-32): saving a new
+  journey offers "Also log a stay in Tokyo", on by default, and importing a flight or
+  rail log offers the same for every journey in it, so a log of flights counts its
+  countries instead of showing "0 countries" under a globe full of arcs. Only the end
+  of a run of connections counts — OSL → HEL → HND arrives in Tokyo — dated the day it
+  landed; home and places already logged that day are left out; an airport stands for
+  the city it serves, even where the data has no link (JFK → New York City, Helsinki-
+  Vantaa → Helsinki). The import says how many journeys and visits it added.
 - **Journeys in all eight modes** (R-LOG-6, §5): flights, rail, city transit, coach,
   ferry, road trips, on foot or by bike, and cable cars and mountain railways. A journey
   is one or more legs; each new leg starts where the last ended, the connection time

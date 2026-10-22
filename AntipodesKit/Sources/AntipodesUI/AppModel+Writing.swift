@@ -65,9 +65,20 @@ public extension AppModel {
         perform { try store.moveVisits(ids, toTrip: tripID) }
     }
 
-    func logJourney(legs: [JourneyLeg], tripID: UUID?, title: String? = nil) throws {
+    /// Logs a journey and, where given, the places it arrived at as stays (D-32).
+    func logJourney(
+        legs: [JourneyLeg],
+        tripID: UUID?,
+        title: String? = nil,
+        arrivals: [Arrival] = []
+    ) throws {
         let trip = try tripID.flatMap { try store.trip(id: $0) }
-        try store.logJourney(legs: legs, trip: trip, title: title?.trimmedOrNil)
+        try store.logJourney(
+            legs: legs,
+            trip: trip,
+            title: title?.trimmedOrNil,
+            arrivals: arrivals.map { (place: $0.place, visitType: .stayed, date: $0.date) }
+        )
         reload()
     }
 
