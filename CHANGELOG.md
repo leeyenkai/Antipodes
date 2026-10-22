@@ -354,6 +354,12 @@ is blocked.
 
 ### Changed
 
+- **Tapping the globe opens a card, not a form** (R-GLOBE-5, D-33): a place shows
+  where it is, every visit logged there — visits stacked under one pin can all be
+  reached now — and their trips; a journey shows its route, its legs with the tapped one
+  marked, its trip, and Share. Editing is a tap further, on a visit or Edit Journey.
+  Removing a place from the wishlist is no longer styled as destructive, and a journey
+  deleted while its card was open says so and can be closed.
 - **The log stays on the device, and the app says so** (R-PRIV-2, R-PRIV-6, D-31):
   there is no sync. The store no longer reaches for iCloud even if an entitlement were
   added, the unwired iCloud entitlement is removed, and onboarding, Settings, the

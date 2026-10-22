@@ -323,8 +323,8 @@ struct GlobeFilterMenu: View {
     }
 }
 
-/// What a tap on a pin or an arc opens on iPhone (§9): the record in a sheet over the
-/// globe. The record's own form supplies Cancel and Save; a marker supplies Close.
+/// What a tap on a pin or an arc opens on iPhone (§9): a card about the record in a
+/// sheet over the globe, its editor one tap further (D-33).
 struct GlobeSelectionSheet: View {
     let selection: GlobeSelection
     @Environment(\.dismiss) private var dismiss
@@ -332,7 +332,6 @@ struct GlobeSelectionSheet: View {
     var body: some View {
         NavigationStack {
             GlobeSelectionDetail(selection: selection) { dismiss() }
-                .environment(\.editorPlacement, .root)
                 .logDestinations()
         }
         .presentationDetents([.medium, .large])
@@ -348,7 +347,6 @@ struct GlobeSelectionInspector: View {
     var body: some View {
         NavigationStack {
             GlobeSelectionDetail(selection: selection, close: close)
-                .environment(\.editorPlacement, .root)
                 .logDestinations()
         }
         // A new tap is a new record: start its form afresh. The globe asks before
@@ -357,7 +355,7 @@ struct GlobeSelectionInspector: View {
     }
 }
 
-/// The record a tap landed on, ready to edit.
+/// The record a tap landed on: a card to read, with its editor a tap further.
 struct GlobeSelectionDetail: View {
     let selection: GlobeSelection
     /// Closes whatever is showing this: the sheet, or the inspector.
@@ -370,20 +368,21 @@ struct GlobeSelectionDetail: View {
         case let .pin(pin):
             switch pin.style {
             case .visited, .notCounted:
-                if let visit = model.log.visits.first(where: { $0.id == pin.id }) {
-                    VisitForm(place: visit.place, existing: visit, onDone: close)
-                } else {
-                    markerDetail(pin)
-                }
+                GlobePlaceCard(pin: pin, close: close)
             case .wishlist, .home, .antipode:
                 markerDetail(pin)
             }
         case let .arc(arc):
             if let journey = model.log.journeys
                 .first(where: { $0.legs.contains { $0.id == arc.id } }) {
-                JourneyEditor(existing: journey, onDone: close)
+                GlobeJourneyCard(journey: journey, legID: arc.id, close: close)
             } else {
-                ContentUnavailableView("Journey not found", systemImage: "questionmark")
+                ContentUnavailableView("Journey deleted", systemImage: "trash")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("Close", role: .cancel, action: close)
+                        }
+                    }
             }
         }
     }
@@ -405,7 +404,7 @@ struct GlobeSelectionDetail: View {
                             model.addRequest = request
                         }
                     }
-                    Button("Remove from Wishlist", systemImage: "star.slash", role: .destructive) {
+                    Button("Remove from Wishlist", systemImage: "star.slash") {
                         model.removeFromWishlist(place: pin.place)
                         close()
                     }
@@ -434,7 +433,7 @@ struct GlobeSelectionDetail: View {
         .toolbarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Close", action: close)
+                Button("Close", role: .cancel, action: close)
             }
         }
     }
