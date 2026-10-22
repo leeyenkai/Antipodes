@@ -267,6 +267,13 @@ The place database is built from open data, and the licences differ:
 - If you changed requirements, bump the spec version and add a row to §16 of the spec.
 - Report honestly what you did not do or could not verify.
 
+**Releasing**
+
+- Bump `CURRENT_PROJECT_VERSION` in `Antipodes.xcodeproj` for every build uploaded to
+  App Store Connect, and `MARKETING_VERSION` for every release users see.
+- Archive from Xcode with a team set; `scripts/build-app.sh` builds unsigned (Mac and
+  device) or ad hoc (simulator) only.
+
 **Commits**
 
 - Conventional-ish prefixes: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`,

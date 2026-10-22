@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Status** | Draft |
-| **Spec version** | 0.13.0 |
+| **Spec version** | 0.14.0 |
 | **Last updated** | 2026-10-22 |
 | **Owner** | Lee Yen Kai |
 | **Source** | Derived from *Antipodes — Spec Sheet (Draft v0.1)* (2026-10-15) |
@@ -569,7 +569,7 @@ milestone and the public v1 release.
 
 ### 13.1 V1 status
 
-As of 2026-10-21 (D-18). "Built" means implemented, tested where the logic is pure, and
+As of 2026-10-22 (D-18). "Built" means implemented, tested where the logic is pure, and
 checked in the simulator.
 
 | Area | Status |
@@ -579,7 +579,9 @@ checked in the simulator.
 | Achievements, wishlist, curated collections (R-ACH-*, R-WISH-*) | Built; 36 achievements and 5 collections ship in the database. A place joins the wishlist from search, from a dropped pin or a long press on the globe, or from a collection |
 | Carbon estimates (R-CO2-*) | Built (D-14) |
 | Globe: wishlist pins, filters, replay (R-GLOBE-4 to 6) | Built. Replay plays through the log or is scrubbed by hand; wishlisted routes are drawn dashed; a satellite style (D-26) |
-| Photo import, journey import (R-LOG-7, R-LOG-8, R-JLOG-7) | Built (D-16, D-17, D-27): flight logs from Flighty, myFlightradar24 and OpenFlights, and rail logs or any CSV or JSON journey list, ends matched to bundled towns by name |
+| Photo import, journey import (R-LOG-7, R-LOG-8, R-JLOG-7) | Built (D-16, D-17, D-27): flight logs from Flighty, myFlightradar24 and OpenFlights, and rail logs or any CSV or JSON journey list, ends matched to bundled towns by name. Offered from onboarding, the empty screens and the Trips menu as well as Settings; an import can log where each journey arrived (D-32) |
+| Storage, backup and restore (R-PRIV-2, R-PRIV-6, R-LOG-9) | Built (D-31): the log stays on the device with no sync; Settings opens with Your data — export a JSON backup, restore one, export CSV |
+| Production pass (2026-10-22) | Done: a review of bugs, workflows and UI consistency. Journeys offer their arrivals as visits (D-32); the globe opens read-only cards (D-33); one type scale (D-34); trips gather records already logged; undo with ⌘Z; empty states, unsaved-edit guards and record actions the same on every screen |
 | Share cards, widgets, Year in Review (R-SHARE-*) | Built. Every stat card and row, the globe, a trip, a journey and a year can be shared in square and story sizes; Year in Review is shared as a video made on the device, as images, or as one card; a travel personality, a badge and a collection have cards of their own. Widgets open the record or screen they show (D-25), and "On this day" carries two weeks ahead and has a Lock Screen size |
 | iPad and Mac (R-PLAT-2, R-PLAT-3, R-NAV-*) | Built (D-22): sidebar navigation; the globe beside Trips, Collections and their detail views, following what is open; a record tapped on the globe opening in an inspector beside it; a bulk-edit table; keyboard shortcuts; and on the Mac, a flight-log CSV or a JSON backup dropped on the window, reviewed before anything is written. Stats and All Records stay full width |
 | City transit (R-TRAN-1 to 5, R-JLOG-5) | Built (D-29) for 38 systems in the bundled database: pick the system, the line and the two stops; rides count segments, lines and systems covered, and stations boarded, alighted and passed through. Rides are drawn on the globe through the stops they passed, not along the track, which Wikidata does not have (R-TRAN-1), and a system outside the launch set is logged between two places. Downloadable city packs wait on R-DB-5 |
@@ -651,3 +653,4 @@ M1 is done when, on a device or simulator (all met as of 2026-10-20; V1 status i
 | 2026-10-22 | 0.11.0 | Refined D-24's icon: the great circle drawn in true perspective round the Earth, coasts at 1:50m with ice sheets and a graticule, haloes on both points, and an Atlantic view at the Earth's axial tilt. |
 | 2026-10-22 | 0.12.0 | Extended D-24's icon: the North Star and the Southern Cross on the Earth's axis, a 10° scale on the great circle, and tinted and clear renditions graded so the two points lead. |
 | 2026-10-22 | 0.13.0 | D-24's icon: the great circle becomes a route from the place over the horizon to its antipode, thinning as it goes, with the motto engraved on it in place of the scale; the stars get rounded points, their own colours and, for the North Star, a twinkle. |
+| 2026-10-22 | 0.14.0 | Production pass. Recorded D-31 (the log stays on the device; no sync), D-32 (a journey offers to log where it arrived), D-33 (a tap on the globe opens a card to read) and D-34 (one type scale: SF Pro, with New York for display). Reworded G-3, §3, R-PRIV-2, R-PRIV-6, R-GLOBE-5, D-21, the §9, §12, §13 and §14 tables, and brought §13.1 up to date. |

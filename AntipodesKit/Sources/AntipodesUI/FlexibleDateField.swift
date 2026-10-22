@@ -98,7 +98,7 @@ struct FlexibleDateField: View {
         switch date {
         case let .day(value):
             day = value.date(in: .current) ?? Date()
-        case let .range(start, end):
+        case let .range(start, _):
             day = start.date(in: .current) ?? Date()
         case let .month(y, m):
             year = y
