@@ -44,8 +44,11 @@ struct GlobeScreen: View {
                 .background(GlobeBackdrop())
                 .overlay(alignment: .top) {
                     if !model.log.isEmpty, model.isReady {
-                        GlobeSummaryBar(scene: scene)
-                            .transition(.opacity)
+                        VStack(spacing: 8) {
+                            GlobeSummaryBar(scene: scene)
+                            GlobeFilterChip(filter: $filter)
+                        }
+                        .transition(.opacity)
                     }
                 }
                 .animation(.easeOut(duration: 0.25), value: model.isReady)
@@ -175,7 +178,8 @@ struct GlobeScreen: View {
                 .font(.display(.title2))
             Text(
                 """
-                Log a place or a journey and it appears here. Touch and hold anywhere to drop a pin.
+                Log a place or a journey and it appears here, or bring in the flights and \
+                photos you already have.
                 """
             )
             .multilineTextAlignment(.center)
@@ -183,10 +187,23 @@ struct GlobeScreen: View {
             Button("Log Your First Place") { model.addRequest = AddRequest() }
                 .buttonStyle(.glassProminent)
                 .padding(.top, 6)
+            // Side by side where they fit, stacked on a narrow phone or at a large size.
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) { importButtons }
+                VStack(spacing: 8) { importButtons }
+            }
+            .buttonStyle(.glass)
+            .controlSize(.small)
         }
         .padding(24)
         .glassEffect(.regular, in: .rect(cornerRadius: 28))
         .padding(32)
+    }
+
+    private var importButtons: some View {
+        ForEach(EmptyStateAction.imports(model)) { other in
+            Button(other.title, action: other.action)
+        }
     }
 
     // MARK: - Controls

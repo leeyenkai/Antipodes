@@ -12,6 +12,8 @@ struct JourneyEditor: View {
 
     let existing: Journey?
     let onDone: () -> Void
+    /// The date a new journey's first leg starts on, when it is not today.
+    let startDate: FlexibleDate?
 
     @State private var legs: [LegDraft]
     @State private var expandedLeg: UUID?
@@ -61,10 +63,12 @@ struct JourneyEditor: View {
         existing: Journey? = nil,
         start: AddRequest.Start = .journey(nil),
         tripID: UUID? = nil,
+        date: FlexibleDate? = nil,
         onDone: @escaping () -> Void
     ) {
         self.existing = existing
         self.onDone = onDone
+        startDate = date
         var drafts: [LegDraft] = []
         if let existing {
             drafts = existing.legs.map(LegDraft.init(leg:))
@@ -73,6 +77,11 @@ struct JourneyEditor: View {
             case let .route(route): drafts = [LegDraft(route: route)]
             case let .journey(mode?): drafts = [LegDraft(mode: mode)]
             default: drafts = []
+            }
+            if let date {
+                for index in drafts.indices {
+                    drafts[index].date = date
+                }
             }
         }
         _legs = State(initialValue: drafts)
@@ -91,7 +100,10 @@ struct JourneyEditor: View {
             if legs.isEmpty {
                 Section {
                     ModeGrid { mode in
-                        let draft = LegDraft(mode: mode)
+                        var draft = LegDraft(mode: mode)
+                        if let startDate {
+                            draft.date = startDate
+                        }
                         legs = [draft]
                         expandedLeg = draft.id
                         askForFirstEnd(of: draft)
@@ -198,6 +210,26 @@ struct JourneyEditor: View {
                 Button(existing == nil ? "Save" : "Done", systemImage: "checkmark", action: save)
                     .disabled(legs.isEmpty || !legs.allSatisfy(\.isComplete))
             }
+            // A catalogue route opened from search can be saved for later instead of
+            // logged (R-WISH-1): search offers no wishlist swipe on a route, so here.
+            if existing == nil, let route = catalogueRoute {
+                ToolbarItem(placement: .primaryAction) {
+                    let isOn = model.isOnWishlist(routeID: route.id)
+                    Button(
+                        isOn ? "Remove from Wishlist" : "Add to Wishlist",
+                        systemImage: isOn ? "star.fill" : "star"
+                    ) {
+                        if isOn {
+                            model.removeFromWishlist(
+                                model.log.wishlist.filter { $0.routeID == route.id }.map(\.id)
+                            )
+                        } else {
+                            model.addToWishlist(route: route)
+                        }
+                    }
+                    .tint(Palette.wishlist)
+                }
+            }
         }
         .onAppear {
             // A new journey that already knows its mode starts at "From?", not at a form.
@@ -295,6 +327,12 @@ struct JourneyEditor: View {
         }
     }
 
+    /// The catalogue route a new journey of one leg rides, if it rides one.
+    private var catalogueRoute: RouteInfo? {
+        guard legs.count == 1 else { return nil }
+        return legs.first?.routeID.flatMap(model.route(id:))
+    }
+
     private func endpointPrompt(_ end: LegEnd, _ mode: TravelMode) -> String {
         "\(end == .origin ? "From" : "To"): search \(mode.endpointPluralNoun)"
     }
@@ -389,112 +427,5 @@ struct JourneyEditor: View {
         }
         saved = true
         onDone()
-    }
-}
-
-/// One leg: collapsed to a summary, or expanded into its fields.
-private struct LegSection: View {
-    @Environment(AppModel.self) private var model
-    @Binding var draft: LegDraft
-    let number: Int
-    let isOnly: Bool
-    let isExpanded: Bool
-    let expand: () -> Void
-    let remove: () -> Void
-    let pick: (LegEnd) -> Void
-    let pickTransit: () -> Void
-
-    @State private var showsDetails = false
-
-    var body: some View {
-        Section {
-            if isExpanded || isOnly {
-                fields
-            } else {
-                Button(action: expand) {
-                    LegSummary(draft: draft)
-                }
-                .buttonStyle(.plain)
-            }
-        } header: {
-            HStack {
-                Text(isOnly ? "Leg" : "Leg \(number)")
-                Spacer()
-                if !isOnly {
-                    Menu {
-                        Button(
-                            isExpanded ? "Collapse" : "Edit",
-                            systemImage: "pencil",
-                            action: expand
-                        )
-                        Button(
-                            "Remove Leg",
-                            systemImage: "trash",
-                            role: .destructive,
-                            action: remove
-                        )
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                    }
-                    .accessibilityLabel("Leg \(number) options")
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var fields: some View {
-        if let route = draft.routeName {
-            Label {
-                VStack(alignment: .leading) {
-                    Text(route).font(.headline)
-                    Text("Catalogue route. Change either end to log the section you rode.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-            } icon: {
-                Image(systemName: "point.topleft.down.to.point.bottomright.curvepath")
-                    .foregroundStyle(Palette.mode(draft.mode))
-            }
-        }
-
-        Picker("Mode", selection: $draft.mode) {
-            ForEach(TravelMode.loggable) { mode in
-                Label(mode.displayName, systemImage: mode.symbolName).tag(mode)
-            }
-        }
-        .onChange(of: draft.mode) {
-            let original = draft
-            let networks = model.trackNetworks
-            Task {
-                let measured = await LegDraft.measured(original, along: networks)
-                draft.adoptMeasurement(measured, madeFrom: original)
-            }
-        }
-
-        if draft.mode == .cityTransit {
-            TransitLineButton(lineID: draft.transitLineID, action: pickTransit)
-        }
-
-        EndpointButton(label: "From", place: draft.origin, mode: draft.mode) { pick(.origin) }
-        EndpointButton(label: "To", place: draft.destination, mode: draft.mode) {
-            pick(.destination)
-        }
-
-        FlexibleDateField(date: $draft.date)
-
-        if let leg = draft.leg {
-            LegDistanceRow(leg: leg)
-        }
-
-        DisclosureGroup(isExpanded: $showsDetails) {
-            LegDetailFields(draft: $draft)
-        } label: {
-            Label(
-                draft.hasDetails ? "Details" : "Add times, seat and more",
-                systemImage: "list.bullet.rectangle"
-            )
-        }
-        .onAppear { showsDetails = draft.hasDetails }
     }
 }

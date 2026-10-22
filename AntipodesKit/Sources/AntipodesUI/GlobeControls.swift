@@ -269,6 +269,50 @@ struct GlobeStyleMenu: View {
     }
 }
 
+/// What the globe is filtered to, said where it shows, with a way back to everything
+/// (R-GLOBE-5). The filter icon alone was easy to miss, and a globe missing half its
+/// arcs looked like a log missing half its journeys.
+struct GlobeFilterChip: View {
+    @Environment(AppModel.self) private var model
+    @Binding var filter: GlobeFilter
+
+    var body: some View {
+        if filter.isFiltering {
+            HStack(spacing: 8) {
+                Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                    .foregroundStyle(.tint)
+                    .accessibilityHidden(true)
+                Text(summary)
+                    .font(.footnote.weight(.medium))
+                    .lineLimit(1)
+                Button("Clear Filters", systemImage: "xmark.circle.fill") {
+                    filter = GlobeFilter(replayUpTo: filter.replayUpTo)
+                }
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .frame(minWidth: 44, minHeight: 32)
+            }
+            .padding(.leading, 14)
+            .padding(.trailing, 4)
+            .glassEffect(.regular, in: .capsule)
+            .accessibilityElement(children: .contain)
+        }
+    }
+
+    /// "2023 · Fjords · Rail journeys": a mode filters the journeys drawn, and leaves the
+    /// places, which have no mode, where they are.
+    private var summary: String {
+        [
+            filter.year.map(String.init),
+            filter.tripID.flatMap { model.log.trip(id: $0) }?.displayName(model: model),
+            filter.mode.map { "\($0.displayName) journeys" },
+        ]
+        .compactMap(\.self)
+        .joined(separator: " · ")
+    }
+}
+
 /// Year, trip and mode filters (§9).
 struct GlobeFilterMenu: View {
     @Environment(AppModel.self) private var model
@@ -308,7 +352,7 @@ struct GlobeFilterMenu: View {
 
             if filter.isFiltering {
                 Divider()
-                Button("Clear filters", systemImage: "xmark.circle") {
+                Button("Clear Filters", systemImage: "xmark.circle") {
                     filter = GlobeFilter(replayUpTo: filter.replayUpTo)
                 }
             }

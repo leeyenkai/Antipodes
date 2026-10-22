@@ -79,7 +79,7 @@ struct OnboardingView: View {
                     palette: GlobePalette()
                 )
             }
-            .frame(height: 300)
+            .accessibilityHidden(true)
         }
     }
 
@@ -98,7 +98,6 @@ struct OnboardingView: View {
                 promise("square.and.arrow.up", "Export everything, any time")
             }
             .font(.body)
-            .padding(.vertical, 30)
         }
     }
 
@@ -107,14 +106,15 @@ struct OnboardingView: View {
             title: "Where's home?",
             message: """
             Home is left out of your days away, and it's where your antipode — the point on \
-            exactly the other side of the world — is measured from. You can change it later.
+            exactly the other side of the world — is measured from.
             """
         ) {
-            VStack(spacing: 16) {
-                Image(systemName: model.home == nil ? "house" : "house.fill")
-                    .font(.system(size: 56, weight: .ultraLight))
-                    .foregroundStyle(Palette.visited)
-                    .padding(.vertical, 20)
+            Image(systemName: model.home == nil ? "house" : "house.fill")
+                .font(.system(size: 56, weight: .ultraLight))
+                .foregroundStyle(Palette.visited)
+                .accessibilityHidden(true)
+        } actions: {
+            VStack(spacing: 10) {
                 Button {
                     isPickingHome = true
                 } label: {
@@ -132,17 +132,48 @@ struct OnboardingView: View {
                         .foregroundStyle(.white.opacity(0.7))
                 }
             }
+            historyImports
         }
     }
 
+    /// For someone with years of travel already in another app or in their photos: the
+    /// fastest way to a full globe, offered once here and on the empty screens after.
+    private var historyImports: some View {
+        VStack(spacing: 8) {
+            Text("Already keep a log?")
+                .font(.footnote.weight(.semibold))
+                .foregroundStyle(.white.opacity(0.7))
+            HStack(spacing: 10) {
+                Button("Import Flights", systemImage: "airplane.arrival") {
+                    finish(importing: .journeys)
+                }
+                Button("From Photos", systemImage: "photo.on.rectangle.angled") {
+                    finish(importing: .photos)
+                }
+            }
+            .buttonStyle(.glass)
+            .controlSize(.small)
+        }
+        .padding(.top, 12)
+    }
+
+    private func finish(importing request: ImportRequest) {
+        model.queuedImport = request
+        model.hasCompletedOnboarding = true
+    }
+
+    /// One page: art in a band of fixed height, so every title sits at the same place as
+    /// the pages turn, then the title, the words, and anything to do below them.
     private func onboardingPage(
         title: String,
         message: String,
-        @ViewBuilder art: () -> some View
+        @ViewBuilder art: () -> some View,
+        @ViewBuilder actions: () -> some View = { EmptyView() }
     ) -> some View {
         VStack(spacing: 18) {
-            Spacer(minLength: 20)
             art()
+                .frame(maxWidth: .infinity)
+                .frame(height: 260)
             Text(title)
                 .font(.display(.largeTitle))
                 .multilineTextAlignment(.center)
@@ -150,9 +181,11 @@ struct OnboardingView: View {
                 .font(.body)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.white.opacity(0.75))
-            Spacer(minLength: 40)
+            actions()
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 28)
+        .padding(.top, 24)
         .frame(maxWidth: 560)
     }
 

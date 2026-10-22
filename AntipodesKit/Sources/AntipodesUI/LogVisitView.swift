@@ -52,21 +52,25 @@ struct VisitForm: View {
         place: PlaceReference,
         existing: Visit? = nil,
         tripID: UUID? = nil,
+        date: FlexibleDate? = nil,
         onDone: @escaping () -> Void
     ) {
         self.place = place
         self.existing = existing
         self.onDone = onDone
+        // A landmark is usually seen in a day; a city is usually stayed in.
+        let visitType = existing?.visitType ?? (place.kind == .landmark ? .dayTrip : .stayed)
+        let date = existing?.date ?? date ?? .day(.today())
         _name = State(initialValue: existing?.place.name ?? place.name)
-        _visitType = State(initialValue: existing?.visitType ?? .stayed)
-        _date = State(initialValue: existing?.date ?? .day(.today()))
+        _visitType = State(initialValue: visitType)
+        _date = State(initialValue: date)
         _tripID = State(initialValue: existing?.tripID ?? tripID)
         _rating = State(initialValue: existing?.rating)
         _notes = State(initialValue: existing?.notes ?? "")
         _baseline = State(initialValue: Fields(
             name: existing?.place.name ?? place.name,
-            visitType: existing?.visitType ?? .stayed,
-            date: existing?.date ?? .day(.today()),
+            visitType: visitType,
+            date: date,
             tripID: existing?.tripID ?? tripID,
             rating: existing?.rating,
             notes: existing?.notes ?? ""
@@ -132,7 +136,8 @@ struct VisitForm: View {
                     Button("Log Another Visit Here", systemImage: "arrow.clockwise") {
                         let request = AddRequest(
                             start: .place(existing.place),
-                            tripID: existing.tripID
+                            tripID: existing.tripID,
+                            date: existing.date
                         )
                         if let deferredAdd {
                             deferredAdd(request)

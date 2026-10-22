@@ -19,6 +19,22 @@ is blocked.
 
 ### Added
 
+- **Bring in your history from the first minute** (R-LOG-7, R-LOG-8): the last page of
+  onboarding offers "Import Flights" and "From Photos", the empty Globe, Trips and Stats
+  screens offer the same beside "Log", and the Trips menu has Import. Before, both lay
+  three levels down in Settings.
+- **Trips gather what is already logged** (R-LOG-2, R-MODEL-3): a trip's page has "Add
+  Places and Journeys Already Logged…", a list of everything not in it — not in a trip
+  first, then in other trips — to choose several at once. A new trip opens as soon as it
+  is made, instead of sinking to "Undated" at the foot of the list; "Log Something New"
+  from a trip starts on the trip's last day rather than today; and journeys not in a
+  trip can be moved into one, as places could.
+- The globe says what it is filtered to — "2023 · Fjords · Rail journeys" — under its
+  summary, with a button to clear it (R-GLOBE-5).
+- Year in Review has a button in the Stats toolbar, and its tiles lead the screen in
+  December and January (R-SHARE-3). A catalogue route can be added to the wishlist from
+  its own page (R-WISH-1), and a collection member still to visit is logged with a tap
+  on it (R-WISH-2).
 - **Journeys add the places they arrive at** (R-LOG-6, R-JLOG-7, D-32): saving a new
   journey offers "Also log a stay in Tokyo", on by default, and importing a flight or
   rail log offers the same for every journey in it, so a log of flights counts its
@@ -354,6 +370,13 @@ is blocked.
 
 ### Changed
 
+- Onboarding's pages keep their pictures in a band of one height, so the titles no
+  longer jump as the pages turn, and the home button sits under its explanation.
+- A landmark is logged as a day trip by default; a city still as a stay.
+- Deleting from a list works the same everywhere — swipe, or the context menu, which is
+  how a pointer reaches it on the Mac — with Move to Trip beside it; the Mac's footer
+  says Control-click rather than "touch and hold". Deleting a trip offers to keep what
+  is in it, places and journeys alike, and says either can be undone.
 - **Tapping the globe opens a card, not a form** (R-GLOBE-5, D-33): a place shows
   where it is, every visit logged there — visits stacked under one pin can all be
   reached now — and their trips; a journey shows its route, its legs with the tapped one

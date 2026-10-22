@@ -198,16 +198,26 @@ private struct MemberRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: member.isVisited ? "checkmark.circle.fill" : "circle")
-                .font(.title3)
-                .foregroundStyle(member.isVisited ? Palette.visited : .secondary)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(member.place.name)
-                Text(subtitle)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            // Still to do: a tap logs it. Done: there is nothing more to do here.
+            Button(action: log) {
+                HStack(spacing: 12) {
+                    Image(systemName: member.isVisited ? "checkmark.circle.fill" : "circle")
+                        .font(.title3)
+                        .foregroundStyle(member.isVisited ? Palette.visited : .secondary)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(member.place.name)
+                        Text(subtitle)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .contentShape(.rect)
             }
-            Spacer()
+            .buttonStyle(.plain)
+            .disabled(member.isVisited)
+            .accessibilityElement(children: .combine)
+            .accessibilityHint(member.isVisited ? "" : "Logs it")
             if !member.isVisited {
                 Button {
                     toggleWishlist()
@@ -217,21 +227,24 @@ private struct MemberRow: View {
                 }
                 .buttonStyle(.borderless)
                 .accessibilityLabel(member
-                    .isWishlisted ? "Remove from wishlist" : "Add to wishlist")
+                    .isWishlisted ? "Remove from Wishlist" : "Add to Wishlist")
             }
         }
         .contextMenu {
             if member.place.kind != .route {
-                Button("Log a Visit", systemImage: "plus") {
-                    model.addRequest = AddRequest(start: .place(member.place))
-                }
-            } else if let route = routeInfo {
-                Button("Log This Ride", systemImage: "plus") {
-                    model.addRequest = AddRequest(start: .route(route))
-                }
+                Button("Log a Visit", systemImage: "plus", action: log)
+            } else if routeInfo != nil {
+                Button("Log This Ride", systemImage: "plus", action: log)
             }
         }
-        .accessibilityElement(children: .combine)
+    }
+
+    private func log() {
+        if let route = routeInfo {
+            model.addRequest = AddRequest(start: .route(route))
+        } else if member.place.kind != .route {
+            model.addRequest = AddRequest(start: .place(member.place))
+        }
     }
 
     private var subtitle: String {

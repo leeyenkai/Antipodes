@@ -110,3 +110,15 @@ public struct BackupPreview: Sendable {
         recordCount - additions.total
     }
 }
+
+/// Which import to open.
+public enum ImportRequest: String, Identifiable, Sendable {
+    /// A flight log, a rail log or any list of journeys (R-LOG-8, R-JLOG-7).
+    case journeys
+    /// Visits suggested from the photo library (R-LOG-7).
+    case photos
+
+    public var id: String {
+        rawValue
+    }
+}

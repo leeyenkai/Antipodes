@@ -10,7 +10,6 @@ struct TripsScreen: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var searchText = ""
     @State private var isCreatingTrip = false
-    @State private var newTripName = ""
     @State private var tripToDelete: Trip?
 
     var body: some View {
@@ -19,10 +18,14 @@ struct TripsScreen: View {
                 if model.log.isEmpty {
                     EmptyStateView(
                         title: "Nothing logged yet",
-                        message: "Log a place or a journey, then group them into trips.",
+                        message: """
+                        Log a place or a journey, then group them into trips — or bring in \
+                        what you've already got.
+                        """,
                         systemImage: "suitcase",
-                        actionTitle: "Log a Place",
-                        action: { model.addRequest = AddRequest() }
+                        actionTitle: "Log a Place or Journey",
+                        action: { model.addRequest = AddRequest() },
+                        otherActions: EmptyStateAction.imports(model)
                     )
                     .listRowBackground(Color.clear)
                 }
@@ -35,6 +38,11 @@ struct TripsScreen: View {
                             }
                             .swipeActions {
                                 Button("Delete", systemImage: "trash", role: .destructive) {
+                                    tripToDelete = trip
+                                }
+                            }
+                            .contextMenu {
+                                Button("Delete Trip…", systemImage: "trash", role: .destructive) {
                                     tripToDelete = trip
                                 }
                             }
@@ -55,12 +63,23 @@ struct TripsScreen: View {
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button("New Trip", systemImage: "suitcase") { isCreatingTrip = true }
+                        Button("New Trip…", systemImage: "suitcase") { isCreatingTrip = true }
                         Button("Log a Place", systemImage: "mappin.and.ellipse") {
                             model.addRequest = AddRequest()
                         }
                         Button("Log a Journey", systemImage: "airplane") {
                             model.addRequest = AddRequest(start: .journey(nil))
+                        }
+                        Menu("Import", systemImage: "square.and.arrow.down") {
+                            Button("Flights or Rail Logs…", systemImage: "airplane.arrival") {
+                                model.importRequest = .journeys
+                            }
+                            Button(
+                                "Visits from Photos…",
+                                systemImage: "photo.on.rectangle.angled"
+                            ) {
+                                model.importRequest = .photos
+                            }
                         }
                         // With a sidebar, All Records is a destination of its own.
                         if !DeviceLayout.hasSidebar(sizeClass) {
@@ -81,20 +100,7 @@ struct TripsScreen: View {
                 }
             }
             .logDestinations()
-            .alert("New Trip", isPresented: $isCreatingTrip) {
-                TextField("Name", text: $newTripName)
-                Button("Cancel", role: .cancel) { newTripName = "" }
-                Button("Create") {
-                    do {
-                        try model.createTrip(name: newTripName)
-                    } catch {
-                        model.errorMessage = AppModel.tripNotCreated(error)
-                    }
-                    newTripName = ""
-                }
-            } message: {
-                Text("Add places and journeys to it afterwards, or from the Log sheet.")
-            }
+            .newTripAlert(isPresented: $isCreatingTrip)
             .deleteTripDialog(trip: $tripToDelete)
         }
     }
@@ -213,29 +219,24 @@ private struct UnfiledSection: View {
                     NavigationLink(value: LogRoute.journey(journey.id)) {
                         JourneyRow(journey: journey)
                     }
-                    .swipeActions {
-                        Button("Delete", systemImage: "trash", role: .destructive) {
-                            model.deleteJourneys([journey.id])
-                        }
-                    }
+                    .recordActions(
+                        moveTo: MoveToTripMenu(journeyIDs: [journey.id]),
+                        delete: { model.deleteJourneys([journey.id]) }
+                    )
                 }
                 ForEach(visits) { visit in
                     NavigationLink(value: LogRoute.visit(visit.id)) {
                         VisitRow(visit: visit)
                     }
-                    .swipeActions {
-                        Button("Delete", systemImage: "trash", role: .destructive) {
-                            model.deleteVisits([visit.id])
-                        }
-                    }
-                    .contextMenu {
-                        MoveToTripMenu(visitIDs: [visit.id])
-                    }
+                    .recordActions(
+                        moveTo: MoveToTripMenu(visitIDs: [visit.id]),
+                        delete: { model.deleteVisits([visit.id]) }
+                    )
                 }
             } header: {
                 Text("Not in a trip")
             } footer: {
-                Text("Swipe to delete, or touch and hold a place to file it under a trip.")
+                Text(Self.hint)
             }
         }
     }
@@ -243,6 +244,35 @@ private struct UnfiledSection: View {
     private func matches(_ text: String) -> Bool {
         let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
         return query.isEmpty || text.lowercased().contains(query)
+    }
+
+    /// How to file or delete one of these, in the words of the device in hand.
+    private static var hint: String {
+        #if os(macOS)
+            "Control-click a place or journey to file it under a trip or delete it."
+        #else
+            "Swipe to delete, or touch and hold to file under a trip."
+        #endif
+    }
+}
+
+extension View {
+    /// The actions on a record in a list, the same everywhere: Delete by swipe and in the
+    /// context menu — which is how a pointer reaches it on the Mac — and, where given,
+    /// Move to Trip beside it. Deleting asks nothing first; the undo toast offers it back.
+    func recordActions(
+        moveTo: MoveToTripMenu? = nil,
+        delete: @escaping () -> Void
+    ) -> some View {
+        swipeActions {
+            Button("Delete", systemImage: "trash", role: .destructive, action: delete)
+        }
+        .contextMenu {
+            if let moveTo {
+                moveTo
+            }
+            Button("Delete", systemImage: "trash", role: .destructive, action: delete)
+        }
     }
 }
 
@@ -296,7 +326,7 @@ private struct DeleteTripDialog: ViewModifier {
             titleVisibility: .visible,
             presenting: trip
         ) { trip in
-            Button("Delete Trip, Keep Its Places") {
+            Button("Delete Trip, Keep What's in It") {
                 model.deleteTrip(trip.id, deletingContents: false)
                 onDeleted()
             }
@@ -305,7 +335,45 @@ private struct DeleteTripDialog: ViewModifier {
                 onDeleted()
             }
         } message: { _ in
-            Text("Keeping its places leaves them in your log, not in any trip.")
+            Text("""
+            Keeping its places and journeys leaves them in your log, not in any trip. \
+            You can undo either straight afterwards.
+            """)
+        }
+    }
+}
+
+extension View {
+    /// "New trip": names a trip, creates it, and opens it.
+    func newTripAlert(isPresented: Binding<Bool>) -> some View {
+        modifier(NewTripAlert(isPresented: isPresented))
+    }
+}
+
+/// Inside the Trips stack, so it can open what it makes there.
+private struct NewTripAlert: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Environment(GlobeBesideContext.self) private var beside: GlobeBesideContext?
+    @Binding var isPresented: Bool
+    @State private var name = ""
+
+    func body(content: Content) -> some View {
+        content.alert("New trip", isPresented: $isPresented) {
+            TextField("Name", text: $name)
+            Button("Cancel", role: .cancel) { name = "" }
+            Button("Create") {
+                do {
+                    // Opened straight away: an empty trip at the foot of the list, under
+                    // "Undated", is easy to lose.
+                    let trip = try model.createTrip(name: name)
+                    beside?.path.append(LogRoute.trip(trip.id))
+                } catch {
+                    model.errorMessage = AppModel.tripNotCreated(error)
+                }
+                name = ""
+            }
+        } message: {
+            Text("Then add what you've logged, or log something new in it.")
         }
     }
 }

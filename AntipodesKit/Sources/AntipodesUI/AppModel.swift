@@ -33,10 +33,14 @@ public struct AddRequest: Identifiable, Equatable {
     public let id = UUID()
     public var start: Start = .search
     public var tripID: UUID?
+    /// The date a new record starts on: the trip's last day, when logging into a trip
+    /// after the fact, rather than today.
+    public var date: FlexibleDate?
 
-    public init(start: Start = .search, tripID: UUID? = nil) {
+    public init(start: Start = .search, tripID: UUID? = nil, date: FlexibleDate? = nil) {
         self.start = start
         self.tripID = tripID
+        self.date = date
     }
 }
 
@@ -141,6 +145,11 @@ public final class AppModel {
     /// Set to open the add sheet from anywhere — a toolbar, a keyboard shortcut, a
     /// tapped empty state.
     public var addRequest: AddRequest?
+    /// Set to open an import from anywhere: an empty screen, the Trips menu, the end of
+    /// onboarding (R-LOG-7, R-LOG-8).
+    public var importRequest: ImportRequest?
+    /// An import asked for while a cover was still leaving, opened once it has gone.
+    public var queuedImport: ImportRequest?
     /// The last failed operation, for the one app-wide alert.
     public var errorMessage: String?
     /// Why the log could not be read, while it cannot: the app shows that and a retry

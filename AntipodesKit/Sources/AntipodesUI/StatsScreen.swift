@@ -35,6 +35,7 @@ struct StatsScreen: View {
     @Environment(AppModel.self) private var model
     @State private var sharing: ShareItem?
     @State private var isShowingSettings = false
+    @State private var presentedYear: YearItem?
 
     var body: some View {
         NavigationStack {
@@ -48,8 +49,9 @@ struct StatsScreen: View {
                             title: "No stats yet",
                             message: "Log a place or a journey and your numbers start here.",
                             systemImage: "chart.bar.xaxis",
-                            actionTitle: "Log a Place",
-                            action: { model.addRequest = AddRequest() }
+                            actionTitle: "Log a Place or Journey",
+                            action: { model.addRequest = AddRequest() },
+                            otherActions: EmptyStateAction.imports(model)
                         )
                     } else if model.statsFilter.isActive, model.shownLog.isEmpty {
                         ContentUnavailableView(
@@ -60,6 +62,10 @@ struct StatsScreen: View {
                     } else {
                         PersonalityHero()
                         HeadlineGrid()
+                        // In the weeks a year is reviewed, its review comes first.
+                        if Self.isReviewSeason {
+                            YearInReviewTeaser()
+                        }
                         CoverageSection()
                         DistanceSection()
                         JourneyDetailSection()
@@ -68,7 +74,9 @@ struct StatsScreen: View {
                         AttributesSection()
                         PatternsSection()
                         ThemesSection()
-                        YearInReviewTeaser()
+                        if !Self.isReviewSeason {
+                            YearInReviewTeaser()
+                        }
                     }
                 }
                 .padding(.horizontal)
@@ -80,6 +88,13 @@ struct StatsScreen: View {
             .navigationTitle("Stats")
             .addToolbarButton()
             .toolbar {
+                if let year = YearInReview.availableYears(in: model.log).first {
+                    ToolbarItem(placement: .primaryAction) {
+                        Button("Year in Review", systemImage: "sparkles.rectangle.stack") {
+                            presentedYear = YearItem(year: year)
+                        }
+                    }
+                }
                 if !model.log.isEmpty {
                     ToolbarItem(placement: .primaryAction) {
                         StatsFilterMenu()
@@ -112,7 +127,17 @@ struct StatsScreen: View {
             .sheet(isPresented: $isShowingSettings) {
                 SettingsScreen()
             }
+            .fullScreenCoverCompat(item: $presentedYear) { item in
+                YearInReviewView(year: item.year)
+            }
         }
+    }
+}
+
+extension StatsScreen {
+    /// December and January, when a year is looked back on.
+    static var isReviewSeason: Bool {
+        [12, 1].contains(CalendarDate.today().month)
     }
 }
 

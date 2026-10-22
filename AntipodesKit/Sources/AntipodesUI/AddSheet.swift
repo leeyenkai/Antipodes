@@ -88,9 +88,15 @@ struct AddSheet: View {
                 .navigationDestination(for: Destination.self) { destination in
                     switch destination {
                     case let .visit(place):
-                        VisitForm(place: place, tripID: request.tripID) { dismiss() }
+                        VisitForm(place: place, tripID: request.tripID, date: request.date) {
+                            dismiss()
+                        }
                     case let .route(route):
-                        JourneyEditor(start: .route(route), tripID: request.tripID) { dismiss() }
+                        JourneyEditor(
+                            start: .route(route),
+                            tripID: request.tripID,
+                            date: request.date
+                        ) { dismiss() }
                     }
                 }
         }
@@ -158,7 +164,11 @@ struct AddSheet: View {
                 offersWishlist: true
             )
         case .journey:
-            JourneyEditor(start: request.start.journeyStart, tripID: request.tripID) { dismiss() }
+            JourneyEditor(
+                start: request.start.journeyStart,
+                tripID: request.tripID,
+                date: request.date
+            ) { dismiss() }
         case .pin:
             PinDropView(
                 initial: request.start.pinCoordinate ?? model.home?.coordinate,

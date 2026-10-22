@@ -362,6 +362,8 @@ struct EmptyStateView: View {
     let systemImage: String
     var actionTitle: String?
     var action: (() -> Void)?
+    /// Other ways forward, shown quieter than the main one.
+    var otherActions: [EmptyStateAction] = []
 
     var body: some View {
         ContentUnavailableView {
@@ -375,7 +377,42 @@ struct EmptyStateView: View {
                 Button(actionTitle, action: action)
                     .buttonStyle(.borderedProminent)
             }
+            ForEach(otherActions) { other in
+                Button(other.title, systemImage: other.systemImage, action: other.action)
+                    .buttonStyle(.bordered)
+            }
         }
+    }
+}
+
+/// A secondary button on an empty screen.
+struct EmptyStateAction: Identifiable {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var id: String {
+        title
+    }
+
+    /// The two ways to fill an empty log at once, offered wherever the log is empty:
+    /// another app's history, and the photo library (R-LOG-7, R-LOG-8).
+    @MainActor
+    static func imports(_ model: AppModel) -> [EmptyStateAction] {
+        [
+            EmptyStateAction(
+                title: "Import Flights or Rail Logs",
+                systemImage: "airplane.arrival"
+            ) {
+                model.importRequest = .journeys
+            },
+            EmptyStateAction(
+                title: "Find Visits in Photos",
+                systemImage: "photo.on.rectangle.angled"
+            ) {
+                model.importRequest = .photos
+            },
+        ]
     }
 }
 

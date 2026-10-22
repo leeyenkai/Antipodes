@@ -134,6 +134,12 @@ public struct RootView: View {
                 AddSheet(request: request)
                     .environment(borderStore)
             }
+            .sheet(item: $model.importRequest) { request in
+                switch request {
+                case .journeys: FlightImportView()
+                case .photos: PhotoImportView()
+                }
+            }
             .alert(
                 "Something went wrong",
                 isPresented: Binding(
@@ -149,10 +155,16 @@ public struct RootView: View {
             } message: {
                 Text(model.errorMessage ?? "")
             }
-            .fullScreenCoverCompat(item: onboardingBinding) { _ in
+            .fullScreenCoverCompat(item: onboardingBinding, onDismiss: {
+                // An import chosen on onboarding's last page opens once the cover is gone.
+                if let queued = model.queuedImport {
+                    model.queuedImport = nil
+                    model.importRequest = queued
+                }
+            }, content: { _ in
                 OnboardingView()
                     .environment(borderStore)
-            }
+            })
             .task {
                 borderStore.loadCoarse()
                 await model.start()

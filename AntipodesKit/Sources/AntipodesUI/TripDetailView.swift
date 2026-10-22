@@ -9,6 +9,7 @@ struct TripDetailView: View {
     let tripID: UUID
 
     @State private var isEditing = false
+    @State private var isAddingExisting = false
     @State private var tripToDelete: Trip?
     /// The trip's own statistics, worked out off the main thread whenever the log's
     /// change, rather than twice on every redraw.
@@ -35,8 +36,19 @@ struct TripDetailView: View {
             }
 
             Section {
-                Button("Add to This Trip", systemImage: "plus") {
-                    model.addRequest = AddRequest(tripID: tripID)
+                Button("Log Something New", systemImage: "plus") {
+                    // Logged after the fact, more often than not: start on the trip's
+                    // last day rather than today.
+                    model.addRequest = AddRequest(
+                        tripID: tripID,
+                        date: model.dates(ofTrip: tripID).map { .day($0.end) }
+                    )
+                }
+                Button(
+                    "Add Places and Journeys Already Logged…",
+                    systemImage: "tray.and.arrow.down"
+                ) {
+                    isAddingExisting = true
                 }
                 if let notes = trip.notes, !notes.isEmpty {
                     Text(notes)
@@ -44,35 +56,7 @@ struct TripDetailView: View {
                 }
             }
 
-            if !journeys.isEmpty {
-                Section("Journeys") {
-                    ForEach(journeys) { journey in
-                        NavigationLink(value: LogRoute.journey(journey.id)) {
-                            JourneyRow(journey: journey)
-                        }
-                        .contextMenu { MoveToTripMenu(journeyIDs: [journey.id]) }
-                    }
-                    .onDelete { offsets in
-                        model.deleteJourneys(offsets.map { journeys[$0].id })
-                    }
-                }
-            }
-
-            Section(visits.isEmpty ? "" : "Places") {
-                if visits.isEmpty {
-                    Text("No places in this trip yet.")
-                        .foregroundStyle(.secondary)
-                }
-                ForEach(visits) { visit in
-                    NavigationLink(value: LogRoute.visit(visit.id)) {
-                        VisitRow(visit: visit)
-                    }
-                    .contextMenu { MoveToTripMenu(visitIDs: [visit.id]) }
-                }
-                .onDelete { offsets in
-                    model.deleteVisits(offsets.map { visits[$0].id })
-                }
-            }
+            TripRecordsSections(visits: visits, journeys: journeys)
 
             TripStatsSection(stats: tripStats)
         }
@@ -83,6 +67,9 @@ struct TripDetailView: View {
         .globeFocus(.trip(tripID))
         .sheet(isPresented: $isEditing) {
             TripEditor(trip: trip)
+        }
+        .sheet(isPresented: $isAddingExisting) {
+            AddExistingToTripSheet(tripID: tripID)
         }
         .deleteTripDialog(trip: $tripToDelete) { dismiss() }
         .task(id: model.statisticsRevision) {
@@ -158,6 +145,51 @@ private struct TripHeader: View {
                 .foregroundStyle(.secondary)
         }
         .frame(maxWidth: .infinity)
+    }
+}
+
+/// The trip's journeys and places, each with the record actions every list has.
+private struct TripRecordsSections: View {
+    @Environment(AppModel.self) private var model
+    let visits: [Visit]
+    let journeys: [Journey]
+
+    var body: some View {
+        if !journeys.isEmpty {
+            Section("Journeys") {
+                ForEach(journeys) { journey in
+                    NavigationLink(value: LogRoute.journey(journey.id)) {
+                        JourneyRow(journey: journey)
+                    }
+                    .recordActions(
+                        moveTo: MoveToTripMenu(journeyIDs: [journey.id]),
+                        delete: { model.deleteJourneys([journey.id]) }
+                    )
+                }
+            }
+        }
+        if visits.isEmpty, journeys.isEmpty {
+            Section {
+                Text("""
+                Nothing in this trip yet. Log something new in it, or add what you've \
+                already logged.
+                """)
+                .foregroundStyle(.secondary)
+            }
+        }
+        if !visits.isEmpty {
+            Section("Places") {
+                ForEach(visits) { visit in
+                    NavigationLink(value: LogRoute.visit(visit.id)) {
+                        VisitRow(visit: visit)
+                    }
+                    .recordActions(
+                        moveTo: MoveToTripMenu(visitIDs: [visit.id]),
+                        delete: { model.deleteVisits([visit.id]) }
+                    )
+                }
+            }
+        }
     }
 }
 
