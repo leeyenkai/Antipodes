@@ -27,6 +27,7 @@ struct PhotoImportView: View {
     @State private var tripID: UUID?
     @State private var newTripName: String?
     @State private var scanTask: Task<Void, Never>?
+    @State private var isConfirmingCancel = false
 
     enum LoadState: Equatable {
         case idle
@@ -68,6 +69,7 @@ struct PhotoImportView: View {
                     review
                 }
             }
+            .interactiveDismissDisabled(hasReview)
             .navigationTitle("Import from Photos")
             .toolbarTitleDisplayMode(.inline)
             // Closing the sheet stops a scan of a large library rather than letting it
@@ -75,7 +77,14 @@ struct PhotoImportView: View {
             .onDisappear { scanTask?.cancel() }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) { dismiss() }
+                    Button("Cancel", role: .cancel) {
+                        if hasReview {
+                            isConfirmingCancel = true
+                        } else {
+                            dismiss()
+                        }
+                    }
+                    .confirmingDiscard(isPresented: $isConfirmingCancel) { dismiss() }
                 }
                 if state == .done {
                     ToolbarItem(placement: .confirmationAction) {
@@ -211,6 +220,11 @@ struct PhotoImportView: View {
             return samples
         }
     #endif
+
+    /// Suggestions read and chosen from: a long scan's result, not to lose by a swipe.
+    private var hasReview: Bool {
+        state == .done && !selected.isEmpty
+    }
 
     /// What the system's settings are called where the user will find the switch.
     private static var settingsName: String {

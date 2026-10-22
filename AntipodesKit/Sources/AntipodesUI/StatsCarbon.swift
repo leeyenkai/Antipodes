@@ -91,6 +91,7 @@ private struct CarbonByYearChart: View {
             }
         }
         .frame(height: 140)
+        .accessibilityLabel("Carbon by year, estimated")
     }
 }
 

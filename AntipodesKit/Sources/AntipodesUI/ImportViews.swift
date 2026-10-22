@@ -25,6 +25,7 @@ struct FlightImportView: View {
     /// Log where each journey arrived as a stay, so imported flights add countries (D-32).
     @State private var logsArrivals = true
     @State private var isImporting = false
+    @State private var isConfirmingCancel = false
     @State private var fixing: Fix?
     @State private var failure: String?
     /// The file, kept so a different mode can be read from it without asking again.
@@ -73,11 +74,21 @@ struct FlightImportView: View {
                     review
                 }
             }
+            .interactiveDismissDisabled(!candidates.isEmpty)
             .navigationTitle("Import Journeys")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) { dismiss() }
+                    Button("Cancel", role: .cancel) {
+                        if candidates.isEmpty {
+                            dismiss()
+                        } else {
+                            isConfirmingCancel = true
+                        }
+                    }
+                    // A reviewed file — places chosen by hand, rows switched off — is work
+                    // to lose.
+                    .confirmingDiscard(isPresented: $isConfirmingCancel) { dismiss() }
                 }
                 if !candidates.isEmpty {
                     ToolbarItem(placement: .confirmationAction) {
@@ -302,8 +313,8 @@ private struct CandidateRow: View {
                 case .needsAirport:
                     Label(
                         candidate.row.mode == .flight
-                            ? "Tap the orange code to choose the airport"
-                            : "Tap the orange name to choose the place",
+                            ? "Needs an airport: choose it where it's marked"
+                            : "Needs a place: choose it where it's marked",
                         systemImage: "exclamationmark.triangle"
                     )
                     .font(.caption2).foregroundStyle(Palette.warning)

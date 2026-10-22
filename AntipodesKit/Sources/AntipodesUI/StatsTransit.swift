@@ -117,6 +117,11 @@ struct TransitSystemsView: View {
                 """)
             }
         }
+        .emptyOverlay(
+            model.shownStatistics.transit.systems.isEmpty,
+            "No transit rides yet",
+            systemImage: "tram"
+        )
         .navigationTitle("City transit")
     }
 }

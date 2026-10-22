@@ -22,6 +22,11 @@ struct RepeatVisitsView: View {
                 }
             }
         }
+        .emptyOverlay(
+            model.shownStatistics.time.repeatVisits.isEmpty,
+            "No place visited twice yet",
+            systemImage: "arrow.uturn.backward"
+        )
         .navigationTitle("Places returned to")
     }
 }
@@ -47,6 +52,11 @@ struct CountryGapsView: View {
                 }
             }
         }
+        .emptyOverlay(
+            model.shownStatistics.time.countryGaps.isEmpty,
+            "No dated countries yet",
+            systemImage: "calendar"
+        )
         .navigationTitle("Time since each country")
     }
 }

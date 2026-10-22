@@ -248,7 +248,7 @@ private struct WishlistActions: ViewModifier {
             content
                 .swipeActions(edge: .leading, allowsFullSwipe: true) {
                     Button(
-                        isOn ? "Remove from Wishlist" : "Wishlist",
+                        isOn ? "Remove from Wishlist" : "Add to Wishlist",
                         systemImage: isOn ? "star.slash" : "star"
                     ) {
                         toggle()

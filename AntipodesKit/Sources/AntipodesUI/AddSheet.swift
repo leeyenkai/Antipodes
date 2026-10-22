@@ -76,6 +76,8 @@ struct AddSheet: View {
                                 dismiss()
                             }
                         }
+                        // On the button, so the question comes from where it was asked.
+                        .confirmingDiscard(isPresented: $isConfirmingCancel) { dismiss() }
                     }
                     ToolbarItem(placement: .principal) {
                         Picker("What are you logging?", selection: entrySelection) {
@@ -101,7 +103,6 @@ struct AddSheet: View {
                 }
         }
         .presentationDetents([.large])
-        .confirmingDiscard(isPresented: $isConfirmingCancel) { dismiss() }
         .confirmingDiscard(isPresented: Binding(
             get: { pendingEntry != nil },
             set: {

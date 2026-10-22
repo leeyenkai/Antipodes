@@ -122,6 +122,11 @@ struct AllRecordsView: View {
                 model.deleteVisits(Array(selection))
                 selection = []
             }
+        } message: {
+            Text("""
+            They're removed from your log and every statistic. You can undo it straight \
+            afterwards.
+            """)
         }
     }
 

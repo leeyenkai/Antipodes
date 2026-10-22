@@ -230,6 +230,11 @@ struct YearChart: View {
             AxisMarks(values: .automatic(desiredCount: 6))
         }
         .frame(height: 150)
+        // One sentence for VoiceOver before the bars, which it can then read one by one.
+        .accessibilityLabel("Chart by year")
+        .accessibilityValue(rows.max { $0.value < $1.value }.map {
+            "Highest in \(String($0.key)): \(Format.whole($0.value))"
+        } ?? "No data")
     }
 }
 
@@ -246,6 +251,10 @@ private struct SeasonalityChart: View {
             .cornerRadius(4)
         }
         .frame(height: 140)
+        .accessibilityLabel("Visits by month")
+        .accessibilityValue(byMonth.max { $0.value < $1.value }.map {
+            "Busiest in \(Format.monthName($0.key))"
+        } ?? "No data")
     }
 }
 
@@ -343,6 +352,7 @@ private struct EraChart: View {
             }
         }
         .frame(height: 170)
+        .accessibilityLabel("Landmarks by historical era")
     }
 }
 

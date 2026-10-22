@@ -20,6 +20,7 @@ public struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.undoManager) private var undoManager
     @State private var borderStore = GlobeBorderStore()
     @State private var imagery = GlobeImageryStore()
     @State private var selection: Destination = .globe
@@ -97,8 +98,21 @@ public struct RootView: View {
                 case .trips: .trips
                 case .stats: .stats
                 case .collections: .collections
+                // Only a sidebar holds the table; elsewhere it lives under Trips.
+                case .records: DeviceLayout.hasSidebar(sizeClass) ? .records : .trips
                 }
             })
+            // ⌘Z, shaking the phone, and Edit ▸ Undo put back what was just deleted, as
+            // the toast's button does — through the window's own undo manager, so a text
+            // field's undo goes on working as it did.
+            .onChange(of: model.lastDeletion?.id) { _, deletion in
+                undoManager?.removeAllActions(withTarget: model)
+                guard deletion != nil else { return }
+                undoManager?.registerUndo(withTarget: model) { model in
+                    MainActor.assumeIsolated { model.undoLastDeletion() }
+                }
+                undoManager?.setActionName("Delete")
+            }
             .onOpenURL { url in
                 if let link = DeepLink(url: url) {
                     open(link)

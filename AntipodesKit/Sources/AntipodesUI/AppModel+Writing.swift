@@ -55,7 +55,7 @@ public extension AppModel {
         if perform({ try store.deleteVisits(ids) }) {
             offerUndo(Deletion(
                 message: removed.count == 1
-                    ? "Deleted \(removed[0].place.name)" : "Deleted \(removed.count) places",
+                    ? "Deleted \(removed[0].place.name)" : "Deleted \(removed.count) visits",
                 records: TravelLog(visits: removed)
             ))
         }

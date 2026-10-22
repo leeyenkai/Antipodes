@@ -93,6 +93,7 @@ struct StatsScreen: View {
                         Button("Year in Review", systemImage: "sparkles.rectangle.stack") {
                             presentedYear = YearItem(year: year)
                         }
+                        .help("Year in Review, \(String(year))")
                     }
                 }
                 if !model.log.isEmpty {
@@ -103,6 +104,7 @@ struct StatsScreen: View {
                         Button("Share", systemImage: "square.and.arrow.up") {
                             sharing = ShareItem(card: .summary)
                         }
+                        .help("Share these figures")
                     }
                 }
                 ToolbarItem(placement: .primaryAction) {
@@ -315,7 +317,7 @@ private struct PersonalityHero: View {
                 Text(
                     """
                     From \(Format.ordinalCount(personality.landmarkCount, "landmark")) you've \
-                    visited. Tap to see why.
+                    visited — see why.
                     """
                 )
                 .font(.caption)

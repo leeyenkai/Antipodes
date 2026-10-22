@@ -436,3 +436,15 @@ struct DetailRow: View {
         }
     }
 }
+
+extension View {
+    /// "No … yet" over a list with nothing in it, rather than a blank page — what a
+    /// figure of zero opens on.
+    func emptyOverlay(_ isEmpty: Bool, _ title: String, systemImage: String) -> some View {
+        overlay {
+            if isEmpty {
+                ContentUnavailableView(title, systemImage: systemImage)
+            }
+        }
+    }
+}

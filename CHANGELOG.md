@@ -370,6 +370,21 @@ is blocked.
 
 ### Changed
 
+- **The same behaviour on every screen** (§9, R-PLAT-1, R-NAV-2): ⌘Z — and shaking an
+  iPhone — puts back what was just deleted, as the toast does, without taking over a
+  text field's own undo; ⌘5 opens All Records on iPad and Mac; every page below the
+  Stats dashboard has an inline title; the Log sheet's discard question comes from its
+  Cancel button; the flight-log and photo imports ask before a reviewed list is thrown
+  away by Cancel or a swipe; and lists a figure of zero opens on say "No … yet" rather
+  than standing blank.
+- Words agree with each other: a deleted set of visits is "visits", not "places"; a list
+  of legs that is empty says "No legs"; "Add to Wishlist" wherever a place is added;
+  "Settings › What counts", as the section is called; no instruction to tap an orange
+  code, which reads only by colour, and no "Tap to see why" on the Mac.
+- Accessibility: charts give VoiceOver a summary before their bars; the pin dropper can
+  be moved and zoomed with VoiceOver actions; the replay's close button is a full 44
+  points; the globe's and the Stats screen's icon buttons have tooltips on the Mac. The
+  mode tiles keep their titles in line and their descriptions whole.
 - **One type scale** (D-34): SF Pro on the system's text styles throughout, with New
   York kept for display titles only — a personality, onboarding, Year in Review, share
   cards. Every number takes one of four figure roles that grow with the reader's text

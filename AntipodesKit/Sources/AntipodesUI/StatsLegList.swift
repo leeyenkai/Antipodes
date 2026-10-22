@@ -47,13 +47,13 @@ struct LegListView: View {
                 if commutesLeftOut > 0 {
                     Text("""
                     \(Format.ordinalCount(commutesLeftOut, "commute leg")) left out, as in the \
-                    totals. Settings › Counting can include commutes.
+                    totals. Settings › What counts can include commutes.
                     """)
                 }
             }
             if rows.isEmpty {
                 ContentUnavailableView(
-                    "No journeys",
+                    "No legs",
                     systemImage: "point.topleft.down.to.point.bottomright.curvepath"
                 )
             }

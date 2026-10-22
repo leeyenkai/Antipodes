@@ -11,6 +11,9 @@ struct StatsDrillDown: View {
     var body: some View {
         destination
             .modifier(DrillDownShare(card: shareCard))
+            // Every page below the dashboard has an inline title, as every detail page
+            // elsewhere does.
+            .toolbarTitleDisplayMode(.inline)
     }
 
     @ViewBuilder
@@ -170,6 +173,11 @@ struct CountryListView: View {
                 }
             }
         }
+        .emptyOverlay(
+            model.shownStatistics.coverage.countriesSortedByName.isEmpty,
+            "No countries yet",
+            systemImage: "flag"
+        )
         .navigationTitle("Countries")
     }
 }

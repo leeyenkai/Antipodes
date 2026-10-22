@@ -198,6 +198,7 @@ extension JourneyLeg {
 /// The eight modes as a grid of tiles (§5.1).
 struct ModeGrid: View {
     let pick: (TravelMode) -> Void
+    @ScaledMetric(relativeTo: .title2) private var iconHeight: CGFloat = 30
 
     var body: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 10)], spacing: 10) {
@@ -206,19 +207,22 @@ struct ModeGrid: View {
                     pick(mode)
                 } label: {
                     VStack(alignment: .leading, spacing: 8) {
+                        // Symbols differ in height; a fixed band keeps every tile's title
+                        // on the same line as its neighbour's.
                         Image(systemName: mode.symbolName)
                             .font(.title2.weight(.light))
                             .foregroundStyle(Palette.mode(mode))
+                            .frame(height: iconHeight, alignment: .bottomLeading)
                         Text(mode.displayName)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(.primary)
                         Text(mode.examples)
                             .font(.caption2)
                             .foregroundStyle(.secondary)
-                            .lineLimit(2, reservesSpace: true)
+                            .lineLimit(3, reservesSpace: true)
                         Spacer(minLength: 0)
-                            .multilineTextAlignment(.leading)
                     }
+                    .multilineTextAlignment(.leading)
                     .padding(12)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .background(

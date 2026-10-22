@@ -60,6 +60,22 @@ struct PinDropView: View {
             .accessibilityElement()
             .accessibilityLabel("Globe. Drag to move the pin, pinch to zoom.")
             .accessibilityValue(camera.centre.displayText)
+            // Dragging and pinching need sight; these move the pin a step at a time, a
+            // smaller step the closer in the globe is.
+            .accessibilityActions {
+                Button("Move north") { nudge(latitude: 1) }
+                Button("Move south") { nudge(latitude: -1) }
+                Button("Move east") { nudge(longitude: 1) }
+                Button("Move west") { nudge(longitude: -1) }
+                Button("Zoom in") { camera = GlobeCamera(
+                    centre: camera.centre,
+                    zoom: min(60, camera.zoom * 2)
+                ) }
+                Button("Zoom out") { camera = GlobeCamera(
+                    centre: camera.centre,
+                    zoom: max(1, camera.zoom / 2)
+                ) }
+            }
 
             panel
         }
@@ -76,6 +92,18 @@ struct PinDropView: View {
             guard !Task.isCancelled else { return }
             resolved = await model.resolvePin(at: camera.centre, name: name)
         }
+    }
+
+    /// One step of a VoiceOver move: ten degrees at the whole globe, less zoomed in.
+    private func nudge(latitude: Double = 0, longitude: Double = 0) {
+        let step = 10 / max(1, camera.zoom)
+        camera = GlobeCamera(
+            centre: Coordinate(
+                latitude: max(-85, min(85, camera.centre.latitude + latitude * step)),
+                longitude: camera.centre.longitude + longitude * step
+            ),
+            zoom: camera.zoom
+        )
     }
 
     private var panel: some View {
@@ -113,7 +141,7 @@ struct PinDropView: View {
             .controlSize(.large)
             .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
             if let onWishlist {
-                Button("Save to Wishlist", systemImage: "star") {
+                Button("Add to Wishlist", systemImage: "star") {
                     Task {
                         let place = await model.resolvePin(
                             at: camera.centre,

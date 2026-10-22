@@ -247,6 +247,11 @@ struct OperatorPunctualityView: View {
                 """)
             }
         }
+        .emptyOverlay(
+            model.shownStatistics.punctuality.averageDelayByMode.isEmpty,
+            "No timed legs yet",
+            systemImage: "clock"
+        )
         .navigationTitle("Punctuality")
     }
 }
@@ -274,6 +279,11 @@ struct TimeByModeView: View {
                 }
             }
         }
+        .emptyOverlay(
+            model.shownStatistics.journeys.minutesByMode.isEmpty,
+            "No timed legs yet",
+            systemImage: "clock"
+        )
         .navigationTitle("Time travelling")
     }
 }
@@ -327,6 +337,11 @@ struct VisitTemperatureList: View {
                 }
             }
         }
+        .emptyOverlay(
+            model.shownStatistics.climate.visits.isEmpty,
+            "No dated visits yet",
+            systemImage: "thermometer.medium"
+        )
         .navigationTitle("Temperatures")
     }
 }

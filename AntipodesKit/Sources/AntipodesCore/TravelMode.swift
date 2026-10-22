@@ -32,9 +32,9 @@ public enum TravelMode: String, Sendable, Codable, CaseIterable, Identifiable {
         switch self {
         case .flight: "Scheduled, charter, private"
         case .rail: "Intercity, high-speed, regional, sleeper"
-        case .cityTransit: "Metro, tram, light rail, suburban rail, local bus, city ferry"
+        case .cityTransit: "Metro, tram, suburban rail, bus, city ferry"
         case .coach: "Scheduled coaches, airport buses, rural buses"
-        case .ferry: "Car ferries, coastal voyages, river and ocean cruises"
+        case .ferry: "Car ferries, coastal voyages, cruises"
         case .roadTrip: "Car, campervan, motorbike"
         case .humanPowered: "Hikes, long-distance trails, cycle tours"
         case .cableAndMountain: "Cable cars, gondolas, funiculars, cog railways"

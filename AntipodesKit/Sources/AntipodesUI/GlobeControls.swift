@@ -115,7 +115,7 @@ struct GlobeSummaryBar: View {
     private var caveat: String? {
         let parts = [
             scene.pinSummary.caveat.map { "Places: \($0)" },
-            scene.arcSummary.caveat.map { "Journeys: \($0)" },
+            scene.arcSummary.caveat.map { "Legs: \($0)" },
             scene.shadingSummary.caveat.map { "Shading: \($0)" },
         ].compactMap(\.self)
         return parts.isEmpty ? nil : parts.joined(separator: " ")
@@ -154,7 +154,7 @@ struct GlobeTimelineBar: View {
                     }
                     .labelStyle(.iconOnly)
                     .font(.footnote.weight(.semibold))
-                    .frame(width: 32, height: 44)
+                    .frame(width: 44, height: 44)
                     .contentShape(.rect)
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
@@ -265,6 +265,7 @@ struct GlobeStyleMenu: View {
             } label: {
                 Label("Globe Style", systemImage: "map")
             }
+            .help("Standard or satellite globe")
         }
     }
 }
@@ -364,6 +365,7 @@ struct GlobeFilterMenu: View {
                     : "line.3.horizontal.decrease.circle"
             )
         }
+        .help("Filter by year, trip or mode")
     }
 }
 

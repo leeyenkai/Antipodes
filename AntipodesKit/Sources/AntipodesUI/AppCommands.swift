@@ -28,13 +28,15 @@ public struct AppCommands: Commands {
                 .keyboardShortcut("3", modifiers: .command)
             Button("Collections") { selectSection?(.collections) }
                 .keyboardShortcut("4", modifiers: .command)
+            Button("All Records") { selectSection?(.records) }
+                .keyboardShortcut("5", modifiers: .command)
             Divider()
         }
     }
 }
 
 extension FocusedValues {
-    /// Switches the window's section, for the menu's ⌘1 to ⌘4.
+    /// Switches the window's section, for the menu's ⌘1 to ⌘5.
     @Entry var selectSection: SectionSelector?
 }
 
@@ -44,6 +46,8 @@ public enum AppSection: Sendable {
     case trips
     case stats
     case collections
+    /// The bulk-editing table, where the window has a sidebar to hold it.
+    case records
 }
 
 struct SectionSelector {

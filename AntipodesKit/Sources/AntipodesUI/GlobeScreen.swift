@@ -233,6 +233,7 @@ struct GlobeScreen: View {
         ToolbarItem(placement: .topBarLeadingCompat) {
             Button("Frame", systemImage: "scope") { frameScene(animated: true) }
                 .accessibilityLabel("Frame everything")
+                .help("Frame everything")
         }
         ToolbarItem(placement: .primaryAction) {
             GlobeStyleMenu()
@@ -249,10 +250,12 @@ struct GlobeScreen: View {
             Button("Drop a Pin", systemImage: "mappin.and.ellipse") {
                 model.addRequest = AddRequest(start: .pin(camera.centre))
             }
+            .help("Drop a pin where the globe is centred")
         }
         if !model.log.isEmpty {
             ToolbarItem(placement: .primaryAction) {
                 Button("Share", systemImage: "square.and.arrow.up") { sharingGlobe = true }
+                    .help("Share the globe")
             }
         }
     }
