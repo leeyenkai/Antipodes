@@ -132,6 +132,41 @@ the wrong module.
   wrapping SwiftData. Computation belongs in `AntipodesStats`, not in a view.
 - Every screen must work at iPhone-SE width and at Mac window width.
 
+### UI conventions
+
+One app, so every screen behaves the same way. `AntipodesUI/DesignSystem.swift` holds
+the tokens; this is how to use them.
+
+- **Type (D-34).** SF Pro on the system's text styles, so everything follows Dynamic
+  Type. New York (`Font.display`) only for a personality's name, onboarding titles,
+  the globe's empty-state title, Year in Review titles and share-card titles. Numbers
+  use `.figure(_:)` — `showcase`, `hero`, `card`, `inline` — never a size of their own;
+  images drawn for sharing use `Font.renderedFigure`. Group headings use
+  `Font.sectionTitle`. Text weights are regular, medium, semibold and bold; light and
+  ultra-light are for symbols. `scripts/lint.sh` refuses `.system(size:` outside
+  `DesignSystem.swift`.
+- **Colour and shape.** `Palette` for every colour that means something, `Radius` for
+  every corner. `Palette.visited` is the brand teal and matches the AccentColor asset
+  in both appearances.
+- **Words.** A *place* is somewhere; a *visit* is the record of being there. A *journey*
+  is one or more *legs*. "Add to Wishlist" / "Remove from Wishlist". "Share…" in menus,
+  a Share button in toolbars. "Log" is the way in. "Restore" for a backup, "Import" for
+  another app's history.
+- **Case.** Title Case for navigation titles, buttons and menu items; sentence case for
+  section headers, alert titles, form labels and stat labels.
+- **Deleting.** A row deletes by swipe and by context menu (`recordActions`) — the menu
+  is how a pointer reaches it — with no dialog, because the undo toast offers it back.
+  Deleting from an editor, a whole trip, or many records at once asks first, and the
+  dialog says undo is available. `role: .destructive` only on what removes records.
+- **Sheets and forms.** Cancel goes in `.cancellationAction`, the confirm button in
+  `.confirmationAction`. A form with edits says so through `guardingUnsavedEdits`, so
+  Cancel and swipe-to-dismiss ask before throwing them away.
+- **Empty and done.** An empty list says so with `EmptyStateView` or
+  `ContentUnavailableView`, and offers the next step where there is one. A finished
+  import or restore says what it added with `AppModel.announce`, in the toast.
+- **Every platform.** Copy names the gesture of the device in hand — no "touch and hold"
+  on the Mac. Icon-only buttons carry a label (and so a tooltip).
+
 ### SwiftData
 
 The log stays on the device; there is no sync (D-31). Don't add CloudKit, an iCloud

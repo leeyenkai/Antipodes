@@ -28,3 +28,14 @@ if command -v swiftlint >/dev/null 2>&1; then
 else
     note "swiftlint not installed, skipping (brew install swiftlint)"
 fi
+
+step "Type roles"
+# Text takes the named roles in DesignSystem.swift (D-34): SF Pro on the system's text
+# styles, New York for display, figures that scale. A raw point size anywhere else is a
+# size the scale never chose.
+if grep -rn --include='*.swift' "\.system(size:" "$PACKAGE_PATH/Sources/AntipodesUI" \
+    | grep -v "/DesignSystem.swift:"; then
+    fail "a raw .system(size:) outside DesignSystem.swift — use a type role (D-34)"
+fi
+note "only the named type roles are used"
+

@@ -370,6 +370,14 @@ is blocked.
 
 ### Changed
 
+- **One type scale** (D-34): SF Pro on the system's text styles throughout, with New
+  York kept for display titles only — a personality, onboarding, Year in Review, share
+  cards. Every number takes one of four figure roles that grow with the reader's text
+  size, where eight fixed sizes from 17 to 64 points did not; section headings share one
+  style. A lint check keeps raw point sizes out of the screens.
+- The brand teal and the app's accent are one colour in both appearances, with a deeper
+  shade in light mode that reads on white; menus take the teal rather than system blue.
+  Corners come from four radii instead of nine.
 - Onboarding's pages keep their pictures in a band of one height, so the titles no
   longer jump as the pages turn, and the home button sits under its explanation.
 - A landmark is logged as a day trip by default; a city still as a stay.

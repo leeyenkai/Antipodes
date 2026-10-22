@@ -54,7 +54,7 @@ struct StatCard: View {
                 Eyebrow(title)
             }
             Text(value)
-                .font(.statValue(28))
+                .figure(.card)
                 .contentTransition(.numericText())
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)

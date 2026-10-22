@@ -196,7 +196,7 @@ struct GlobeScreen: View {
             .controlSize(.small)
         }
         .padding(24)
-        .glassEffect(.regular, in: .rect(cornerRadius: 28))
+        .glassEffect(.regular, in: .rect(cornerRadius: Radius.panel))
         .padding(32)
     }
 
@@ -215,7 +215,7 @@ struct GlobeScreen: View {
                     CaveatLabel(text: message)
                         .padding(.horizontal, 14)
                         .padding(.vertical, 8)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 14))
+                        .glassEffect(.regular, in: .rect(cornerRadius: Radius.chip))
                 }
                 GlobeTimelineBar(
                     timeline: timeline,

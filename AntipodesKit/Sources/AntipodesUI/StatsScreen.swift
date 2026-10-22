@@ -161,7 +161,7 @@ struct StatsSection<Content: View>: View {
                     .foregroundStyle(.secondary)
                     .accessibilityHidden(true)
                 Text(title)
-                    .font(.title3.weight(.semibold))
+                    .font(.sectionTitle)
             }
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
@@ -268,7 +268,7 @@ struct StatCardList<Content: View>: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 4)
-        .background(.background.secondary, in: .rect(cornerRadius: 20, style: .continuous))
+        .background(.background.secondary, in: .rect(cornerRadius: Radius.card, style: .continuous))
     }
 }
 

@@ -369,7 +369,7 @@ struct YearInReviewTeaser: View {
                             } label: {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(String(year))
-                                        .font(.statValue(30))
+                                        .figure(.card)
                                     Text(summary(year))
                                         .font(.caption)
                                         .foregroundStyle(.white.opacity(0.75))
@@ -384,7 +384,7 @@ struct YearInReviewTeaser: View {
                                 )
                                 .background(
                                     Palette.heroGradient,
-                                    in: .rect(cornerRadius: 20, style: .continuous)
+                                    in: .rect(cornerRadius: Radius.card, style: .continuous)
                                 )
                                 .overlay(alignment: .topTrailing) {
                                     Image(systemName: "play.circle.fill")

@@ -187,7 +187,7 @@ struct CountryDetailView: View {
         List {
             Section {
                 HStack(spacing: 14) {
-                    Text(Format.flag(countryCode)).font(.system(size: 54))
+                    Text(Format.flag(countryCode)).font(.icon(54))
                     VStack(alignment: .leading) {
                         Text(facts?.name ?? countryCode).font(.title2.weight(.bold))
                         Text(facts?.continent?.displayName ?? "").foregroundStyle(.secondary)

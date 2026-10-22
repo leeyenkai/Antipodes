@@ -1,6 +1,9 @@
 import AntipodesStore
 import AntipodesUI
 import SwiftUI
+#if os(iOS)
+    import UIKit
+#endif
 
 /// The app entry point.
 ///
@@ -13,6 +16,11 @@ struct AntipodesApp: App {
 
     init() {
         _opening = State(initialValue: Self.open())
+        #if os(iOS)
+            // Menus and other UIKit chrome tint from here, not from SwiftUI's `.tint`;
+            // without it their symbols came out system blue beside the teal toolbar.
+            UIView.appearance().tintColor = UIColor(named: "AccentColor")
+        #endif
     }
 
     var body: some Scene {

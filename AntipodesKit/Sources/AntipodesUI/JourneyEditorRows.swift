@@ -221,7 +221,10 @@ struct ModeGrid: View {
                     }
                     .padding(12)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .background(.fill.tertiary, in: .rect(cornerRadius: 16, style: .continuous))
+                    .background(
+                        .fill.tertiary,
+                        in: .rect(cornerRadius: Radius.tile, style: .continuous)
+                    )
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel(mode.displayName)

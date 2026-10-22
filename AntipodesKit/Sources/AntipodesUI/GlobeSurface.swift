@@ -187,7 +187,7 @@ struct GlobeSurface: View {
 struct GlobeBackdrop: View {
     var body: some View {
         RadialGradient(
-            colors: [Color(red: 0.05, green: 0.08, blue: 0.14), Palette.space],
+            colors: [Palette.spaceGlow, Palette.space],
             center: .center,
             startRadius: 40,
             endRadius: 520

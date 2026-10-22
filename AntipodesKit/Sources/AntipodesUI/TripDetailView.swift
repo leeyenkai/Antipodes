@@ -131,13 +131,13 @@ private struct TripHeader: View {
             .padding(.vertical, 12)
             .background(.background.secondary)
         }
-        .clipShape(.rect(cornerRadius: 22, style: .continuous))
+        .clipShape(.rect(cornerRadius: Radius.card, style: .continuous))
     }
 
     private func metric(_ value: String, _ label: String) -> some View {
         VStack(spacing: 2) {
             Text(value)
-                .font(.statValue(20))
+                .figure(.inline)
                 .lineLimit(1)
                 .minimumScaleFactor(0.6)
             Text(label)

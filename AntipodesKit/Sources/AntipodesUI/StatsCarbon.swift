@@ -18,7 +18,7 @@ struct CarbonSection: View {
             ) {
                 VStack(alignment: .leading, spacing: 10) {
                     Text(Format.carbon(kilograms: carbon.totalKg))
-                        .font(.statValue(34))
+                        .figure(.hero)
                     Text("Estimated for every leg you've logged.")
                         .foregroundStyle(.secondary)
                     if carbon.totalSavedKg > 0 {

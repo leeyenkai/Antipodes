@@ -72,7 +72,7 @@ struct AchievementBadge: View {
                     ProgressRing(progress: status.progress, tint: tint, lineWidth: 3)
                 }
                 Image(systemName: status.definition.symbol ?? "star.fill")
-                    .font(.system(size: size * 0.34, weight: .regular))
+                    .font(.icon(size * 0.34))
                     .foregroundStyle(status
                         .isEarned ? AnyShapeStyle(tint) : AnyShapeStyle(.secondary))
             }

@@ -240,7 +240,7 @@ struct PlaceHeader: View {
             SymbolTile(systemName: place.kind.symbolName, tint: place.kind.tint, size: 46)
             VStack(alignment: .leading, spacing: 3) {
                 Text(place.name)
-                    .font(.title3.weight(.semibold))
+                    .font(.sectionTitle)
                 Text(place.contextLine)
                     .font(.subheadline)
                     .foregroundStyle(.secondary)

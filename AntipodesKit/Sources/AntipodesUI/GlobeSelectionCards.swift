@@ -96,7 +96,7 @@ struct GlobeJourneyCard: View {
             Section {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(journey.displayTitle)
-                        .font(.title3.weight(.semibold))
+                        .font(.sectionTitle)
                     Text(summary)
                         .font(.subheadline)
                         .foregroundStyle(.secondary)

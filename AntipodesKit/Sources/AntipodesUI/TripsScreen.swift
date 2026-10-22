@@ -157,7 +157,7 @@ private struct TripRow: View {
         HStack(spacing: 14) {
             MiniGlobe.trip(trip.id, model: model)
                 .frame(width: 58, height: 58)
-                .clipShape(.rect(cornerRadius: 14, style: .continuous))
+                .clipShape(.rect(cornerRadius: Radius.tile, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
                 Text(trip.displayName(model: model))
                     .font(.headline)

@@ -10,11 +10,18 @@ import SwiftUI
 /// been visited, a champagne for pins, and muted, evenly weighted colours for the eight
 /// modes. Colour is kept for data; chrome — icons, tiles, section headers — is neutral.
 enum Palette {
-    /// Visited land on the globe, and the brand colour.
-    static let visited = Color(red: 0.42, green: 0.75, blue: 0.69)
+    /// Visited land on the globe, and the brand colour. The same teal as the app's
+    /// accent in both appearances: light on the dark globe and in dark mode, deeper on a
+    /// light background, where the light one is too faint to read.
+    static let visited = Color(
+        light: Color(red: 0.11, green: 0.47, blue: 0.43),
+        dark: Color(red: 0.42, green: 0.75, blue: 0.69)
+    )
     static let pin = Color(red: 0.95, green: 0.83, blue: 0.60)
     static let wishlist = Color(red: 0.73, green: 0.69, blue: 0.92)
     static let space = Color(red: 0.02, green: 0.03, blue: 0.06)
+    /// The faint glow of space nearest the globe.
+    static let spaceGlow = Color(red: 0.05, green: 0.08, blue: 0.14)
     static let warning = Color(red: 0.93, green: 0.66, blue: 0.38)
 
     static func mode(_ mode: TravelMode) -> Color {
@@ -64,23 +71,137 @@ enum Palette {
     )
 }
 
+/// Corner radii, so cards, panels and thumbnails round alike. Content cards are one
+/// size, the glass that floats over the globe another, small chips a third.
+enum Radius {
+    /// A content card: a stat card, a trip's header, a year's tile, a share preview.
+    static let card: CGFloat = 20
+    /// Glass floating over the globe: the summary bar, the empty-state panel, the drop
+    /// target.
+    static let panel: CGFloat = 26
+    /// A tile or thumbnail inside a row: a trip's little globe, a mode tile.
+    static let tile: CGFloat = 14
+    /// A one-line chip or caveat.
+    static let chip: CGFloat = 12
+}
+
+extension Color {
+    /// One colour in light appearance and another in dark, resolved wherever it is
+    /// drawn — so a view forced dark, like the globe, takes the dark one.
+    init(light: Color, dark: Color) {
+        #if os(iOS)
+            self.init(uiColor: UIColor { traits in
+                traits.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light)
+            })
+        #else
+            self.init(nsColor: NSColor(name: nil) { appearance in
+                appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                    ? NSColor(dark) : NSColor(light)
+            })
+        #endif
+    }
+}
+
+// MARK: - Type (D-34)
+
+/// The app's type: SF Pro on the system's text styles, so it follows Dynamic Type, with
+/// New York for one role only. Named here so every screen reaches for the same few
+/// rather than inventing a size; AGENTS.md lists the roles and `scripts/lint.sh` refuses
+/// a raw point size outside this file and the image renderers.
+///
+/// | Role | Font |
+/// |---|---|
+/// | `display` | New York — a personality, an onboarding page, Year in Review, a share card |
+/// | `sectionTitle` | Title 3, semibold — a group of figures |
+/// | `figure(_:)` | SF Pro, even-width digits, scaled with the text size |
+/// | `Eyebrow` | Caption 2, semibold, upper case, tracked — the label above a figure |
+///
+/// Body, subheadline, footnote and caption are the system's own. Text weights are
+/// regular, medium, semibold and bold; lighter weights are for symbols only.
 extension Font {
-    /// Figures: SF Pro with even-width digits, so a dashboard of numbers lines up and
-    /// does not jitter as it animates. Lighter as it grows — a large figure reads
-    /// better light than heavy.
-    static func statValue(_ size: CGFloat = 34) -> Font {
-        let weight: Font.Weight = switch size {
-        case 44...: .light
-        case 26...: .regular
-        default: .medium
-        }
-        return .system(size: size, weight: weight).monospacedDigit()
+    /// Display titles — a personality, a year, the first words a page says — in New
+    /// York, the system serif: a travel journal's voice, kept to those moments so it
+    /// stays one.
+    static func display(_ style: Font.TextStyle = .largeTitle) -> Font {
+        .system(style, design: .serif, weight: .regular)
     }
 
-    /// Display titles — a personality, a year, the first words a screen says — in New
-    /// York, the system serif: a travel journal's voice, used sparingly.
-    static func display(_ style: Font.TextStyle, weight: Font.Weight = .regular) -> Font {
-        .system(style, design: .serif, weight: weight)
+    /// The heading of a group of figures.
+    static let sectionTitle = Font.title3.weight(.semibold)
+
+    /// A figure drawn into an image — a share card, a frame of the Year in Review film —
+    /// at the fixed size the image is laid out for: an image cannot follow the reader's
+    /// text size, and should look the same wherever it is sent.
+    static func renderedFigure(_ role: FigureRole, size: CGFloat) -> Font {
+        .system(size: size, weight: role.weight).monospacedDigit()
+    }
+
+    /// A symbol used as a picture rather than beside text, at a size the layout fixes.
+    static func icon(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+        .system(size: size, weight: weight)
+    }
+}
+
+/// How prominent a figure is. Each role has one size and one weight, and scales with
+/// the text style it stands in for, so a dashboard of numbers lines up — even-width
+/// digits — and grows with the reader's text size instead of staying put.
+enum FigureRole {
+    /// The one number a full-screen card is about: a year in review.
+    case showcase
+    /// The number a page leads with: a collection's progress, the carbon total.
+    case hero
+    /// A stat card's number.
+    case card
+    /// A number in a row of three: a trip's header.
+    case inline
+
+    var size: CGFloat {
+        switch self {
+        case .showcase: 64
+        case .hero: 44
+        case .card: 28
+        case .inline: 20
+        }
+    }
+
+    var weight: Font.Weight {
+        switch self {
+        case .showcase, .hero, .card: .regular
+        case .inline: .medium
+        }
+    }
+
+    var textStyle: Font.TextStyle {
+        switch self {
+        case .showcase, .hero: .largeTitle
+        case .card: .title
+        case .inline: .title3
+        }
+    }
+}
+
+private struct FigureFont: ViewModifier {
+    let role: FigureRole
+    @ScaledMetric private var size: CGFloat
+
+    init(_ role: FigureRole) {
+        self.role = role
+        _size = ScaledMetric(wrappedValue: role.size, relativeTo: role.textStyle)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .font(.system(size: size, weight: role.weight).monospacedDigit())
+            // The biggest roles stop growing before they push the rest off the screen.
+            .dynamicTypeSize(...(role == .card || role == .inline ? .accessibility3 :
+                    .accessibility1))
+    }
+}
+
+extension View {
+    /// A number in one of the app's figure roles, scaled with the text size.
+    func figure(_ role: FigureRole) -> some View {
+        modifier(FigureFont(role))
     }
 }
 
@@ -109,7 +230,10 @@ struct CardBackground: ViewModifier {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.background.secondary, in: .rect(cornerRadius: 20, style: .continuous))
+            .background(
+                .background.secondary,
+                in: .rect(cornerRadius: Radius.card, style: .continuous)
+            )
     }
 }
 
@@ -150,7 +274,7 @@ struct SymbolTile: View {
 
     var body: some View {
         Image(systemName: systemName)
-            .font(.system(size: size * 0.46, weight: .regular))
+            .font(.icon(size * 0.46))
             .foregroundStyle(tint)
             .frame(width: size, height: size)
             .background(.fill.tertiary, in: .rect(cornerRadius: size * 0.3, style: .continuous))

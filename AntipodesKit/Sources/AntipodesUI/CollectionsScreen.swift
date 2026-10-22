@@ -143,13 +143,13 @@ struct CollectionDetailView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         HStack(alignment: .firstTextBaseline) {
                             Text("\(progress.visitedCount)")
-                                .font(.statValue(44))
+                                .figure(.hero)
                             Text("of \(progress.total)")
                                 .font(.title3)
                                 .foregroundStyle(.secondary)
                             Spacer()
                             Text(Format.percent(progress.fraction, digits: 0))
-                                .font(.title3.weight(.semibold).monospacedDigit())
+                                .figure(.inline)
                                 .foregroundStyle(Palette.visited)
                         }
                         ProgressView(value: progress.fraction)

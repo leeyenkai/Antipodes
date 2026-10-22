@@ -222,7 +222,7 @@ private struct ReviewPage: View {
             } else {
                 Spacer(minLength: 40)
                 Image(systemName: card.symbol)
-                    .font(.system(size: 44, weight: .light))
+                    .font(.icon(44, weight: .light))
                     .foregroundStyle(Palette.visited)
                     .opacity(appeared ? 1 : 0)
             }
@@ -231,7 +231,7 @@ private struct ReviewPage: View {
                 .tracking(1.2)
                 .foregroundStyle(Palette.visited)
             Text(card.value)
-                .font(.statValue(64))
+                .figure(.showcase)
                 .lineLimit(1)
                 .minimumScaleFactor(0.4)
                 .contentTransition(.numericText())

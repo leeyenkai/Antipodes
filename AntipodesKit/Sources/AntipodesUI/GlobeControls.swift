@@ -31,13 +31,13 @@ struct GlobeSummaryBar: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.vertical, 10)
-                .glassEffect(.regular, in: .rect(cornerRadius: 26))
+                .glassEffect(.regular, in: .rect(cornerRadius: Radius.panel))
 
                 if let caveat {
                     CaveatLabel(text: caveat)
                         .padding(.horizontal, 12)
                         .padding(.vertical, 6)
-                        .glassEffect(.regular, in: .rect(cornerRadius: 12))
+                        .glassEffect(.regular, in: .rect(cornerRadius: Radius.chip))
                         .padding(.horizontal, 24)
                 }
             }

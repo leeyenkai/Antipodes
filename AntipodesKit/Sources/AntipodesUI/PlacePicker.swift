@@ -266,7 +266,7 @@ private struct WishlistActions: ViewModifier {
                 .overlay(alignment: .topLeading) {
                     if isOn {
                         Image(systemName: "star.fill")
-                            .font(.system(size: 11, weight: .bold))
+                            .font(.icon(11, weight: .bold))
                             .foregroundStyle(Palette.wishlist)
                             .shadow(color: .black.opacity(0.4), radius: 1)
                             .offset(x: 24, y: -3)

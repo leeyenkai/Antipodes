@@ -211,7 +211,7 @@ struct ReviewStoryFrame: View {
                 } else {
                     Spacer(minLength: 60)
                     Image(systemName: card.symbol)
-                        .font(.system(size: 44, weight: .light))
+                        .font(.icon(44, weight: .light))
                         .foregroundStyle(Palette.visited)
                 }
                 Text(card.eyebrow.uppercased())
@@ -219,7 +219,7 @@ struct ReviewStoryFrame: View {
                     .tracking(1.2)
                     .foregroundStyle(Palette.visited)
                 Text(card.value)
-                    .font(.statValue(60))
+                    .font(.renderedFigure(.showcase, size: 60))
                     .lineLimit(1)
                     .minimumScaleFactor(0.4)
                 Text(card.title)
@@ -269,7 +269,7 @@ struct YearInReviewShareSheet: View {
                 VStack(spacing: 18) {
                     preview
                         .frame(height: 420)
-                        .clipShape(.rect(cornerRadius: 22, style: .continuous))
+                        .clipShape(.rect(cornerRadius: Radius.card, style: .continuous))
                         .padding(.horizontal, 60)
                     if let video {
                         ShareLink(item: video, preview: SharePreview("\(String(year)) in review")) {

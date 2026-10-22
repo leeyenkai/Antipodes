@@ -219,7 +219,7 @@ struct ShareCardView: View {
     private var globe: some View {
         if payload.scene == nil, let symbol = payload.symbol {
             Image(systemName: symbol)
-                .font(.system(size: format == .story ? 120 : 72, weight: .ultraLight))
+                .font(.icon(format == .story ? 120 : 72, weight: .ultraLight))
                 .foregroundStyle(Palette.visited)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if let scene = payload.scene {
@@ -244,7 +244,7 @@ struct ShareCardView: View {
                 .foregroundStyle(Palette.visited)
             if let bigValue = payload.bigValue {
                 Text(bigValue)
-                    .font(.statValue(format == .story ? 64 : 44))
+                    .font(.renderedFigure(.showcase, size: format == .story ? 64 : 44))
                     .lineLimit(1)
                     .minimumScaleFactor(0.5)
             }
@@ -263,7 +263,7 @@ struct ShareCardView: View {
                     ForEach(payload.metrics, id: \.self) { metric in
                         VStack(alignment: .leading, spacing: 1) {
                             Text(metric.value)
-                                .font(.statValue(17))
+                                .font(.renderedFigure(.inline, size: 17))
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.6)
                             Text(metric.label)
@@ -434,7 +434,7 @@ struct ShareCardSheet: View {
             image.swiftUIImage
                 .resizable()
                 .scaledToFit()
-                .clipShape(.rect(cornerRadius: 24, style: .continuous))
+                .clipShape(.rect(cornerRadius: Radius.card, style: .continuous))
                 .shadow(color: .black.opacity(0.4), radius: 20, y: 8)
                 .padding(.horizontal, 24)
                 .accessibilityLabel("Preview of the card")

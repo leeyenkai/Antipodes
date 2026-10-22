@@ -177,7 +177,7 @@ extension View {
                     .fill(.background.opacity(0.55))
                 VStack(spacing: 10) {
                     Image(systemName: "square.and.arrow.down.on.square")
-                        .font(.system(size: 44, weight: .light))
+                        .font(.icon(44, weight: .light))
                         .foregroundStyle(Palette.visited)
                     Text("Drop to Import or Restore")
                         .font(.title2.weight(.semibold))
@@ -185,10 +185,10 @@ extension View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(32)
-                .glassEffect(.regular, in: .rect(cornerRadius: 24))
+                .glassEffect(.regular, in: .rect(cornerRadius: Radius.panel))
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 16)
+                RoundedRectangle(cornerRadius: Radius.tile)
                     .strokeBorder(
                         Palette.visited,
                         style: StrokeStyle(lineWidth: 3, dash: [10, 6])

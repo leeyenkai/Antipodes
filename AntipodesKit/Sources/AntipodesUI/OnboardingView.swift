@@ -110,7 +110,7 @@ struct OnboardingView: View {
             """
         ) {
             Image(systemName: model.home == nil ? "house" : "house.fill")
-                .font(.system(size: 56, weight: .ultraLight))
+                .font(.icon(56, weight: .ultraLight))
                 .foregroundStyle(Palette.visited)
                 .accessibilityHidden(true)
         } actions: {
