@@ -1,12 +1,14 @@
 import SwiftUI
 
-/// The app's mark, drawn as vectors so it is crisp at any size: one great circle on the
-/// Earth, carrying a place on its near side and that place's antipode on its far side
-/// — every great circle through a point passes through its antipode. Used where the
-/// app signs its work, share cards and Year in Review, instead of a generic globe.
+/// The app's mark, drawn as vectors so it is crisp at any size: half a great circle on
+/// the Earth, from a place on its near side over the horizon to that place's antipode
+/// on its far side — every great circle through a point passes through its antipode.
+/// Used where the app signs its work, share cards and Year in Review, instead of a
+/// generic globe.
 ///
-/// It is the app icon (`Tools/icon/build_icons.py`, decision D-24) without the glass:
-/// the same circle, tilt and points, for sizes where the icon itself would be a blur.
+/// It is the app icon (`Tools/icon/build_icons.py`, decision D-24) without the glass or
+/// the sky: the same route, tilt and points, for sizes where the icon itself would be
+/// a blur.
 struct AppMark: View {
     var size: CGFloat = 20
 
@@ -50,9 +52,10 @@ struct AppMark: View {
             }
 
             let line = max(1, side * 0.075)
-            // The far side first, faint, as if seen through the Earth.
+            // The far side first, faint, as if seen through the Earth: from the limb on to
+            // the antipode.
             context.stroke(
-                arc(from: .pi, to: 2 * .pi),
+                arc(from: .pi, to: Geometry.far),
                 with: .color(Palette.pin.opacity(0.4)),
                 style: StrokeStyle(lineWidth: line * 0.8, lineCap: .butt)
             )
@@ -69,8 +72,9 @@ struct AppMark: View {
                 )),
                 with: .color(Palette.visited.opacity(0.8))
             )
+            // The near side: from the place, across the Earth's face to the limb.
             context.stroke(
-                arc(from: 0, to: .pi),
+                arc(from: Geometry.near, to: .pi),
                 with: .color(Palette.pin),
                 style: StrokeStyle(lineWidth: line, lineCap: .butt)
             )

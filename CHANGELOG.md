@@ -96,13 +96,15 @@ is blocked.
 - The icon's Earth carries real coasts, projected from Natural Earth's 1:50m countries
   so the near point is Madrid and the far point, seen through the glass, its true
   antipode off New Zealand, with the Greenland and Antarctic ice sheets in white and a
-  graticule every 30°. The great circle is a gold band painted on the Earth in true
-  perspective, wrapping its edge instead of circling it like a ring, marked every 10° like
-  a desk globe's meridian ring, and both points wear a translucent halo. The globe leans
-  at the Earth's axial tilt over the Atlantic, in a night sky that holds the North Star
-  on the Earth's axis and the Southern Cross on the antipode's side, its long arm pointing
-  to the south celestial pole. In the tinted and clear icons everything steps down in
-  brightness from the two points, so they lead there as they do in colour.
+  graticule every 30°. The route is half a great circle, a gold band painted on the Earth
+  in true perspective, from the place across the Earth's face and over the horizon to its
+  antipode, thinning as it goes; both points wear a translucent halo, and the motto
+  AD·ASTRA·PER·ASPERA is engraved along the band, too small to read but up close. The
+  globe leans at the Earth's axial tilt over the Atlantic, in a night sky that holds the
+  North Star on the Earth's axis, twinkling, and the Southern Cross on the antipode's side,
+  its long arm pointing to the south celestial pole, each star in its own colour. In the
+  tinted and clear icons everything steps down in brightness from the two points, so they
+  lead there as they do in colour. The app's small mark draws the same route.
 - A vector version of the same mark signs share cards and Year in Review instead of a
   generic globe symbol.
 - Spec 0.6.0: D-26 (satellite globe), D-27 (journey lists), and §13.1 brought up to
