@@ -129,6 +129,9 @@ public final class AppModel {
     public var addRequest: AddRequest?
     /// The last failed operation, for the one app-wide alert.
     public var errorMessage: String?
+    /// Why the log could not be read, while it cannot: the app shows that and a retry
+    /// in place of every screen.
+    public private(set) var logReadError: (any Error)?
     /// A record to open in a tab's list, from a widget's link. The tab's stack takes it
     /// and clears it.
     public var pendingRoute: PendingRoute?
@@ -233,9 +236,12 @@ public final class AppModel {
         logRevision += 1
         do {
             log = try store.travelLog()
+            logReadError = nil
         } catch {
-            errorMessage = "Your log could not be read: \(error.localizedDescription)"
-            log = .empty
+            // Keep the last log that read cleanly. An empty one would say "Nothing logged
+            // yet", invite starting over, and push a blank snapshot to the widgets.
+            logReadError = error
+            return
         }
         recompute()
         Task { await refreshFacts() }
@@ -329,20 +335,6 @@ public final class AppModel {
             guard generation == filterGeneration else { return }
             filteredStatistics = result
         }
-    }
-
-    // MARK: - Choices
-
-    /// Switches the country list and repoints the denominator in one step.
-    public func selectCountryList(_ list: CountryList) {
-        var updated = rules
-        updated.countryList = list
-        updated.worldCountryCount = countryListCounts[list] ?? list.fallbackCount
-        rules = updated
-    }
-
-    public func countryCount(for list: CountryList) -> Int {
-        countryListCounts[list] ?? list.fallbackCount
     }
 
     // MARK: - Writing
@@ -460,7 +452,8 @@ public final class AppModel {
         return trip.asTrip
     }
 
-    public func updateTrip(_ trip: Trip) {
+    @discardableResult
+    public func updateTrip(_ trip: Trip) -> Bool {
         perform { try store.updateTrip(trip) }
     }
 

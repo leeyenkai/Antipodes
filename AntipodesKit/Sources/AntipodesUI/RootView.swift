@@ -84,6 +84,11 @@ public struct RootView: View {
                 UndoToast()
                     .padding(.bottom, sizeClass == .compact ? 120 : 24)
             }
+            .overlay {
+                if let error = model.logReadError {
+                    StoreUnavailableView(error: error) { model.reload() }
+                }
+            }
             .focusedSceneValue(\.selectSection, SectionSelector { section in
                 selection = switch section {
                 case .globe: .globe

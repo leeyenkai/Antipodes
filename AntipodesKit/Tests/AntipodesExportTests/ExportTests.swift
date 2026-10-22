@@ -179,7 +179,7 @@ struct TravelLogExportTests {
     func formatVersion() throws {
         let data = try TravelLogExport.json(for: Self.sampleLog())
         let text = try #require(String(data: data, encoding: .utf8))
-        #expect(text.contains("\"formatVersion\" : 2"))
+        #expect(text.contains("\"formatVersion\" : 3"))
         #expect(text.contains("\"application\" : \"Antipodes\""))
     }
 

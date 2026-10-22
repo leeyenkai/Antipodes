@@ -117,7 +117,9 @@ public final class TravelLogStore {
     }
 
     public func updateTrip(_ trip: Trip) throws {
-        for stored in try trips(id: trip.id) {
+        let rows = try trips(id: trip.id)
+        guard !rows.isEmpty else { throw TravelLogStoreError.notFound(.trip) }
+        for stored in rows {
             stored.name = trip.name?.trimmedOrNil
             stored.notes = trip.notes?.trimmedOrNil
         }
@@ -186,7 +188,9 @@ public final class TravelLogStore {
     /// Writes every field of an edited visit back, including which trip it is in.
     public func updateVisit(_ visit: Visit) throws {
         let destination = try visit.tripID.flatMap { try trip(id: $0) }
-        for stored in try visits(id: visit.id) {
+        let rows = try visits(id: visit.id)
+        guard !rows.isEmpty else { throw TravelLogStoreError.notFound(.visit) }
+        for stored in rows {
             stored.apply(visit)
             stored.trip = destination
         }
@@ -271,8 +275,12 @@ public final class TravelLogStore {
     /// inserted, and one the user removed is deleted — so a sync conflict touches only
     /// what actually changed.
     public func updateJourney(_ journey: Journey) throws {
+        // A journey is one or more legs (R-MODEL-4); an edit cannot leave it with none.
+        guard !journey.legs.isEmpty else { throw TravelLogStoreError.journeyWithoutLegs }
         let destination = try journey.tripID.flatMap { try trip(id: $0) }
-        for stored in try journeys(id: journey.id) {
+        let rows = try journeys(id: journey.id)
+        guard !rows.isEmpty else { throw TravelLogStoreError.notFound(.journey) }
+        for stored in rows {
             stored.title = journey.title?.trimmedOrNil
             stored.trip = destination
 
@@ -381,5 +389,25 @@ extension String {
     var trimmedOrNil: String? {
         let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+/// Why a write to the log was refused, in words the app-wide alert can show.
+public enum TravelLogStoreError: LocalizedError, Equatable {
+    public enum Record: String, Sendable {
+        case trip, visit, journey
+    }
+
+    /// The record was deleted while it was open — from another window, or by undoing.
+    case notFound(Record)
+    case journeyWithoutLegs
+
+    public var errorDescription: String? {
+        switch self {
+        case let .notFound(record):
+            "This \(record.rawValue) is no longer in your log, so the changes couldn't be saved."
+        case .journeyWithoutLegs:
+            "A journey needs at least one leg."
+        }
     }
 }

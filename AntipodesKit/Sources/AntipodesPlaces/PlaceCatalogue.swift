@@ -97,6 +97,21 @@ public extension PlaceDatabase {
         return try place(kind: .city, id: nearest.id)
     }
 
+    /// The country's time zone, when every bundled city in it keeps the same one —
+    /// the rule D-13 uses for airports and landmarks. A country spanning zones has no
+    /// answer here rather than a guess.
+    func singleTimeZone(country code: String) throws -> String? {
+        let zones = try connection.query(
+            """
+            SELECT DISTINCT timezone FROM city
+            WHERE country_iso2 = ? AND timezone IS NOT NULL
+            LIMIT 2
+            """,
+            parameters: [.text(code.uppercased())]
+        ) { row in row.string(0) }
+        return zones.count == 1 ? zones[0] : nil
+    }
+
     // MARK: - Facts for statistics
 
     // One query per place kind, read side by side.

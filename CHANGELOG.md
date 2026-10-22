@@ -418,6 +418,30 @@ is blocked.
 
 ### Fixed
 
+- **Damaged figures can no longer crash the app** (R-CALC-5, R-LOG-8, R-LOG-9): a
+  distance of infinity or twenty digits — typed, imported or restored — traps no screen
+  that formats it. A leg keeps only a distance one leg could cover (up to 100,000 km)
+  and a duration under a year; the distance field says when a number is too long; and a
+  backup holding a date that does not exist, a point off the Earth or a rating past five
+  stars is refused or brought into range rather than read as it is.
+- Dates are right on Buddhist, Hebrew and Islamic calendars: a leg's times, a month or a
+  year picked on a phone set to one of them were saved in its years (2569 for 2026),
+  and month names are now Gregorian, like the log (R-DATE-1).
+- Switching a visit's date to "Range" starts the range on its own day, not one running
+  to today; a month or year switched to "Day" opens on that month or year.
+- Rail logs written with a decimal comma ("1234,5", "1.234,5") are read as the file meant
+  them, not ten times too long (R-JLOG-7).
+- An editor opened before a rail or road leg was measured no longer writes that length
+  away when it is saved, and saving with nothing changed writes nothing (R-PATH-5).
+- If the log cannot be read, the app says so and offers to try again, keeping what it
+  last read, instead of showing an empty log and blanking the widgets (R-PRIV-6).
+- A dropped pin takes its country's time zone only where the whole country keeps one,
+  instead of borrowing the zone of the user's other visits there (D-13).
+- Saving changes to a record deleted meanwhile reports that it is gone instead of
+  appearing to succeed; the trip editor stays open when its save fails, and asks before
+  throwing away a changed name or notes.
+- JSON backups write timestamps as ISO 8601 (format version 3); older backups still
+  restore.
 - "Longest journey" took the longest of all journeys, so one long flight hid it; it is
   the longest journey of more than one leg, as its title says.
 - A ride logged again joins the original's trip only while that trip is under way; it

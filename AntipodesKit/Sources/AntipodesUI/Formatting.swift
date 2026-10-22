@@ -11,7 +11,7 @@ enum Format {
     ) -> String {
         let value = system.distance(fromKilometres: kilometres)
         let number = value >= 100 || value == 0
-            ? Int(value.rounded()).formatted()
+            ? whole(value)
             : value.formatted(.number.precision(.fractionLength(1)))
         return "\(approximate ? "≈ " : "")\(number) \(system.distanceUnitAbbreviation)"
     }
@@ -44,20 +44,29 @@ enum Format {
         if abs(kilograms) >= 1000 {
             return "\((kilograms / 1000).formatted(.number.precision(.fractionLength(1)))) t CO₂e"
         }
-        return "\(Int(kilograms.rounded()).formatted()) kg CO₂e"
+        return "\(whole(kilograms)) kg CO₂e"
     }
 
     static func elevation(_ metres: Double, _ system: UnitSystem) -> String {
         switch system {
-        case .metric: "\(Int(metres.rounded()).formatted()) m"
-        case .imperial: "\(Int((metres / 0.3048).rounded()).formatted()) ft"
+        case .metric: "\(whole(metres)) m"
+        case .imperial: "\(whole(metres / 0.3048)) ft"
         }
     }
 
     /// "17 °C" or "63 °F", to the whole degree: a climate normal is not more precise.
     static func temperature(_ celsius: Double, _ system: UnitSystem) -> String {
-        let value = Int(system.temperature(fromCelsius: celsius).rounded())
+        let value = whole(system.temperature(fromCelsius: celsius))
         return "\(value) \(system == .metric ? "°C" : "°F")"
+    }
+
+    /// A figure to the whole unit, grouped: "12,345". Formatted as a floating-point
+    /// number rather than through `Int`, which traps on anything too large to hold —
+    /// and "—" for a figure that is not a number at all, rather than "∞" or "NaN".
+    static func whole(_ value: Double) -> String {
+        guard value.isFinite else { return "—" }
+        // Adding zero turns the -0 that rounding -0.4 gives into a plain 0.
+        return (value.rounded() + 0).formatted(.number.precision(.fractionLength(0)))
     }
 
     static func compact(_ value: Double) -> String {
@@ -74,7 +83,8 @@ enum Format {
     }
 
     static func delay(minutes: Double) -> String {
-        let rounded = Int(minutes.rounded())
+        guard minutes.isFinite else { return "—" }
+        let rounded = Int(max(-99999, min(99999, minutes)).rounded())
         if rounded == 0 {
             return "on time"
         }
@@ -87,7 +97,7 @@ enum Format {
     }
 
     static func years(_ value: Double) -> String {
-        "\(Int(value.rounded()).formatted()) years"
+        "\(whole(value)) years"
     }
 
     /// 🇳🇴 from "NO". Regional indicator symbols, so it needs no image and no network.
@@ -112,12 +122,22 @@ enum Format {
         Locale.current.localizedString(forCurrencyCode: code) ?? code
     }
 
+    /// The log's dates are Gregorian whatever calendar the device uses, so they are
+    /// named and formatted in Gregorian too, in the reader's language. Otherwise a
+    /// Hebrew or Islamic calendar would name the wrong month and a Buddhist one would
+    /// put 2567 beside a trip filed under 2024.
+    static let gregorian: Calendar = {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.locale = .current
+        return calendar
+    }()
+
     static func monthName(_ month: Int) -> String {
-        Calendar.current.monthSymbols[max(0, min(11, month - 1))]
+        gregorian.monthSymbols[max(0, min(11, month - 1))]
     }
 
     static func shortMonthName(_ month: Int) -> String {
-        Calendar.current.shortMonthSymbols[max(0, min(11, month - 1))]
+        gregorian.shortMonthSymbols[max(0, min(11, month - 1))]
     }
 
     /// Calendar dates are converted at midnight GMT, so they are formatted in GMT too —
@@ -125,6 +145,7 @@ enum Format {
     private static func gmt(_ style: Date.FormatStyle) -> Date.FormatStyle {
         var style = style
         style.timeZone = .gmt
+        style.calendar = gregorian
         return style
     }
 
@@ -143,7 +164,12 @@ enum Format {
             return day(start)
         }
         return (from ..< to).formatted(
-            Date.IntervalFormatStyle(date: .abbreviated, time: .omitted, timeZone: .gmt)
+            Date.IntervalFormatStyle(
+                date: .abbreviated,
+                time: .omitted,
+                calendar: gregorian,
+                timeZone: .gmt
+            )
         )
     }
 

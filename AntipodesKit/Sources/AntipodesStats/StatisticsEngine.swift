@@ -115,7 +115,8 @@ public struct TravelStatistics: Hashable, Sendable {
     public var formattedDistance: String {
         let value = rules.unitSystem.distance(fromKilometres: distance.totalKm)
         let unit = rules.unitSystem.distanceUnitAbbreviation
-        return "\(Int(value.rounded()).formatted()) \(unit)"
+        guard value.isFinite else { return "— \(unit)" }
+        return "\(value.rounded().formatted(.number.precision(.fractionLength(0)))) \(unit)"
     }
 
     public struct Headline: Identifiable, Hashable, Sendable {

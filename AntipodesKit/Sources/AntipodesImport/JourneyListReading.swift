@@ -135,10 +135,38 @@ extension FlightLogImport {
         return lowered.contains("mi") && !lowered.contains("km") ? value * 1.609344 : value
     }
 
-    /// The first number in a text such as "1,234.5 km".
-    private static func number(in text: String) -> Double? {
-        let digits = text.replacingOccurrences(of: ",", with: "")
-            .prefix { $0.isNumber || $0 == "." }
-        return Double(digits).flatMap { $0 > 0 ? $0 : nil }
+    /// The first number in a text such as "1,234.5 km", "1.234,5 km" or "1 234,5",
+    /// as a distance one leg could cover.
+    ///
+    /// Spreadsheets in much of Europe write a decimal comma, and the semicolon exports
+    /// the CSV reader accepts usually come from them, so a comma is not simply dropped:
+    /// "1234,5" is 1,234.5 km, not 12,345. Where both marks appear the later one is the
+    /// decimal point. A lone comma followed by exactly three digits is read as grouping
+    /// ("1,234"), the way an English export writes a thousand, and so is a mark that
+    /// appears more than once ("1.234.567").
+    static func number(in text: String) -> Double? {
+        let run = text.trimmingCharacters(in: .whitespaces)
+            .prefix { $0.isNumber || $0 == "." || $0 == "," || $0 == " " || $0 == "'"
+                || $0 == "\u{00A0}" || $0 == "\u{202F}"
+            }
+            .filter { $0.isNumber || $0 == "." || $0 == "," }
+        let lastComma = run.lastIndex(of: ",")
+        let lastDot = run.lastIndex(of: ".")
+        let decimal: Character? = switch (lastComma, lastDot) {
+        case let (comma?, dot?): comma > dot ? "," : "."
+        case let (comma?, nil):
+            run.filter { $0 == "," }.count == 1 && run[run.index(after: comma)...].count != 3
+                ? "," : nil
+        case (nil, _?): run.filter { $0 == "." }.count == 1 ? "." : nil
+        case (nil, nil): nil
+        }
+        let normalised = String(run.compactMap { character -> Character? in
+            if character == decimal {
+                return "."
+            }
+            return character.isNumber ? character : nil
+        })
+        guard let value = Double(normalised), value > 0 else { return nil }
+        return JourneyLeg.plausibleDistance(value)
     }
 }

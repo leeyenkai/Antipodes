@@ -11,8 +11,10 @@ struct FlexibleDateField: View {
     @State private var precision: FlexibleDate.Precision = .day
     @State private var day = Date()
     @State private var endDay = Date()
-    @State private var year = Calendar.current.component(.year, from: Date())
-    @State private var month = Calendar.current.component(.month, from: Date())
+    // From the log's own Gregorian calendar, not the device's: on a Buddhist calendar
+    // the device's year is 2569, which would be saved as the year of the visit.
+    @State private var year = CalendarDate.today().year
+    @State private var month = CalendarDate.today().month
     @State private var hasLoaded = false
 
     var body: some View {
@@ -77,7 +79,10 @@ struct FlexibleDateField: View {
     /// A menu of years, newest first: a stepper took dozens of taps to go back decades.
     private var yearStepper: some View {
         Picker("Year", selection: $year) {
-            ForEach(Array((1900 ... max(year, CalendarDate.today().year)).reversed()), id: \.self) {
+            ForEach(
+                Array((min(year, 1900) ... max(year, CalendarDate.today().year)).reversed()),
+                id: \.self
+            ) {
                 Text(String($0)).tag($0)
             }
         }
@@ -95,14 +100,22 @@ struct FlexibleDateField: View {
             day = value.date(in: .current) ?? Date()
         case let .range(start, end):
             day = start.date(in: .current) ?? Date()
-            endDay = end.date(in: .current) ?? day
         case let .month(y, m):
             year = y
             month = m
+            day = CalendarDate(year: y, month: m, day: 1)?.date(in: .current) ?? Date()
         case let .year(y):
             year = y
+            day = CalendarDate(year: y, month: 1, day: 1)?.date(in: .current) ?? Date()
         case .unknown:
             break
+        }
+        // A range starts as one day, so switching a 2019 visit to "Range" does not make
+        // it run until today.
+        if case let .range(_, end) = date {
+            endDay = end.date(in: .current) ?? day
+        } else {
+            endDay = day
         }
         publish()
     }

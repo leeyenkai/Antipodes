@@ -119,4 +119,31 @@ struct JourneyImportTests {
         #expect(TravelMode(importText: "roadTrip") == .roadTrip)
         #expect(TravelMode(importText: "teleport") == nil)
     }
+
+    /// Spreadsheet exports in much of Europe write a decimal comma; read naively,
+    /// "1234,5" would become 12,345 km — ten times the real figure.
+    @Test("Decimal commas and grouping marks are read as the file meant them")
+    func decimalCommas() {
+        #expect(FlightLogImport.number(in: "1234,5") == 1234.5)
+        #expect(FlightLogImport.number(in: "1.234,5 km") == 1234.5)
+        #expect(FlightLogImport.number(in: "1,234.5 km") == 1234.5)
+        #expect(FlightLogImport.number(in: "1 234,5") == 1234.5)
+        #expect(FlightLogImport.number(in: "12,75") == 12.75)
+        // A lone comma before exactly three digits is an English thousand.
+        #expect(FlightLogImport.number(in: "1,234") == 1234)
+        #expect(FlightLogImport.number(in: "496") == 496)
+        #expect(FlightLogImport.number(in: "496.2 km") == 496.2)
+    }
+
+    /// A distance no single leg could cover is a typo or a corrupt cell; kept, it
+    /// would crash every screen that formats the total.
+    @Test("Impossible distances and durations are not imported")
+    func implausibleFigures() {
+        #expect(FlightLogImport.number(in: "inf") == nil)
+        #expect(FlightLogImport.number(in: "0") == nil)
+        #expect(FlightLogImport.number(in: "99999999999999999999") == nil)
+        #expect(FlightLogImport.number(in: "160000 km") == nil)
+        #expect(DateText.durationMinutes("99999999999999:00") == nil)
+        #expect(DateText.durationMinutes("07:35") == 455)
+    }
 }

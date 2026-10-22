@@ -145,10 +145,12 @@ enum DateText {
     static func durationMinutes(_ value: String) -> Int? {
         let trimmed = value.trimmingCharacters(in: .whitespaces)
         if let minutes = Int(trimmed) {
-            return minutes > 0 ? minutes : nil
+            return minutes > 0 ? JourneyLeg.plausibleDuration(minutes) : nil
         }
+        // Hours are bounded before they are multiplied, so a garbage cell cannot overflow.
         let parts = trimmed.split(separator: ":").compactMap { Int($0) }
-        guard parts.count >= 2, (0 ... 59).contains(parts[1]) else { return nil }
+        guard parts.count >= 2, (0 ... 59).contains(parts[1]),
+              (0 ... JourneyLeg.maximumDurationMinutes / 60).contains(parts[0]) else { return nil }
         let minutes = parts[0] * 60 + parts[1]
         return minutes > 0 ? minutes : nil
     }

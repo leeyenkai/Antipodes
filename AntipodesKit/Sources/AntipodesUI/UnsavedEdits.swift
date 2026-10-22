@@ -61,7 +61,9 @@ struct UnsavedEditsGuard: ViewModifier {
             .toolbar {
                 if showsCancel {
                     ToolbarItem(placement: .cancellationAction) {
-                        Button(hasChanges ? "Cancel" : "Close", role: .cancel) {
+                        // Always "Cancel": beside the form's own Done, a "Close" read as a
+                        // second way to save.
+                        Button("Cancel", role: .cancel) {
                             if hasChanges {
                                 isConfirming = true
                             } else {

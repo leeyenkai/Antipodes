@@ -10,10 +10,15 @@ public struct CalendarDate: Hashable, Sendable, Codable, Comparable, CustomStrin
     public let month: Int
     public let day: Int
 
+    /// Travel happens within these years. Bounding them keeps the day arithmetic below
+    /// far from overflow whatever a damaged backup says.
+    public static let supportedYears = -9999 ... 9999
+
     /// Fails on a date that does not exist, so a bad import is visible rather than
     /// silently rolled over into the next month.
     public init?(year: Int, month: Int, day: Int) {
-        guard (1 ... 12).contains(month),
+        guard Self.supportedYears.contains(year),
+              (1 ... 12).contains(month),
               day >= 1,
               day <= CalendarDate.daysIn(month: month, year: year)
         else { return nil }
@@ -125,5 +130,28 @@ public struct CalendarDate: Hashable, Sendable, Codable, Comparable, CustomStrin
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
         return calendar.date(from: components)
+    }
+}
+
+extension CalendarDate {
+    private enum CodingKeys: String, CodingKey {
+        case year, month, day
+    }
+
+    /// Goes through the checking initialiser, so a backup cannot carry 31 February or
+    /// month 13 into the log — the record fails to read and the restore says so.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        guard let date = try CalendarDate(
+            year: container.decode(Int.self, forKey: .year),
+            month: container.decode(Int.self, forKey: .month),
+            day: container.decode(Int.self, forKey: .day)
+        ) else {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: "Not a date on the calendar"
+            ))
+        }
+        self = date
     }
 }

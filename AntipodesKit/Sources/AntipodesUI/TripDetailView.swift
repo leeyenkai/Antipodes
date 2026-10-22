@@ -234,20 +234,34 @@ struct TripEditor: View {
             .navigationTitle("Edit Trip")
             .toolbarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) { dismiss() }
-                }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") {
-                        var updated = trip
-                        updated.name = name.trimmedOrNil
-                        updated.notes = notes.trimmedOrNil
-                        model.updateTrip(updated)
-                        dismiss()
-                    }
+                    Button("Done", action: save)
                 }
             }
+            // The guard reads its placement from outside itself.
+            .guardingUnsavedEdits(hasChanges) { dismiss() }
+            .environment(\.editorPlacement, .root)
         }
         .presentationDetents([.medium])
+    }
+
+    private var hasChanges: Bool {
+        name.trimmedOrNil != trip.name?.trimmedOrNil || notes.trimmedOrNil != trip.notes?
+            .trimmedOrNil
+    }
+
+    /// A failed save keeps the sheet open with the edits in it; the app-wide alert says
+    /// what went wrong.
+    private func save() {
+        guard hasChanges else {
+            dismiss()
+            return
+        }
+        var updated = trip
+        updated.name = name.trimmedOrNil
+        updated.notes = notes.trimmedOrNil
+        if model.updateTrip(updated) {
+            dismiss()
+        }
     }
 }

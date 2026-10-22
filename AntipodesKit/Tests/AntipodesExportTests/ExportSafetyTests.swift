@@ -135,6 +135,24 @@ struct ExportSafetyTests {
         #expect(restored == original)
     }
 
+    /// Version 3 writes timestamps a person can read; a backup made by version 2, which
+    /// wrote seconds since 2001, must still restore to the same instant.
+    @Test("Timestamps are written as ISO 8601, and older backups' numbers still read")
+    func timestamps() throws {
+        let original = try Self.everything()
+        let text = try #require(String(data: TravelLogExport.json(for: original), encoding: .utf8))
+        // 750,000,100 s after 1 Jan 2001 is 7 Oct 2024 at 13:21:40 UTC.
+        #expect(text.contains("2024-10-07T13:21:40Z"))
+
+        // Version 2 wrote JSONEncoder's default: seconds since 2001, as a number.
+        let log = try JSONSerialization.jsonObject(with: JSONEncoder().encode(original))
+        let older = try JSONSerialization.data(withJSONObject: [
+            "formatVersion": 2, "application": "Antipodes", "exportedAt": "", "log": log,
+        ])
+        let restored = try TravelLogExport.importLog(fromJSON: older)
+        #expect(restored == original)
+    }
+
     @Test("A backup from a newer version is refused, and a stranger file named as such")
     func refusals() throws {
         let newer = Data(

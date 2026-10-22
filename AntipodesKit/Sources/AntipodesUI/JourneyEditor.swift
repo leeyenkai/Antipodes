@@ -299,7 +299,13 @@ struct JourneyEditor: View {
         let built = legs.compactMap(\.leg)
         guard built.count == legs.count, !built.isEmpty else { return }
         if var journey = existing {
-            journey.legs = built
+            // Nothing changed: nothing to write, and nothing stale to write over.
+            guard Fields(legs: legs, title: title, tripID: tripID) != baseline else {
+                onDone()
+                return
+            }
+            let current = model.log.journeys.first { $0.id == journey.id }?.legs ?? []
+            journey.legs = built.map { $0.keepingMeasurement(from: current) }
             journey.title = title.trimmedOrNil
             journey.tripID = tripID
             guard model.updateJourney(journey) else { return }

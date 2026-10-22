@@ -34,7 +34,8 @@ public extension AppModel {
     /// outlines the globe shades — and its name and continent from the database. The
     /// region and time zone are taken from the nearest bundled city in that country, if
     /// one is within 30 km; further out the pin keeps only its country rather than
-    /// borrowing a region it may not be in. Nothing leaves the device.
+    /// borrowing a region it may not be in, and takes the country's zone only where the
+    /// whole country keeps one (D-13). Nothing leaves the device.
     func resolvePin(at coordinate: Coordinate, name: String) async -> PlaceReference {
         let borders = loadBorders()
         let code = borders?.countryCode(near: coordinate, toleranceKm: 25)
@@ -42,6 +43,10 @@ public extension AppModel {
         var region: (code: String?, name: String?, zone: String?) = (nil, nil, nil)
         if let city = await nearestCity(to: coordinate, withinKm: 30), city.countryCode == code {
             region = (city.regionCode, city.regionName, city.timeZoneIdentifier)
+        }
+        var zone = region.zone
+        if zone == nil, let code {
+            zone = await (try? places?.singleTimeZone(country: code))
         }
         return PlaceReference(
             id: .custom(UUID()),
@@ -53,14 +58,8 @@ public extension AppModel {
             continent: country?.continent,
             regionCode: region.code,
             regionName: region.name,
-            timeZoneIdentifier: region.zone ?? (code.flatMap { singleZone(for: $0) })
+            timeZoneIdentifier: zone
         )
-    }
-
-    private func singleZone(for code: String) -> String? {
-        let zones = Set(log.visits.filter { $0.place.countryCode == code }
-            .compactMap(\.place.timeZoneIdentifier))
-        return zones.count == 1 ? zones.first : nil
     }
 
     /// The 1:50m outlines, for pin lookup and share cards. Preloaded off the main thread

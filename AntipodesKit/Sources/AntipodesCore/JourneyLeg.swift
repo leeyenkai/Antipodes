@@ -71,9 +71,13 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
         self.destination = destination
         self.date = date
         self.purpose = purpose
-        self.storedPathLengthKm = storedPathLengthKm
-        self.distanceKmOverride = distanceKmOverride
-        self.durationMinutesOverride = durationMinutesOverride
+        // Every way a figure arrives — typed, imported, restored from a backup — passes
+        // through here, so an impossible one (infinite, negative, a typo of twenty
+        // digits) is dropped here rather than crashing whatever formats it later. The
+        // leg then falls back to its measured or great-circle distance, which says so.
+        self.storedPathLengthKm = Self.plausibleDistance(storedPathLengthKm)
+        self.distanceKmOverride = Self.plausibleDistance(distanceKmOverride)
+        self.durationMinutesOverride = Self.plausibleDuration(durationMinutesOverride)
         self.times = times
         self.missedConnection = missedConnection
         self.routeID = routeID
@@ -90,8 +94,27 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
         self.notes = notes
     }
 
-    /// Distance and where it came from, resolved in one place so every caller agrees.
-    ///
+    /// Longer than any single leg can be: the longest scheduled flight is about
+    /// 15,000 km, and even a world cruise logged as one leg stays under 100,000 — two and
+    /// a half times round the Earth. Anything past it is a typo or a corrupt file.
+    public static let maximumDistanceKm = 100_000.0
+
+    /// A year: longer than any one voyage a person would log as a single leg.
+    public static let maximumDurationMinutes = 366 * 24 * 60
+
+    /// The figure, if it is a distance one leg could have covered.
+    public static func plausibleDistance(_ kilometres: Double?) -> Double? {
+        guard let kilometres, kilometres.isFinite, kilometres >= 0,
+              kilometres <= maximumDistanceKm else { return nil }
+        return kilometres
+    }
+
+    /// The figure, if it is a duration one leg could have taken.
+    public static func plausibleDuration(_ minutes: Int?) -> Int? {
+        guard let minutes, (0 ... maximumDurationMinutes).contains(minutes) else { return nil }
+        return minutes
+    }
+
     /// A surface leg with no length of its own, which its mode's network can measure
     /// (R-PATH-2, D-30). A catalogue route's length, a transit line's and the user's own
     /// figure all come first.
@@ -107,14 +130,16 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
             && storedPathLengthKm != nil
     }
 
+    /// Distance and where it came from, resolved in one place so every caller agrees.
+    ///
     /// Order: the user's override, then a real stored path, then the great circle —
     /// exact for a flight, flagged approximate for anything that should have followed
-    /// the ground (R-PATH-5).
+    /// the ground (R-PATH-5). The fields are settable, so they are checked here too.
     public var distance: (kilometres: Double, source: DistanceSource) {
-        if let override = distanceKmOverride, override >= 0 {
+        if let override = Self.plausibleDistance(distanceKmOverride) {
             return (override, .userOverride)
         }
-        if let stored = storedPathLengthKm, stored >= 0 {
+        if let stored = Self.plausibleDistance(storedPathLengthKm) {
             return (stored, .storedPath)
         }
         guard let from = origin.coordinate, let to = destination.coordinate else {
@@ -146,7 +171,7 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
     /// 11:30 took 8 h 30 m, not 2 h 30 m. Without both zones there is no duration —
     /// the wall-clock difference would be wrong by the zone gap, and silently so.
     public var duration: Result<(minutes: Int, source: DurationSource), DurationUnavailable> {
-        if let override = durationMinutesOverride, override >= 0 {
+        if let override = Self.plausibleDuration(durationMinutesOverride) {
             return .success((override, .userOverride))
         }
         let candidates: [(LocalDateTime?, LocalDateTime?, DurationSource)] = [
@@ -214,6 +239,25 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
     public func pathForDisplay(segments: Int = 64) -> [Coordinate] {
         guard let from = origin.coordinate, let to = destination.coordinate else { return [] }
         return GreatCircle.arc(from: from, to: to, segments: segments)
+    }
+
+    /// This leg, keeping a length its stored copy gained after this one was taken.
+    ///
+    /// An editor holds a copy of each leg from when it opened. If the leg was measured
+    /// along its network meanwhile (D-30) — which happens just after launch — saving the
+    /// copy would write the measurement away again. Only a leg whose ends, mode, route
+    /// and line are unchanged keeps it; anything else is a different leg to measure.
+    public func keepingMeasurement(from current: [JourneyLeg]) -> JourneyLeg {
+        guard storedPathLengthKm == nil, distanceKmOverride == nil,
+              let live = current.first(where: { $0.id == id }),
+              live.mode == mode, live.origin.id == origin.id,
+              live.destination.id == destination.id, live.routeID == routeID,
+              live.transitLineID == transitLineID,
+              let measured = live.storedPathLengthKm else { return self }
+        var leg = self
+        leg.storedPathLengthKm = measured
+        leg.networkVersion = live.networkVersion
+        return leg
     }
 
     /// A copy for riding the same leg again (R-JLOG-6): a new identity and the given

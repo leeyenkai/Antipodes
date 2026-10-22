@@ -55,6 +55,22 @@ public struct Visit: Identifiable, Hashable, Sendable, Codable {
         self.notes = notes
         self.createdAt = createdAt
     }
+
+    /// Decoded through the initialiser, so a backup's rating is kept within one to five
+    /// stars like a typed one.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            id: container.decode(UUID.self, forKey: .id),
+            place: container.decode(PlaceReference.self, forKey: .place),
+            visitType: container.decode(VisitType.self, forKey: .visitType),
+            date: container.decode(FlexibleDate.self, forKey: .date),
+            tripID: container.decodeIfPresent(UUID.self, forKey: .tripID),
+            rating: container.decodeIfPresent(Int.self, forKey: .rating),
+            notes: container.decodeIfPresent(String.self, forKey: .notes),
+            createdAt: container.decodeIfPresent(Date.self, forKey: .createdAt)
+        )
+    }
 }
 
 /// Where a leg's distance came from, so a stat can say how solid its total is

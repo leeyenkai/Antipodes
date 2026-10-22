@@ -115,3 +115,25 @@ public enum Continent: String, Sendable, Codable, CaseIterable, Comparable {
         lhs.displayName < rhs.displayName
     }
 }
+
+extension Coordinate {
+    private enum CodingKeys: String, CodingKey {
+        case latitude, longitude
+    }
+
+    /// A decoded coordinate is checked like a parsed one: a backup holding NaN or a
+    /// latitude of 400 fails to read rather than drawing a pin nowhere.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        guard let coordinate = try Coordinate(
+            validating: container.decode(Double.self, forKey: .latitude),
+            container.decode(Double.self, forKey: .longitude)
+        ) else {
+            throw DecodingError.dataCorrupted(.init(
+                codingPath: decoder.codingPath,
+                debugDescription: "Not a point on the Earth"
+            ))
+        }
+        self = coordinate
+    }
+}

@@ -161,16 +161,38 @@ private struct DistanceOverrideField: View {
             TextField("Calculated", text: $text)
                 .multilineTextAlignment(.trailing)
                 .decimalKeyboard()
-                .onChange(of: text) { _, new in
-                    let trimmed = new.trimmingCharacters(in: .whitespaces)
-                    if trimmed.isEmpty {
+                .onChange(of: text) { _, _ in
+                    if text.trimmingCharacters(in: .whitespaces).isEmpty {
                         kilometres = nil
-                    } else if let value = Double(trimmed.replacingOccurrences(of: ",", with: ".")),
-                              value > 0 {
-                        kilometres = system == .metric ? value : value * 1.609_344
+                    } else if let typed = typedKilometres, typed > 0,
+                              JourneyLeg.plausibleDistance(typed) != nil {
+                        kilometres = typed
                     }
                 }
         }
+        if isTooLong {
+            Text("""
+            That's longer than any single leg can be. Check the number, or split the \
+            journey into legs.
+            """)
+            .font(.caption)
+            .foregroundStyle(Palette.warning)
+        }
+    }
+
+    /// What the field holds, in kilometres, if it is a number at all.
+    private var typedKilometres: Double? {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        guard let value = Double(trimmed.replacingOccurrences(of: ",", with: ".")) else {
+            return nil
+        }
+        return system == .metric ? value : value * 1.609_344
+    }
+
+    /// A number was typed, but no leg could be that long — so it is not used.
+    private var isTooLong: Bool {
+        guard let typed = typedKilometres else { return false }
+        return typed > 0 && JourneyLeg.plausibleDistance(typed) == nil
     }
 }
 

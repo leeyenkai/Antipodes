@@ -165,7 +165,11 @@ extension LocalDateTime {
     /// device's zone, and the user types the time on the ticket, so the clock reading —
     /// not the instant — is what was meant.
     init?(pickerDate: Date) {
-        let parts = Calendar.current.dateComponents(
+        // Gregorian, like `pickerDate` below and the rest of the log: the device's own
+        // calendar may be Buddhist or Hebrew, and its year is not the log's.
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let parts = calendar.dateComponents(
             [.year, .month, .day, .hour, .minute],
             from: pickerDate
         )

@@ -214,6 +214,8 @@ public enum TravelLogExport {
     public static func json(for log: TravelLog) throws -> Data {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes]
+        // Readable without the app: "2024-06-12T08:30:00Z", not seconds since 2001.
+        encoder.dateEncodingStrategy = .iso8601
         return try encoder.encode(Document(log: log))
     }
 
@@ -236,13 +238,24 @@ public enum TravelLogExport {
     }
 
     /// The format version this build writes, and the newest it reads.
-    public static let currentFormatVersion = 2
+    public static let currentFormatVersion = 3
+
+    /// ISO 8601, as version 3 writes; or seconds since 2001, as versions 1 and 2 did.
+    static func decodeDate(_ decoder: any Decoder) throws -> Date {
+        let container = try decoder.singleValueContainer()
+        if let text = try? container.decode(String.self),
+           let date = ISO8601DateFormatter().date(from: text) {
+            return date
+        }
+        return try Date(timeIntervalSinceReferenceDate: container.decode(Double.self))
+    }
 
     public static func importLog(fromJSON data: Data) throws -> TravelLog {
         struct Header: Decodable {
             let formatVersion: Int?
         }
         let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .custom(decodeDate)
         guard let header = try? decoder.decode(Header.self, from: data) else {
             throw ImportFailure.notABackup
         }
@@ -261,7 +274,8 @@ public enum TravelLogExport {
     struct Document: Codable {
         /// Bumped whenever the shape changes. Version 2 added leg times, routes, the
         /// wishlist, time zones and short codes; every addition is optional on import, so
-        /// a version 1 file still reads.
+        /// a version 1 file still reads. Version 3 writes timestamps as ISO 8601 text;
+        /// the older numbers still read.
         var formatVersion = TravelLogExport.currentFormatVersion
         var application = "Antipodes"
         var exportedAt: String

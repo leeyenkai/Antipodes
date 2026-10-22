@@ -180,6 +180,10 @@ struct VisitForm: View {
             finalPlace.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         }
         if var visit = existing {
+            guard fields != baseline else {
+                onDone()
+                return
+            }
             visit.place = finalPlace
             visit.visitType = visitType
             visit.date = date
