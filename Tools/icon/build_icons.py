@@ -3,10 +3,12 @@
 
 The app ships "Great circle": one great circle on a glass Earth, carrying a place
 on its near side and that place's antipode on its far side. The Earth carries the
-real continents, projected from Natural Earth's public-domain country outlines and
-turned so the two points are a true pair: Madrid, and its antipode near Wellington.
-The other two concepts it was chosen from are kept here so the choice can be
-revisited and compared.
+real coastlines, ice sheets and graticule, projected from Natural Earth's
+public-domain country outlines and turned so the two points are a true pair:
+Madrid, and its antipode near Wellington. The circle is a band painted on the
+sphere and seen in true perspective, so it wraps the Earth's edge rather than
+floating round it. The other two concepts it was chosen from are kept here so the
+choice can be revisited and compared.
 
 Each concept is an `.icon` bundle: an `icon.json` describing groups, glass and
 fills, plus one flat SVG per layer on a 1024 x 1024 canvas. The system adds the
@@ -120,22 +122,6 @@ def segment(start: Point, end: Point, steps: int = 2) -> list[Point]:
     return [(start[0] + (end[0] - start[0]) * i / steps, start[1] + (end[1] - start[1]) * i / steps) for i in range(steps + 1)]
 
 
-def ellipse_arc(
-    centre: Point, semi_major: float, semi_minor: float, tilt: float, start: float, end: float, steps: int = 160
-) -> list[Point]:
-    """Points along an ellipse rotated by `tilt` degrees, between two parameter angles."""
-    out = []
-    for i in range(steps + 1):
-        t = math.radians(start + (end - start) * i / steps)
-        out.append(add(centre, rotate((semi_major * math.cos(t), semi_minor * math.sin(t)), tilt)))
-    return out
-
-
-def ellipse_point(centre: Point, semi_major: float, semi_minor: float, tilt: float, at: float) -> Point:
-    t = math.radians(at)
-    return add(centre, rotate((semi_major * math.cos(t), semi_minor * math.sin(t)), tilt))
-
-
 def pin_outline(tip: Point, direction_degrees: float, length: float, head_radius: float) -> list[Point]:
     """A map pin whose point sits at `tip` and whose head lies along the tilt."""
     d = length - head_radius
@@ -183,17 +169,56 @@ def polygon_area(points: list[Point]) -> float:
     return sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(points, points[1:] + points[:1])) / 2
 
 
+def simplify(points: list[Point], tolerance: float, closed: bool = True) -> list[Point]:
+    """Drops the points that move the outline by less than `tolerance` (Douglas–Peucker).
+
+    A closed ring is split at the point farthest from its first, and each half kept
+    to the same tolerance.
+    """
+
+    def open_line(line: list[Point]) -> list[Point]:
+        keep = [False] * len(line)
+        keep[0] = keep[-1] = True
+        stack = [(0, len(line) - 1)]
+        while stack:
+            i, j = stack.pop()
+            a, b = line[i], line[j]
+            dx, dy = b[0] - a[0], b[1] - a[1]
+            length = math.hypot(dx, dy)
+            worst, at = 0.0, None
+            for k in range(i + 1, j):
+                p = line[k]
+                d = abs(dx * (a[1] - p[1]) - dy * (a[0] - p[0])) / length if length else math.dist(a, p)
+                if d > worst:
+                    worst, at = d, k
+            if at is not None and worst > tolerance:
+                keep[at] = True
+                stack += [(i, at), (at, j)]
+        return [p for p, k in zip(line, keep) if k]
+
+    if len(points) < 8:
+        return points
+    if not closed:
+        return open_line(points)
+    far = max(range(len(points)), key=lambda i: math.dist(points[0], points[i]))
+    return open_line(points[: far + 1])[:-1] + open_line(points[far:] + points[:1])[:-1]
+
+
 # ---------------------------------------------------------------------------
 # The Earth's land, seen from space
 # ---------------------------------------------------------------------------
 
-# Natural Earth's 1:110m countries, public domain, already vendored for the place
-# database. Filling every country the same colour, with no strokes, draws the land.
+# Natural Earth's 1:50m countries, public domain, already vendored for the place
+# database. Their borders cancel out, which leaves the coasts.
 NATURAL_EARTH = (
-    Path(__file__).resolve().parent.parent / "placedb" / "vendor" / "naturalearth" / "ne_110m_admin_0_countries.geojson"
+    Path(__file__).resolve().parent.parent / "placedb" / "vendor" / "naturalearth" / "ne_50m_admin_0_countries.geojson"
 )
 
+# Countries almost wholly under an ice sheet, drawn in ice rather than land.
+ICE_SHEETS = {"Greenland", "Antarctica"}
+
 Vec3 = tuple[float, float, float]
+LonLat = tuple[float, float]
 
 
 def unit_vector(latitude: float, longitude: float) -> Vec3:
@@ -203,6 +228,19 @@ def unit_vector(latitude: float, longitude: float) -> Vec3:
 
 def dot(a: Vec3, b: Vec3) -> float:
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+
+
+def cross(a: Vec3, b: Vec3) -> Vec3:
+    return (a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0])
+
+
+def normalised(a: Vec3) -> Vec3:
+    length = math.sqrt(dot(a, a))
+    return (a[0] / length, a[1] / length, a[2] / length)
+
+
+def opposite(a: Vec3) -> Vec3:
+    return (-a[0], -a[1], -a[2])
 
 
 @dataclass(frozen=True)
@@ -316,60 +354,77 @@ def clip_to_near_side(ring: list[Vec3]) -> list[list[tuple[float, float]]]:
     return outlines
 
 
-def land(view: View, radius: float, min_area: float) -> list[list[Point]]:
-    """Every country on the near side of the Earth, as canvas outlines.
+def coastlines(features: list[dict]) -> list[list[LonLat]]:
+    """The outlines of the land the countries cover together, one ring per landmass.
 
-    Islands smaller than `min_area` square points, as seen, would only be speckle on
-    a Home Screen, so they are left out. An island here is a whole landmass, every
-    country on it counted together: neighbouring countries share the vertices of
-    their border in this data, so a small country inside a continent always stays.
-
-    The outlines are not simplified: two countries simplified apart no longer meet
-    exactly, and the sea shows through the hairline between them.
+    Neighbouring countries in this data share the vertices of their border, so each
+    border edge comes once in each direction; dropping those pairs leaves the coast,
+    which then chains into rings. Land runs anticlockwise and water enclosed by land,
+    such as the Caspian, clockwise. With the borders gone the coasts can be simplified
+    without opening a hairline between two countries.
     """
-    features = json.loads(NATURAL_EARTH.read_text())["features"]
-    pieces: list[tuple[set[tuple[float, float]], list[list[Point]]]] = []
+    edges: dict[tuple[LonLat, LonLat], None] = {}
     for feature in features:
         geometry = feature["geometry"]
         polygons = geometry["coordinates"] if geometry["type"] == "MultiPolygon" else [geometry["coordinates"]]
         for polygon in polygons:
-            # The outer ring only: the one hole in this data, Lesotho in South Africa,
-            # is itself a country.
-            ring = [(lon, lat) for lon, lat in polygon[0][:-1]]
-            if polygon_area(ring) < 0:
-                ring.reverse()
-            projected = [view.project(unit_vector(lat, lon)) for lon, lat in densify(ring, 1.0)]
-            outlines = [
-                [(CENTRE[0] + radius * x, CENTRE[1] - radius * y) for x, y in outline]
-                for outline in clip_to_near_side(projected)
-            ]
-            pieces.append(({(round(lon, 6), round(lat, 6)) for lon, lat in ring}, outlines))
+            for index, ring in enumerate(polygon):
+                points = [(round(lon, 7), round(lat, 7)) for lon, lat in ring[:-1]]
+                if (polygon_area(points) > 0) != (index == 0):
+                    points.reverse()
+                for a, b in zip(points, points[1:] + points[:1]):
+                    if (b, a) in edges:
+                        del edges[(b, a)]
+                    else:
+                        edges[(a, b)] = None
+    onward: dict[LonLat, LonLat] = {}
+    for a, b in edges:
+        assert a not in onward, f"the coast touches itself at {a}"
+        onward[a] = b
+    rings = []
+    while onward:
+        start = point = next(iter(onward))
+        ring = []
+        while point in onward:
+            ring.append(point)
+            point = onward.pop(point)
+        assert point == start, f"the coast from {start} does not close"
+        rings.append(ring)
+    return rings
 
-    # Join pieces that share a vertex into landmasses.
-    parent = list(range(len(pieces)))
 
-    def root(i: int) -> int:
-        while parent[i] != i:
-            parent[i] = parent[parent[i]]
-            i = parent[i]
-        return i
+def near_side(rings: list[list[LonLat]], view: View, radius: float, min_area: float) -> list[list[Point]]:
+    """The parts of `rings` that face the viewer, as canvas outlines.
 
-    owner: dict[tuple[float, float], int] = {}
-    for i, (vertices, _) in enumerate(pieces):
-        for vertex in vertices:
-            if vertex in owner:
-                parent[root(i)] = root(owner[vertex])
-            else:
-                owner[vertex] = i
-    areas: dict[int, float] = {}
-    for i, (_, outlines) in enumerate(pieces):
-        areas[root(i)] = areas.get(root(i), 0.0) + sum(abs(polygon_area(o)) for o in outlines)
-    return [
-        outline
-        for i, (_, outlines) in enumerate(pieces)
-        if areas[root(i)] >= min_area
-        for outline in outlines
-    ]
+    Pieces smaller than `min_area` square points, as seen, would only be speckle on a
+    Home Screen, so they are left out. Water enclosed by land is clipped as if it were
+    land and then turned back round, so it still cuts through what surrounds it.
+
+    Outlines are simplified to a tenth of a point, well under a pixel at the largest
+    size the icon is drawn, which keeps the land within a hair of the sea's edge.
+    """
+    out = []
+    for ring in rings:
+        water = polygon_area(ring) < 0
+        ordered = list(reversed(ring)) if water else ring
+        projected = [view.project(unit_vector(lat, lon)) for lon, lat in densify(ordered, 1.0)]
+        for outline in clip_to_near_side(projected):
+            canvas = [(CENTRE[0] + radius * x, CENTRE[1] - radius * y) for x, y in outline]
+            if abs(polygon_area(canvas)) >= min_area:
+                canvas = simplify(canvas, 0.1)
+                out.append(list(reversed(canvas)) if water else canvas)
+    return out
+
+
+def land_and_ice(view: View, radius: float, min_area: float) -> tuple[list[list[Point]], list[list[Point]]]:
+    """The near side's land, and its ice sheets, as canvas outlines."""
+    features = json.loads(NATURAL_EARTH.read_text())["features"]
+    land = [f for f in features if f["properties"]["ADMIN"] not in ICE_SHEETS]
+    ice = [f for f in features if f["properties"]["ADMIN"] in ICE_SHEETS]
+    return (
+        near_side(coastlines(land), view, radius, min_area),
+        near_side(coastlines(ice), view, radius, min_area),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -585,80 +640,187 @@ def through_the_earth(lines: bool = True) -> Concept:
     )
 
 
-# "Great circle" has its own, deeper palette: a night sky, a real ocean and land.
-NIGHT_SKY = [(0.11, 0.15, 0.33), (0.02, 0.03, 0.10)]
-NIGHT_SKY_DARK = [(0.05, 0.06, 0.13), (0.00, 0.01, 0.03)]
-OCEAN = [(0.16, 0.55, 0.72), (0.05, 0.27, 0.47)]
-OCEAN_DARK = [(0.11, 0.40, 0.55), (0.03, 0.18, 0.33)]
-LAND = [(0.67, 0.85, 0.62), (0.51, 0.72, 0.49)]
-LAND_DARK = [(0.53, 0.71, 0.49), (0.39, 0.56, 0.38)]
-BAND = (0.99, 0.76, 0.30)
-BAND_DARK = (0.96, 0.71, 0.26)
-DOT = (1.00, 0.96, 0.87)
-# Greys for the tinted and clear icons, brightest first: the point, the circle, the
-# land, the sea.
-TINTED = {"dot": 1.0, "band": 0.96, "land": 0.72, "ocean": 0.18}
+# ---------------------------------------------------------------------------
+# A great circle, painted on the Earth
+# ---------------------------------------------------------------------------
+#
+# These work on the unit sphere in view coordinates: x to the right, y up and z
+# towards the viewer, as View.project returns them.
 
-# Islands smaller than this, in square points as seen, are left off: Ireland and
-# Iceland stay, Sicily and Jamaica would be specks.
-LAND_MIN_AREA = 120.0
+
+def ring_pole(tilt: float, openness: float) -> Vec3:
+    """The pole of a great circle that, seen from the front, is an ellipse whose long
+    axis rises `tilt` degrees to the right and whose short axis is `openness` times
+    the long one. Its near half passes below the centre: a ring seen from just above."""
+    t = math.radians(tilt)
+    s = math.sqrt(1 - openness**2)
+    return (-math.sin(t) * s, math.cos(t) * s, openness)
+
+
+def on_ring(pole: Vec3, angle: float) -> Vec3:
+    """The point `angle` radians round the great circle from where it crosses the limb
+    on the right, turning towards the viewer."""
+    across = normalised((pole[1], -pole[0], 0.0))
+    nearest = cross(across, pole)
+    assert across[0] > 0 and nearest[2] > 0
+    return tuple(math.cos(angle) * a + math.sin(angle) * n for a, n in zip(across, nearest))
+
+
+def on_canvas(v: Vec3, radius: float) -> Point:
+    return (CENTRE[0] + radius * v[0], CENTRE[1] - radius * v[1])
+
+
+def limb_between(a: Point, b: Point, step: float = math.radians(0.5)) -> list[Point]:
+    """Points along the unit circle strictly between two points on it, the short way."""
+    start = math.atan2(a[1], a[0])
+    sweep = (math.atan2(b[1], b[0]) - start + math.pi) % math.tau - math.pi
+    n = max(1, math.ceil(abs(sweep) / step))
+    return [(math.cos(start + sweep * k / n), math.sin(start + sweep * k / n)) for k in range(1, n)]
+
+
+def ribbon(pole: Vec3, width: float, radius: float, front: bool, steps: int = 360) -> list[Point]:
+    """The half of a band round a great circle that faces towards the viewer, or away,
+    as one canvas outline.
+
+    The band is painted on the sphere, `width` points wide where it passes nearest the
+    viewer. Each of its edges is a small circle, drawn as far as the limb; the two
+    edges are joined along the limb, so the band narrows and wraps the Earth's edge as
+    a line painted on a ball does, and the front and back halves meet there exactly.
+    """
+    s = math.hypot(pole[0], pole[1])
+    half = math.asin(width / (2 * radius * s))
+
+    def edge(side: int, angle: float) -> Point:
+        centre = on_ring(pole, angle)
+        x, y, _ = (math.cos(half) * c + side * math.sin(half) * p for c, p in zip(centre, pole))
+        return (x, y)
+
+    def run(side: int, backwards: bool) -> list[Point]:
+        # An edge faces the viewer between the two angles where it meets the limb.
+        lift = math.asin(-side * math.tan(half) * pole[2] / s)
+        start, end = (lift, math.pi - lift) if front else (math.pi - lift, math.tau + lift)
+        if backwards:
+            start, end = end, start
+        return [edge(side, start + (end - start) * i / steps) for i in range(steps + 1)]
+
+    upper, lower = run(+1, False), run(-1, True)
+    outline = upper + limb_between(upper[-1], lower[0]) + lower + limb_between(lower[-1], upper[0])
+    return [on_canvas((x, y, 0.0), radius) for x, y in outline]
+
+
+def graticule_of(view: View, radius: float, width: float, spacing: int = 30) -> list[list[Point]]:
+    """The parallels and meridians every `spacing` degrees on the near side, as bands.
+
+    As on printed globes, only every third meridian runs on to the poles and the rest
+    stop at the last parallel, so the lines do not crowd together where they meet.
+    Each line ends `width` short of the limb, so its square end stays on the Earth.
+    """
+    reach = 1 - width / radius
+
+    def visible_runs(samples: list[Vec3]) -> list[list[Point]]:
+        runs, current = [], []
+        for v in samples:
+            x, y, z = view.project(v)
+            if z >= 0 and math.hypot(x, y) <= reach:
+                current.append(on_canvas((x, y, z), radius))
+            elif current:
+                runs.append(current)
+                current = []
+        if current:
+            runs.append(current)
+        return [simplify(r, 0.1, closed=False) for r in runs if len(r) > 3]
+
+    lines = []
+    for lat in range(-90 + spacing, 90, spacing):
+        lines += visible_runs([unit_vector(lat, lon / 2) for lon in range(-360, 361)])
+    for lon in range(-180, 180, spacing):
+        last = 89 if lon % 90 == 0 else 90 - spacing
+        lines += visible_runs([unit_vector(lat / 2, lon) for lat in range(-2 * last, 2 * last + 1)])
+    return [stroke_outline(line, width, round_caps=False) for line in lines]
+
+
+# "Great circle" has its own, deeper palette: a night sky, a sapphire ocean, celadon
+# land, white ice and a gold route.
+NIGHT_SKY = [(0.10, 0.13, 0.30), (0.03, 0.04, 0.11)]
+NIGHT_SKY_DARK = [(0.05, 0.06, 0.14), (0.00, 0.01, 0.04)]
+OCEAN = [(0.18, 0.52, 0.76), (0.06, 0.24, 0.50)]
+OCEAN_DARK = [(0.12, 0.38, 0.58), (0.03, 0.16, 0.34)]
+LAND = [(0.74, 0.87, 0.66), (0.52, 0.71, 0.50)]
+LAND_DARK = [(0.60, 0.74, 0.54), (0.40, 0.56, 0.40)]
+ICE = (0.93, 0.96, 0.98)
+ICE_DARK = (0.80, 0.84, 0.88)
+GRID = (0.75, 0.90, 1.00)
+BAND = [(1.00, 0.84, 0.45), (0.96, 0.66, 0.24)]
+BAND_DARK = [(0.96, 0.78, 0.40), (0.90, 0.60, 0.22)]
+DOT = (1.00, 0.97, 0.90)
+DOT_DARK = (0.97, 0.94, 0.86)
+# Greys for the tinted and clear icons, brightest first.
+TINTED = {"dot": 1.0, "band": 0.92, "ice": 0.80, "land": 0.66, "grid": 0.30, "ocean": 0.16}
+
+# Islands smaller than this, in square points as seen, are left off: about 11,000 km²
+# face on. Sicily, Corsica and Iceland stay; Jamaica and the Canaries would be dust.
+LAND_MIN_AREA = 30.0
 
 # The place on the near side: Madrid. Its antipode is in New Zealand, near Wellington.
 MADRID = (40.42, -3.70)
 
+# The Earth's axial tilt, in degrees: the angle a desk globe leans at.
+AXIAL_TILT = 23.44
 
-def great_circle(lines: bool = False, near_at: float = 68.0, roll: float = 30.0) -> Concept:
+
+def great_circle() -> Concept:
     """One great circle on the Earth, carrying a place and its antipode.
 
     Every great circle through a point passes through its antipode, and the app
-    draws journeys along great circles. The front half of the circle and the near
-    point ride on top of the glass; the back half and the antipode lie behind it.
-    The band is cut square where it meets the edge of the Earth, so the two halves
-    join there without a seam.
+    draws journeys along great circles. The circle is a gold band painted on the
+    Earth; its front half and the near point ride on top of the glass, and its back
+    half and the antipode lie behind it, seen through.
 
-    The Earth is turned so the near point sits on Madrid, and leans like a desk
-    globe, its north pole tipped `roll` degrees to the right. The far point, mirrored
-    through the centre, is then Madrid's true antipode, in New Zealand.
+    The Earth is turned so the near point sits on Madrid, and leans like a desk globe,
+    its north pole tipped right by the Earth's own axial tilt. That frames the
+    Atlantic, between the Americas and Europe and Africa; the far point, mirrored
+    through the centre, is Madrid's true antipode, in New Zealand.
+
+    Each point wears a translucent halo, the way a map marks where you are, which
+    gives the glass something to refract and the eye a second depth to read.
     """
-    width = 40.0
-    a, b, tilt = GLOBE_RADIUS - width / 2, 112.0, -32.0
-    front = ellipse_arc(CENTRE, a, b, tilt, 0, 180)
-    back = ellipse_arc(CENTRE, a, b, tilt, 180, 360)
-    near = ellipse_point(CENTRE, a, b, tilt, near_at)
-    far = ellipse_point(CENTRE, a, b, tilt, near_at + 180)
-    view = View.placing(MADRID, near, GLOBE_RADIUS, roll)
-    continents = land(view, GLOBE_RADIUS, min_area=LAND_MIN_AREA)
-    sphere = [circle_points(CENTRE, GLOBE_RADIUS, 360)]
+    radius, width = 330.0, 40.0
+    pole = ring_pole(tilt=35.0, openness=0.30)
+    here = on_ring(pole, math.radians(60))
+    near = on_canvas(here, radius)
+    far = on_canvas(opposite(here), radius)
+    view = View.placing(MADRID, near, radius, AXIAL_TILT)
+    land, ice = land_and_ice(view, radius, LAND_MIN_AREA)
     earth = [
-        # Printed on the ocean rather than glass of its own, so the coasts stay crisp
+        # Printed on the ocean rather than glass of their own, so the coasts stay crisp
         # and the Earth catches the light as one sphere.
-        Layer("Land", "land.svg", continents, LAND, LAND_DARK, glass=False, union=True, tinted_grey=TINTED["land"]),
-        Layer("Ocean", "earth.svg", sphere, OCEAN, OCEAN_DARK, tinted_grey=TINTED["ocean"]),
+        Layer("Ice", "ice.svg", ice, ICE, ICE_DARK, glass=False, union=True, tinted_grey=TINTED["ice"]),
+        Layer("Land", "land.svg", land, LAND, LAND_DARK, glass=False, union=True, tinted_grey=TINTED["land"]),
+        Layer("Graticule", "graticule.svg", graticule_of(view, radius, 4.0), GRID, opacity=0.18, glass=False,
+              union=True, tinted_grey=TINTED["grid"]),
+        Layer("Ocean", "earth.svg", [circle_points(CENTRE, radius, 720)], OCEAN, OCEAN_DARK,
+              tinted_grey=TINTED["ocean"]),
     ]
-    if lines:
-        grid = graticule(GLOBE_RADIUS, 18, -10, 14)
-        earth.insert(1, Layer("Graticule", "graticule.svg", grid, GRATICULE, GRATICULE_DARK, opacity=0.42, glass=False))
+
+    def marker(name: str, file: str, at: Point, size: float) -> list[Layer]:
+        return [
+            Layer(name, f"{file}.svg", [circle_points(at, size, 180)], DOT, DOT_DARK, tinted_grey=TINTED["dot"]),
+            Layer("Halo", f"{file}-halo.svg", [circle_points(at, size * 1.68, 180)], DOT, DOT_DARK, opacity=0.32,
+                  tinted_grey=TINTED["dot"]),
+        ]
+
+    def route(file: str, front: bool) -> Layer:
+        return Layer("Route", file, [ribbon(pole, width, radius, front)], BAND, BAND_DARK, tinted_grey=TINTED["band"])
+
     return Concept(
         "great-circle",
         "Great circle",
         [
-            Group(
-                "Near side",
-                [
-                    Layer("Here", "here.svg", [circle_points(near, 64)], DOT, tinted_grey=TINTED["dot"]),
-                    Layer("Route", "route-front.svg", [stroke_outline(front, width, round_caps=False)], BAND,
-                          BAND_DARK, tinted_grey=TINTED["band"]),
-                ],
-                shadow=0.5,
-            ),
+            Group("Near side", marker("Here", "here", near, 38.0) + [route("route-front.svg", True)], shadow=0.5),
             Group("Earth", earth, shadow=0.45, translucency=0.6),
             Group(
                 "Far side",
-                [
-                    Layer("Antipode", "antipode.svg", [circle_points(far, 50)], DOT, tinted_grey=TINTED["dot"]),
-                    Layer("Route", "route-back.svg", [stroke_outline(back, width, round_caps=False)], BAND,
-                          BAND_DARK, tinted_grey=TINTED["band"]),
-                ],
+                marker("Antipode", "antipode", far, 30.0) + [route("route-back.svg", False)],
                 shadow=0.0,
                 specular=False,
             ),

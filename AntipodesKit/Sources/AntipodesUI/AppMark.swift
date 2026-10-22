@@ -82,11 +82,13 @@ struct AppMark: View {
 }
 
 /// The icon's geometry, as fractions of the Earth's radius. Outside the view so the
-/// canvas, which draws off the main actor, can read it.
+/// canvas, which draws off the main actor, can read it. The icon's circle reaches the
+/// limb and is 0.30 as deep as it is wide; here it is drawn just inside, so the stroke
+/// stays on the Earth.
 private enum Geometry {
-    static let semiMajor = 0.933
-    static let semiMinor = 0.373
-    static let tilt = -32.0 * Double.pi / 180
-    static let near = 68.0 * Double.pi / 180
-    static let far = 248.0 * Double.pi / 180
+    static let semiMajor = 0.925
+    static let semiMinor = 0.2775
+    static let tilt = -35.0 * Double.pi / 180
+    static let near = 60.0 * Double.pi / 180
+    static let far = 240.0 * Double.pi / 180
 }

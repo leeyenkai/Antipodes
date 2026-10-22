@@ -93,10 +93,13 @@ is blocked.
   `Tools/icon/render.sh` renders it with Xcode's `ictool`, beside the two concepts it was
   chosen from. It replaces a flattened PNG with an alpha channel, which App Store Connect
   rejects, and hand-made Mac sizes.
-- The icon's Earth carries real continents, projected from Natural Earth so the near
-  point is Madrid and the far point, seen through the glass, its true antipode off New
-  Zealand. A deeper sky, a two-tone ocean, sage land, and tinted and clear renditions
-  that keep land and sea apart.
+- The icon's Earth carries real coasts, projected from Natural Earth's 1:50m countries
+  so the near point is Madrid and the far point, seen through the glass, its true
+  antipode off New Zealand, with the Greenland and Antarctic ice sheets in white and a
+  graticule every 30°. The great circle is a gold band painted on the Earth in true
+  perspective, wrapping its edge instead of circling it like a ring, and both points wear
+  a translucent halo. The globe leans at the Earth's axial tilt over the Atlantic, in a
+  night sky, with dark, tinted and clear renditions that keep land, ice and sea apart.
 - A vector version of the same mark signs share cards and Year in Review instead of a
   generic globe symbol.
 - Spec 0.6.0: D-26 (satellite globe), D-27 (journey lists), and §13.1 brought up to
