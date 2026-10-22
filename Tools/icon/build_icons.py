@@ -7,8 +7,10 @@ real coastlines, ice sheets and graticule, projected from Natural Earth's
 public-domain country outlines and turned so the two points are a true pair:
 Madrid, and its antipode near Wellington. The circle is a band painted on the
 sphere and seen in true perspective, so it wraps the Earth's edge rather than
-floating round it. The other two concepts it was chosen from are kept here so the
-choice can be revisited and compared.
+floating round it, and it carries a scale like a desk globe's meridian ring. Above,
+the North Star sits on the Earth's axis; below, the Southern Cross points along it
+to the south celestial pole. The other two concepts it was chosen from are kept
+here so the choice can be revisited and compared.
 
 Each concept is an `.icon` bundle: an `icon.json` describing groups, glass and
 fills, plus one flat SVG per layer on a 1024 x 1024 canvas. The system adds the
@@ -739,8 +741,133 @@ def graticule_of(view: View, radius: float, width: float, spacing: int = 30) -> 
     return [stroke_outline(line, width, round_caps=False) for line in lines]
 
 
+def great_arc(a: Vec3, b: Vec3, step: float = math.radians(0.5)) -> list[Vec3]:
+    """Points along the shorter great circle from a towards b, a included and b not."""
+    omega = math.acos(max(-1.0, min(1.0, dot(a, b))))
+    if omega < 1e-12:
+        return [a]
+    n = max(1, math.ceil(omega / step))
+    return [
+        tuple((math.sin((1 - k / n) * omega) * p + math.sin(k / n * omega) * q) / math.sin(omega) for p, q in zip(a, b))
+        for k in range(n)
+    ]
+
+
+def painted(corners: list[Vec3], radius: float) -> tuple[list[list[Point]], list[list[Point]]]:
+    """A small shape painted on the sphere, its corners in view coordinates and its
+    sides great-circle arcs: the canvas outlines of the part facing the viewer, and of
+    the part facing away, as seen through the Earth."""
+    ring = [p for a, b in zip(corners, corners[1:] + corners[:1]) for p in great_arc(a, b)]
+    middle = tuple(sum(c) for c in zip(*ring))
+    turning = tuple(sum(c) for c in zip(*(cross(a, b) for a, b in zip(ring, ring[1:] + ring[:1]))))
+    if dot(turning, middle) < 0:  # clip_to_near_side wants it anticlockwise from outside
+        ring.reverse()
+    behind = [(x, y, -z) for x, y, z in reversed(ring)]
+    return (
+        [[on_canvas((x, y, 0.0), radius) for x, y in o] for o in clip_to_near_side(ring)],
+        [[on_canvas((x, y, 0.0), radius) for x, y in o] for o in clip_to_near_side(behind)],
+    )
+
+
+def graduations(
+    pole: Vec3, width: float, radius: float, start: float, every: int = 10, major: int = 30
+) -> tuple[list[list[Point]], list[list[Point]]]:
+    """A scale along the band, like the one on a desk globe's meridian ring: a short
+    mark across it every `every` degrees round the circle from `start`, a longer one
+    every `major`. None at 0° and 180°, which the two points cover. Returns the marks
+    facing the viewer and those facing away."""
+    s = math.hypot(pole[0], pole[1])
+    half = math.asin(width / (2 * radius * s))
+    thickness = math.radians(0.3)
+    front, back = [], []
+    for degrees in range(every, 360, every):
+        if degrees == 180:
+            continue
+        reach = half * (0.6 if degrees % major == 0 else 0.3)
+        at = start + math.radians(degrees)
+        corners = []
+        for along, side in ((-thickness, -1), (thickness, -1), (thickness, 1), (-thickness, 1)):
+            centre = on_ring(pole, at + along)
+            corners.append(
+                tuple(math.cos(reach) * c + side * math.sin(reach) * p for c, p in zip(centre, pole))
+            )
+        near, far = painted(corners, radius)
+        front += near
+        back += far
+    return front, back
+
+
+# ---------------------------------------------------------------------------
+# The two stars travellers steer by
+# ---------------------------------------------------------------------------
+
+
+def chaikin(points: list[Point], iterations: int = 1) -> list[Point]:
+    """Rounds a closed outline's corners by cutting each a quarter of the way in."""
+    for _ in range(iterations):
+        points = [
+            q
+            for a, b in zip(points, points[1:] + points[:1])
+            for q in ((0.75 * a[0] + 0.25 * b[0], 0.75 * a[1] + 0.25 * b[1]),
+                      (0.25 * a[0] + 0.75 * b[0], 0.25 * a[1] + 0.75 * b[1]))
+        ]
+    return points
+
+
+def sparkle(centre: Point, size: float, bearing: float, sharpness: float = 3.4) -> list[Point]:
+    """A four-pointed star with concave sides, a stretched astroid, its points `size`
+    from the centre, the first on `bearing` (radians clockwise from up). The tips are
+    rounded a little, so they stay crisp rather than sharp."""
+    c, s = math.cos(bearing), math.sin(bearing)
+    outline = []
+    for i in range(480):
+        t = math.tau * i / 480
+        x = size * math.copysign(abs(math.cos(t)) ** sharpness, math.cos(t))
+        y = size * math.copysign(abs(math.sin(t)) ** sharpness, math.sin(t))
+        outline.append((centre[0] + x * s - y * c, centre[1] - x * c - y * s))
+    return simplify(chaikin(outline), 0.1)
+
+
+# The Southern Cross's four bright stars, J2000: right ascension (h, m, s),
+# declination (°, ′, ″) and visual magnitude.
+SOUTHERN_CROSS = {
+    "Acrux": ((12, 26, 35.9), (-63, 5, 57), 0.76),
+    "Mimosa": ((12, 47, 43.3), (-59, 41, 19), 1.25),
+    "Gacrux": ((12, 31, 9.96), (-57, 6, 47.6), 1.64),
+    "Imai": ((12, 15, 8.7), (-58, 44, 56), 2.79),
+}
+
+
+def southern_cross(centre: Point, height: float, towards: Point) -> list[tuple[Point, float]]:
+    """The Cross as it looks from the ground, east to the left of north, as (position,
+    magnitude) on the canvas: scaled so Gacrux is `height` from Acrux, and turned so
+    the long arm, from Gacrux through Acrux, points at `towards`, the way it points
+    at the south celestial pole."""
+
+    def degrees(d: float, m: float, s: float) -> float:
+        return math.copysign(abs(d) + m / 60 + s / 3600, d)
+
+    stars = {name: (degrees(*ra) * 15, degrees(*dec), mag) for name, (ra, dec, mag) in SOUTHERN_CROSS.items()}
+    ra0 = sum(ra for ra, _, _ in stars.values()) / len(stars)
+    dec0 = sum(dec for _, dec, _ in stars.values()) / len(stars)
+    # Flat sky coordinates, x to the east (left) and y north (up), in degrees.
+    flat = {n: (-(ra - ra0) * math.cos(math.radians(dec0)), dec - dec0, mag) for n, (ra, dec, mag) in stars.items()}
+    top, foot = flat["Gacrux"], flat["Acrux"]
+    k = height / math.hypot(foot[0] - top[0], foot[1] - top[1])
+    mid = ((top[0] + foot[0]) / 2, (top[1] + foot[1]) / 2)
+    # On the canvas y points down: the long arm, from Gacrux to Acrux, is (dx, -dy).
+    arm = math.atan2(-(foot[1] - top[1]), foot[0] - top[0])
+    turn = math.atan2(towards[1] - centre[1], towards[0] - centre[0]) - arm
+    out = []
+    for x, y, mag in flat.values():
+        u, v = (x - mid[0]) * k, -(y - mid[1]) * k
+        out.append(((centre[0] + u * math.cos(turn) - v * math.sin(turn),
+                     centre[1] + u * math.sin(turn) + v * math.cos(turn)), mag))
+    return out
+
+
 # "Great circle" has its own, deeper palette: a night sky, a sapphire ocean, celadon
-# land, white ice and a gold route.
+# land, white ice, a gold route and starlight.
 NIGHT_SKY = [(0.10, 0.13, 0.30), (0.03, 0.04, 0.11)]
 NIGHT_SKY_DARK = [(0.05, 0.06, 0.14), (0.00, 0.01, 0.04)]
 OCEAN = [(0.18, 0.52, 0.76), (0.06, 0.24, 0.50)]
@@ -751,13 +878,20 @@ ICE = (0.93, 0.96, 0.98)
 ICE_DARK = (0.80, 0.84, 0.88)
 GRID = (0.75, 0.90, 1.00)
 BAND = [(1.00, 0.84, 0.45), (0.96, 0.66, 0.24)]
-BAND_DARK = [(0.96, 0.78, 0.40), (0.90, 0.60, 0.22)]
+BAND_DARK = [(0.98, 0.80, 0.42), (0.92, 0.62, 0.24)]
+SCALE = (0.86, 0.56, 0.20)
+SCALE_DARK = (0.82, 0.53, 0.19)
 DOT = (1.00, 0.97, 0.90)
 DOT_DARK = (0.97, 0.94, 0.86)
-# Greys for the tinted and clear icons, brightest first.
-TINTED = {"dot": 1.0, "band": 0.92, "ice": 0.80, "land": 0.66, "grid": 0.30, "ocean": 0.16}
+STAR = (1.00, 0.97, 0.88)
+STAR_DARK = (0.98, 0.95, 0.86)
+# Greys for the tinted and clear icons. Tinted dark can draw nothing brighter than the
+# tint itself, so the points stand out only if everything else steps down beneath them:
+# the points and stars, then the route, its scale and the ice, the land, the sea.
+TINTED = {"dot": 1.0, "star": 1.0, "band": 0.78, "scale": 0.62, "ice": 0.68, "land": 0.52, "grid": 0.30,
+          "ocean": 0.12}
 
-# Islands smaller than this, in square points as seen, are left off: about 11,000 km²
+# Islands smaller than this, in square points as seen, are left off: about 12,000 km²
 # face on. Sicily, Corsica and Iceland stay; Jamaica and the Canaries would be dust.
 LAND_MIN_AREA = 30.0
 
@@ -769,24 +903,33 @@ AXIAL_TILT = 23.44
 
 
 def great_circle() -> Concept:
-    """One great circle on the Earth, carrying a place and its antipode.
+    """One great circle on the Earth, carrying a place and its antipode, under the two
+    stars travellers steer by.
 
     Every great circle through a point passes through its antipode, and the app
     draws journeys along great circles. The circle is a gold band painted on the
-    Earth; its front half and the near point ride on top of the glass, and its back
-    half and the antipode lie behind it, seen through.
+    Earth and marked every 10° like the meridian ring of a desk globe; its front half
+    and the near point ride on top of the glass, and its back half and the antipode
+    lie behind it, seen through.
 
     The Earth is turned so the near point sits on Madrid, and leans like a desk globe,
     its north pole tipped right by the Earth's own axial tilt. That frames the
     Atlantic, between the Americas and Europe and Africa; the far point, mirrored
     through the centre, is Madrid's true antipode, in New Zealand.
 
+    The sky holds the north and the south. The North Star sits on the Earth's axis,
+    beyond the north pole, as it does in the real sky. The Southern Cross, the
+    southern hemisphere's own sign, hangs on the antipode's side, its long arm
+    pointing along the axis to the south celestial pole, as it does for anyone
+    finding south by it.
+
     Each point wears a translucent halo, the way a map marks where you are, which
     gives the glass something to refract and the eye a second depth to read.
     """
-    radius, width = 330.0, 40.0
+    radius, width = 316.0, 38.0
     pole = ring_pole(tilt=35.0, openness=0.30)
-    here = on_ring(pole, math.radians(60))
+    start = math.radians(60)
+    here = on_ring(pole, start)
     near = on_canvas(here, radius)
     far = on_canvas(opposite(here), radius)
     view = View.placing(MADRID, near, radius, AXIAL_TILT)
@@ -809,21 +952,48 @@ def great_circle() -> Concept:
                   tinted_grey=TINTED["dot"]),
         ]
 
-    def route(file: str, front: bool) -> Layer:
-        return Layer("Route", file, [ribbon(pole, width, radius, front)], BAND, BAND_DARK, tinted_grey=TINTED["band"])
+    marks_front, marks_back = graduations(pole, width, radius, start)
+
+    def route(file: str, front: bool) -> list[Layer]:
+        # The scale is printed on the band, so it takes the band's glass rather than its own.
+        marks = marks_front if front else marks_back
+        return [
+            Layer("Scale", f"scale-{file}.svg", marks, SCALE, SCALE_DARK, glass=False, union=True,
+                  tinted_grey=TINTED["scale"]),
+            Layer("Route", f"route-{file}.svg", [ribbon(pole, width, radius, front)], BAND, BAND_DARK,
+                  tinted_grey=TINTED["band"]),
+        ]
+
+    # The axis's direction on the canvas, from the centre towards the north pole.
+    x, y, _ = view.project(unit_vector(90, 0))
+    north = (x / math.hypot(x, y), -y / math.hypot(x, y))
+    bearing = math.atan2(north[0], -north[1])
+    polaris = (CENTRE[0] + north[0] * radius * 1.36, CENTRE[1] + north[1] * radius * 1.36)
+    south_pole_of_sky = (CENTRE[0] - north[0] * radius * 1.9, CENTRE[1] - north[1] * radius * 1.9)
+    cross = [
+        # Sized by brightness, flux to the half power, so Imai still reads at the smallest
+        # sizes; Polaris, the one star that marks north, is drawn larger than its own.
+        sparkle(at, max(13.0, 27.0 * 10 ** (-0.2 * (magnitude - 0.76))), bearing)
+        for at, magnitude in southern_cross((166.0, 792.0), 165.0, south_pole_of_sky)
+    ]
+    # Starlight, not glass: on a dark sky the glass's edge rings each star like a sticker,
+    # and leaving the stars flat keeps them far behind the glass Earth.
+    sky = [
+        Layer("North Star", "north-star.svg", [sparkle(polaris, 48.0, bearing)], STAR, STAR_DARK, glass=False,
+              tinted_grey=TINTED["star"]),
+        Layer("Southern Cross", "southern-cross.svg", cross, STAR, STAR_DARK, glass=False,
+              tinted_grey=TINTED["star"]),
+    ]
 
     return Concept(
         "great-circle",
         "Great circle",
         [
-            Group("Near side", marker("Here", "here", near, 38.0) + [route("route-front.svg", True)], shadow=0.5),
+            Group("Near side", marker("Here", "here", near, 36.0) + route("front", True), shadow=0.5),
             Group("Earth", earth, shadow=0.45, translucency=0.6),
-            Group(
-                "Far side",
-                marker("Antipode", "antipode", far, 30.0) + [route("route-back.svg", False)],
-                shadow=0.0,
-                specular=False,
-            ),
+            Group("Far side", marker("Antipode", "antipode", far, 29.0) + route("back", False), shadow=0.0,
+                  specular=False),
+            Group("Sky", sky, shadow=0.0, specular=False),
         ],
         sky=NIGHT_SKY,
         sky_dark=NIGHT_SKY_DARK,

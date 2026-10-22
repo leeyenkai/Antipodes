@@ -95,6 +95,31 @@
           "fill-specializations": [
             {
               "value": {
+                "solid": "srgb:0.86000,0.56000,0.20000,1.00000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.82000,0.53000,0.19000,1.00000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.62000,0.62000,0.62000,1.00000"
+              }
+            }
+          ],
+          "glass": false,
+          "image-name": "scale-front.svg",
+          "name": "Scale",
+          "opacity": 1.0
+        },
+        {
+          "fill-specializations": [
+            {
+              "value": {
                 "linear-gradient": [
                   "srgb:1.00000,0.84000,0.45000,1.00000",
                   "srgb:0.96000,0.66000,0.24000,1.00000"
@@ -115,8 +140,8 @@
               "appearance": "dark",
               "value": {
                 "linear-gradient": [
-                  "srgb:0.96000,0.78000,0.40000,1.00000",
-                  "srgb:0.90000,0.60000,0.22000,1.00000"
+                  "srgb:0.98000,0.80000,0.42000,1.00000",
+                  "srgb:0.92000,0.62000,0.24000,1.00000"
                 ],
                 "orientation": {
                   "start": {
@@ -133,7 +158,7 @@
             {
               "appearance": "tinted",
               "value": {
-                "solid": "srgb:0.92000,0.92000,0.92000,1.00000"
+                "solid": "srgb:0.78000,0.78000,0.78000,1.00000"
               }
             }
           ],
@@ -172,7 +197,7 @@
             {
               "appearance": "tinted",
               "value": {
-                "solid": "srgb:0.80000,0.80000,0.80000,1.00000"
+                "solid": "srgb:0.68000,0.68000,0.68000,1.00000"
               }
             }
           ],
@@ -223,7 +248,7 @@
             {
               "appearance": "tinted",
               "value": {
-                "solid": "srgb:0.66000,0.66000,0.66000,1.00000"
+                "solid": "srgb:0.52000,0.52000,0.52000,1.00000"
               }
             }
           ],
@@ -299,7 +324,7 @@
             {
               "appearance": "tinted",
               "value": {
-                "solid": "srgb:0.16000,0.16000,0.16000,1.00000"
+                "solid": "srgb:0.12000,0.12000,0.12000,1.00000"
               }
             }
           ],
@@ -376,6 +401,31 @@
           "fill-specializations": [
             {
               "value": {
+                "solid": "srgb:0.86000,0.56000,0.20000,1.00000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.82000,0.53000,0.19000,1.00000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:0.62000,0.62000,0.62000,1.00000"
+              }
+            }
+          ],
+          "glass": false,
+          "image-name": "scale-back.svg",
+          "name": "Scale",
+          "opacity": 1.0
+        },
+        {
+          "fill-specializations": [
+            {
+              "value": {
                 "linear-gradient": [
                   "srgb:1.00000,0.84000,0.45000,1.00000",
                   "srgb:0.96000,0.66000,0.24000,1.00000"
@@ -396,8 +446,8 @@
               "appearance": "dark",
               "value": {
                 "linear-gradient": [
-                  "srgb:0.96000,0.78000,0.40000,1.00000",
-                  "srgb:0.90000,0.60000,0.22000,1.00000"
+                  "srgb:0.98000,0.80000,0.42000,1.00000",
+                  "srgb:0.92000,0.62000,0.24000,1.00000"
                 ],
                 "orientation": {
                   "start": {
@@ -414,7 +464,7 @@
             {
               "appearance": "tinted",
               "value": {
-                "solid": "srgb:0.92000,0.92000,0.92000,1.00000"
+                "solid": "srgb:0.78000,0.78000,0.78000,1.00000"
               }
             }
           ],
@@ -425,6 +475,70 @@
         }
       ],
       "name": "Far side",
+      "shadow": {
+        "kind": "neutral",
+        "opacity": 0.0
+      },
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0.0
+      }
+    },
+    {
+      "layers": [
+        {
+          "fill-specializations": [
+            {
+              "value": {
+                "solid": "srgb:1.00000,0.97000,0.88000,1.00000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.98000,0.95000,0.86000,1.00000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
+            }
+          ],
+          "glass": false,
+          "image-name": "north-star.svg",
+          "name": "North Star",
+          "opacity": 1.0
+        },
+        {
+          "fill-specializations": [
+            {
+              "value": {
+                "solid": "srgb:1.00000,0.97000,0.88000,1.00000"
+              }
+            },
+            {
+              "appearance": "dark",
+              "value": {
+                "solid": "srgb:0.98000,0.95000,0.86000,1.00000"
+              }
+            },
+            {
+              "appearance": "tinted",
+              "value": {
+                "solid": "srgb:1.00000,1.00000,1.00000,1.00000"
+              }
+            }
+          ],
+          "glass": false,
+          "image-name": "southern-cross.svg",
+          "name": "Southern Cross",
+          "opacity": 1.0
+        }
+      ],
+      "name": "Sky",
       "shadow": {
         "kind": "neutral",
         "opacity": 0.0
