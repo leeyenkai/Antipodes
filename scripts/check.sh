@@ -9,6 +9,10 @@ source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 
 "$REPO_ROOT/scripts/build-placedb.sh"
 "$REPO_ROOT/scripts/build-borders.sh"
+# The route pack only where its OpenStreetMap cache has been fetched (D-36).
+if [[ -f "$OSMPACK_DIR/vendor/osm/manifest.json" ]]; then
+    "$REPO_ROOT/scripts/build-osmpack.sh"
+fi
 "$REPO_ROOT/scripts/build.sh"
 "$REPO_ROOT/scripts/test.sh"
 "$REPO_ROOT/scripts/lint.sh" --check

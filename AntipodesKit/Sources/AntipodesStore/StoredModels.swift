@@ -199,6 +199,10 @@ public final class StoredLeg {
     public var seat: String?
     public var rating: Int?
     public var notes: String?
+    /// `HumanActivity`'s raw value, for a hike or a ride (D-36).
+    public var activityRaw: String?
+    /// A `RecordedTrack`, encoded: the way the user's device recorded the leg.
+    public var recordedTrackData: Data?
 
     public var journey: StoredJourney?
 

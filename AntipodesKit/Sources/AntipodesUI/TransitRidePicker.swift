@@ -34,23 +34,28 @@ struct TransitRidePicker: View {
     var body: some View {
         NavigationStack(path: $path) {
             List {
-                Section {
-                    ForEach(filtered) { system in
-                        NavigationLink(value: Step.lines(system)) {
-                            TransitSystemRow(system: system)
+                ForEach(cities, id: \.self) { city in
+                    Section {
+                        ForEach(filtered.filter { cityKey($0) == city }) { system in
+                            NavigationLink(value: Step.lines(system)) {
+                                TransitSystemRow(system: system)
+                            }
                         }
+                    } header: {
+                        Text(city)
                     }
-                } footer: {
-                    Text("""
-                    Stations and lines from Wikidata. A system that isn't here can still be \
-                    logged between two places.
-                    """)
                 }
                 Section {
                     Button("Log Between Two Places Instead", systemImage: "mappin.and.ellipse") {
                         dismiss()
                         onPlacesInstead()
                     }
+                } footer: {
+                    Text("""
+                    Metro lines from Wikidata; trams, light rail, more metros and buses from \
+                    OpenStreetMap. A system that isn't here can still be logged between two \
+                    places.
+                    """)
                 }
             }
             .overlay {
@@ -78,9 +83,21 @@ struct TransitRidePicker: View {
                 }
             }
             .task {
-                systems = await (try? model.places?.transitSystems()) ?? []
+                systems = await model.allTransitSystems()
             }
         }
+    }
+
+    /// "London, United Kingdom", the heading each city's systems sit under.
+    private func cityKey(_ system: TransitSystemInfo) -> String {
+        let country = Format.countryName(system.countryCode)
+        guard let city = system.cityName else { return country }
+        return "\(city), \(country)"
+    }
+
+    private var cities: [String] {
+        var seen = Set<String>()
+        return filtered.map(cityKey).filter { seen.insert($0).inserted }
     }
 
     private var filtered: [TransitSystemInfo] {
@@ -100,6 +117,7 @@ private struct TransitLineList: View {
 
     @State private var network: TransitNetwork?
     @State private var hasLoaded = false
+    @State private var search = ""
 
     var body: some View {
         List {
@@ -123,15 +141,34 @@ private struct TransitLineList: View {
             }
         }
         .navigationTitle(system.name)
+        .searchable(text: $search, prompt: "Line name or number")
         .task {
             network = await model.transitNetwork(forSystem: system.id)
             hasLoaded = true
         }
     }
 
+    /// In name order, numbers as numbers: bus 9 before bus 10. Searching a number finds
+    /// that line first.
     private func lines(in network: TransitNetwork) -> [TransitLineInfo] {
-        network.lines.values.filter { $0.systemID == system.id }
-            .sorted { $0.name.localizedStandardCompare($1.name) == .orderedAscending }
+        let query = search.trimmingCharacters(in: .whitespaces).lowercased()
+        return network.lines.values
+            .filter { $0.systemID == system.id }
+            .filter { line in
+                query.isEmpty || line.name.lowercased().contains(query)
+                    || line.shortName?.lowercased() == query
+            }
+            .sorted { first, second in
+                let exact = (
+                    first.shortName?.lowercased() == query,
+                    second.shortName?.lowercased() == query
+                )
+                if exact.0 != exact.1 {
+                    return exact.0
+                }
+                return (first.shortName ?? first.name)
+                    .localizedStandardCompare(second.shortName ?? second.name) == .orderedAscending
+            }
     }
 }
 
@@ -198,8 +235,8 @@ private struct TransitStopList: View {
         guard stop != boarding, let network else { return }
         isFinishing = true
         Task {
-            guard let origin = await model.transitStopPlace(boarding),
-                  let destination = await model.transitStopPlace(stop)
+            guard let origin = await model.transitStopPlace(boarding, in: network, system: system),
+                  let destination = await model.transitStopPlace(stop, in: network, system: system)
             else {
                 isFinishing = false
                 return
@@ -248,17 +285,6 @@ extension Color {
     }
 }
 
-extension AppModel {
-    /// One system's network, for the picker.
-    func transitNetwork(forSystem system: Int64) async -> TransitNetwork? {
-        try? await places?.transitNetwork(systems: [system])
-    }
-
-    func transitStopPlace(_ stop: Int64) async -> PlaceReference? {
-        try? await places?.transitStopPlace(id: stop)
-    }
-}
-
 /// The line a city transit leg rode, or the way to choose one.
 struct TransitLineButton: View {
     @Environment(AppModel.self) private var model
@@ -288,9 +314,7 @@ struct TransitLineButton: View {
 
     private func loadLine() async {
         guard let lineID, model.transitNetwork.lines[lineID] == nil, pickedLines[lineID] == nil,
-              let systems = try? await model.places?.transitSystems(ofLines: [lineID]),
-              let network = try? await model.places?.transitNetwork(systems: systems),
-              let line = network.lines[lineID]
+              let line = await model.transitNetwork(forLines: [lineID]).lines[lineID]
         else { return }
         pickedLines[lineID] = line
     }
@@ -301,17 +325,18 @@ private struct TransitSystemRow: View {
     let system: TransitSystemInfo
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        Label {
             Text(system.name)
-            Text(place)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        } icon: {
+            Image(systemName: symbol)
         }
     }
 
-    private var place: String {
-        let country = Format.countryName(system.countryCode)
-        guard let city = system.cityName else { return country }
-        return "\(city), \(country)"
+    private var symbol: String {
+        switch system.kind {
+        case "bus", "trolleybus": "bus"
+        case "tram", "light rail": "lightrail"
+        default: "tram"
+        }
     }
 }

@@ -81,3 +81,10 @@ Tools/icon/out/
 .vscode/
 .idea/
 *.log
+
+# ---- OpenStreetMap route pack (D-36) ----
+# Fetched by Tools/osmpack/fetch_osm.py (ODbL) and built into routes-osm.sqlite, which
+# the app bundles; neither the cache nor the build product is committed.
+Tools/osmpack/vendor/
+Tools/osmpack/out/
+App/Antipodes/Resources/routes-osm.sqlite

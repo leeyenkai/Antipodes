@@ -152,6 +152,7 @@ public struct RootView: View {
                 switch request {
                 case .journeys: FlightImportView()
                 case .photos: PhotoImportView()
+                case .tracks: TrackImportView()
                 }
             }
             .alert(

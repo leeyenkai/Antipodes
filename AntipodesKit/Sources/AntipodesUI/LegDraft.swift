@@ -29,9 +29,19 @@ struct LegDraft: Identifiable, Equatable, Sendable {
     var seat = ""
     var rating: Int?
     var notes = ""
+    /// For a human-powered leg: which activity, and so which trails it follows (D-36).
+    var activity: HumanActivity?
+    /// The track a GPX file or Apple Health recorded for it (R-PATH-1).
+    var recordedTrack: RecordedTrack?
 
     init(mode: TravelMode) {
         self.mode = mode
+        activity = mode == .humanPowered ? .hike : nil
+    }
+
+    /// The network the draft is measured along, as for a saved leg.
+    var trackKind: TrackKind? {
+        mode == .humanPowered ? (activity ?? .hike).trackKind : mode.trackKind
     }
 
     init(leg: JourneyLeg) {
@@ -58,6 +68,8 @@ struct LegDraft: Identifiable, Equatable, Sendable {
         seat = leg.seat ?? ""
         rating = leg.rating
         notes = leg.notes ?? ""
+        activity = leg.activity ?? (leg.mode == .humanPowered ? .hike : nil)
+        recordedTrack = leg.recordedTrack
     }
 
     /// A draft for riding a catalogue route end to end (R-JLOG-3). The route's length is
@@ -69,6 +81,7 @@ struct LegDraft: Identifiable, Equatable, Sendable {
         routeID = route.id
         routeName = route.name
         storedPathLengthKm = route.lengthKm
+        activity = route.mode == .humanPowered ? .hike : nil
     }
 
     /// The draft for the next leg of a journey: it starts where this one ended, on the
@@ -118,7 +131,9 @@ struct LegDraft: Identifiable, Equatable, Sendable {
             travelClass: travelClass.trimmedOrNil,
             seat: seat.trimmedOrNil,
             rating: rating,
-            notes: notes.trimmedOrNil
+            notes: notes.trimmedOrNil,
+            activity: mode == .humanPowered ? (activity ?? .hike) : nil,
+            recordedTrack: recordedTrack
         )
     }
 
@@ -161,7 +176,7 @@ struct LegDraft: Identifiable, Equatable, Sendable {
         !times.isEmpty || !operatorName.isEmpty || !serviceNumber.isEmpty || !vehicle.isEmpty
             || !registration.isEmpty || !travelClass.isEmpty || !seat.isEmpty || rating != nil
             || !notes.isEmpty || distanceOverrideKm != nil || durationOverrideMinutes != nil
-            || purpose != .leisure
+            || purpose != .leisure || recordedTrack != nil
     }
 }
 

@@ -72,17 +72,26 @@ public enum TravelMode: String, Sendable, Codable, CaseIterable, Identifiable {
     /// How the app draws and measures a leg of this mode today (§5.1). Shown beside a
     /// leg so the user knows why its distance is, or is not, marked approximate.
     ///
-    /// Real track, road and sea geometry needs a route pack built from OpenStreetMap,
-    /// which ships separately if at all (decision D-8), so every surface mode is a
-    /// labelled straight line until then (R-PATH-3).
+    /// Surface legs follow Natural Earth's railways, roads and sea routes (D-30), and
+    /// trails, lifts and transit lines follow the OpenStreetMap route pack (D-36). Where
+    /// neither reaches, a leg is a labelled straight line (R-PATH-3).
     public var pathSourceDescription: String {
         switch self {
         case .flight:
             "Great-circle arc between the airports — the path the distance is measured on."
-        case .rail, .cityTransit, .coach, .ferry, .roadTrip, .humanPowered, .cableAndMountain:
-            "A straight line between the two ends. The real route is longer, so the "
-                + "distance is marked approximate unless you enter it or ride a catalogue "
-                + "route."
+        case .rail, .coach, .roadTrip, .ferry:
+            "A straight line between the two ends: the map doesn't join them. The real "
+                + "route is longer, so the distance is marked approximate unless you enter it."
+        case .cityTransit:
+            "A straight line between the two ends. Choose the line and its stops to follow "
+                + "it; otherwise the distance is marked approximate."
+        case .humanPowered:
+            "A straight line between the two ends. Attach the track you recorded, or log "
+                + "a hike or ride within the Alps, Scandinavia, the UK and Ireland or New "
+                + "Zealand to follow the marked trails; otherwise it is marked approximate."
+        case .cableAndMountain:
+            "A straight line between the two ends: no lift was found between them. The "
+                + "distance is marked approximate unless you enter it."
         }
     }
 

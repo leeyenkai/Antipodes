@@ -25,6 +25,7 @@ extension View {
         @Environment(AppModel.self) private var model
         @State private var isTargeted = false
         @State private var flightLog: DroppedFlightLog?
+        @State private var tracks: DroppedFlightLog?
         @State private var backup: DroppedBackup?
 
         func body(content: Content) -> some View {
@@ -43,6 +44,9 @@ extension View {
                 }
                 .sheet(item: $flightLog) { file in
                     FlightImportView(file: file.data)
+                }
+                .sheet(item: $tracks) { file in
+                    TrackImportView(file: file.data)
                 }
                 .alert(
                     backup.map(\.title) ?? "",
@@ -72,8 +76,8 @@ extension View {
         private func receive(_ urls: [URL]) async {
             guard let url = urls.first(where: \.isFileURL) else {
                 model.errorMessage = """
-                Drop a file saved on this Mac — a journey list as CSV or JSON, or an Antipodes \
-                backup. Links and text can't be imported.
+                Drop a file saved on this Mac — a journey list as CSV or JSON, a GPX track, \
+                or an Antipodes backup. Links and text can't be imported.
                 """
                 return
             }
@@ -104,10 +108,12 @@ extension View {
                     }
                 case .flightLog:
                     flightLog = DroppedFlightLog(data: data)
+                case .track:
+                    tracks = DroppedFlightLog(data: data)
                 case nil:
                     model.errorMessage = """
-                    Antipodes can import a journey list saved as CSV or JSON, or an Antipodes \
-                    backup. “\(url.lastPathComponent)” is neither.
+                    Antipodes can import a journey list saved as CSV or JSON, a GPX track, or \
+                    an Antipodes backup. “\(url.lastPathComponent)” is none of these.
                     """
                 }
             } catch {
@@ -133,12 +139,15 @@ extension View {
     private enum DroppedFileKind {
         case backup
         case flightLog
+        case track
 
         /// JSON is a backup, because that is the only JSON Antipodes reads; any other
         /// text is treated as a flight log, and the flight review says if it is not one.
         init?(_ url: URL) {
             guard let type = UTType(filenameExtension: url.pathExtension) else { return nil }
-            if type.conforms(to: .json) {
+            if url.pathExtension.lowercased() == "gpx" {
+                self = .track
+            } else if type.conforms(to: .json) {
                 self = .backup
             } else if type.conforms(to: .text) {
                 self = .flightLog

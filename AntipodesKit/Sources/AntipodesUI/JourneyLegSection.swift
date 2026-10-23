@@ -1,5 +1,7 @@
 import AntipodesCore
+import AntipodesImport
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// One leg: collapsed to a summary, or expanded into its fields.
 struct LegSection: View {
@@ -14,6 +16,7 @@ struct LegSection: View {
     let pickTransit: () -> Void
 
     @State private var showsDetails = false
+    @State private var isAttachingTrack = false
 
     var body: some View {
         Section {
@@ -73,12 +76,20 @@ struct LegSection: View {
             }
         }
         .onChange(of: draft.mode) {
-            let original = draft
-            let networks = model.trackNetworks
-            Task {
-                let measured = await LegDraft.measured(original, along: networks)
-                draft.adoptMeasurement(measured, madeFrom: original)
+            if draft.mode == .humanPowered, draft.activity == nil {
+                draft.activity = .hike
             }
+            remeasure()
+        }
+
+        if draft.mode == .humanPowered {
+            Picker("Activity", selection: $draft.activity) {
+                ForEach(HumanActivity.allCases) { activity in
+                    Label(activity.displayName, systemImage: activity.symbolName)
+                        .tag(HumanActivity?.some(activity))
+                }
+            }
+            .onChange(of: draft.activity) { remeasure() }
         }
 
         if draft.mode == .cityTransit {
@@ -96,6 +107,23 @@ struct LegSection: View {
             LegDistanceRow(leg: leg)
         }
 
+        if let track = draft.recordedTrack {
+            RecordedTrackRow(track: track) {
+                draft.recordedTrack = nil
+                remeasure()
+            }
+        } else if draft.mode == .humanPowered {
+            Button(
+                "Attach a Recorded Track (GPX)…",
+                systemImage: "point.bottomleft.forward.to.point.topright.scurvepath"
+            ) {
+                isAttachingTrack = true
+            }
+            .fileImporter(isPresented: $isAttachingTrack, allowedContentTypes: [.gpx]) { result in
+                attachTrack(result)
+            }
+        }
+
         DisclosureGroup(isExpanded: $showsDetails) {
             LegDetailFields(draft: $draft)
         } label: {
@@ -106,4 +134,100 @@ struct LegSection: View {
         }
         .onAppear { showsDetails = draft.hasDetails }
     }
+
+    /// Measures the leg again along whichever network its mode and activity now take.
+    private func remeasure() {
+        let original = draft
+        Task {
+            let measured = await LegDraft.measured(original, model: model)
+            draft.adoptMeasurement(measured, madeFrom: original)
+        }
+    }
+
+    /// Reads a GPX file into the leg: its track, and its ends and date where the leg
+    /// has none yet (R-PATH-1).
+    private func attachTrack(_ result: Result<URL, any Error>) {
+        guard case let .success(url) = result else { return }
+        Task {
+            guard let data = readSecurityScoped(url) else {
+                model.errorMessage = "That file couldn't be opened."
+                return
+            }
+            do {
+                guard let first = try GPXReader.read(data).first,
+                      let track = first.recordedTrack else { return }
+                draft.recordedTrack = track
+                draft.activity = first.activity
+                if draft.origin == nil, let start = track.points.first {
+                    draft.origin = await model.nearestCity(to: start, withinKm: 25)
+                }
+                if draft.destination == nil, let end = track.points.last {
+                    draft.destination = await model.nearestCity(to: end, withinKm: 25)
+                }
+                if let start = first.start.flatMap({ CalendarDate($0) }) {
+                    draft.date = .day(start)
+                }
+            } catch {
+                model.errorMessage = "That file has no track to attach."
+            }
+        }
+    }
+}
+
+/// A recorded track's figures: how far, how high, how long, and a way to drop it.
+struct RecordedTrackRow: View {
+    @Environment(AppModel.self) private var model
+    let track: RecordedTrack
+    let remove: () -> Void
+
+    var body: some View {
+        HStack {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Recorded track")
+                    Text(summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } icon: {
+                Image(systemName: "point.bottomleft.forward.to.point.topright.scurvepath")
+            }
+            Spacer()
+            Button("Remove", systemImage: "xmark.circle.fill", role: .destructive, action: remove)
+                .labelStyle(.iconOnly)
+                .buttonStyle(.borderless)
+                .help("Remove the recorded track")
+        }
+    }
+
+    /// "12.4 km · ↑ 760 m · highest 1,743 m · 6 h 15 m".
+    private var summary: String {
+        var parts = [Format.distance(track.lengthKm, model.rules.unitSystem)]
+        if let ascent = track.ascentMetres, ascent >= 1 {
+            parts.append("↑ \(Format.whole(ascent)) m")
+        }
+        if let highest = track.highestMetres {
+            parts.append("highest \(Format.whole(highest)) m")
+        }
+        if let minutes = track.minutes {
+            parts.append(Format.duration(minutes: minutes))
+        }
+        return parts.joined(separator: " · ")
+    }
+}
+
+extension UTType {
+    /// GPX, by its extension: systems that know it call it `com.topografix.gpx`.
+    static let gpx = UTType(filenameExtension: "gpx", conformingTo: .xml) ?? .xml
+}
+
+/// A picked file's bytes, read inside its security scope as the sandbox requires.
+func readSecurityScoped(_ url: URL) -> Data? {
+    let scoped = url.startAccessingSecurityScopedResource()
+    defer {
+        if scoped {
+            url.stopAccessingSecurityScopedResource()
+        }
+    }
+    return try? Data(contentsOf: url)
 }

@@ -236,8 +236,8 @@ def repair(lines: list[Line], snap_m: float = SNAP_M) -> list[Line]:
 # ----------------------------------------------------------------------------- network
 
 
-def build_network(lines: list[Line]) -> Network:
-    """The junction graph of a set of lines."""
+def build_network(lines: list[Line], simplify_m: float = SIMPLIFY_M) -> Network:
+    """The junction graph of a set of lines, each edge drawn to within `simplify_m`."""
 
     def key(point: Point) -> Point:
         return (round(point[0], PRECISION), round(point[1], PRECISION))
@@ -277,7 +277,7 @@ def build_network(lines: list[Line]) -> Network:
                     a=ids[chain[0]],
                     b=ids[chain[-1]],
                     length_m=round(length),
-                    points=_within_steps(simplify(chain, SIMPLIFY_M)),
+                    points=_within_steps(simplify(chain, simplify_m)),
                 )
             )
 

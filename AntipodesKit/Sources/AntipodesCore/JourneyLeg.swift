@@ -39,6 +39,10 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
     public var seat: String?
     public var rating: Int?
     public var notes: String?
+    /// For a human-powered leg: a hike, a walk, a run or a ride (D-36).
+    public var activity: HumanActivity?
+    /// The way it really went, as recorded on the user's device (R-PATH-1).
+    public var recordedTrack: RecordedTrack?
 
     public init(
         id: UUID = UUID(),
@@ -63,7 +67,9 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
         travelClass: String? = nil,
         seat: String? = nil,
         rating: Int? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        activity: HumanActivity? = nil,
+        recordedTrack: RecordedTrack? = nil
     ) {
         self.id = id
         self.mode = mode
@@ -92,6 +98,14 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
         self.seat = seat
         self.rating = rating.map { min(5, max(1, $0)) }
         self.notes = notes
+        self.activity = activity
+        self.recordedTrack = recordedTrack
+    }
+
+    /// The network this leg is measured along when it has no track of its own: its
+    /// mode's, or for a hike or a ride its activity's trails (D-36).
+    public var trackKind: TrackKind? {
+        mode == .humanPowered ? activity?.trackKind : mode.trackKind
     }
 
     /// Longer than any single leg can be: the longest scheduled flight is about
@@ -119,25 +133,30 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
     /// (R-PATH-2, D-30). A catalogue route's length, a transit line's and the user's own
     /// figure all come first.
     public var needsTrackMeasurement: Bool {
-        mode.trackKind != nil && transitLineID == nil && distanceKmOverride == nil
-            && storedPathLengthKm == nil
+        trackKind != nil && transitLineID == nil && distanceKmOverride == nil
+            && storedPathLengthKm == nil && recordedTrack == nil
     }
 
     /// Its length was measured along its mode's network rather than taken from a
     /// catalogue route.
     public var isMeasuredAlongTrack: Bool {
-        mode.trackKind != nil && transitLineID == nil && networkVersion != nil
+        trackKind != nil && transitLineID == nil && networkVersion != nil
             && storedPathLengthKm != nil
     }
 
     /// Distance and where it came from, resolved in one place so every caller agrees.
     ///
-    /// Order: the user's override, then a real stored path, then the great circle —
-    /// exact for a flight, flagged approximate for anything that should have followed
-    /// the ground (R-PATH-5). The fields are settable, so they are checked here too.
+    /// Order: the user's override, then the track their device recorded, then a real
+    /// stored path, then the great circle — exact for a flight, flagged approximate for
+    /// anything that should have followed the ground (R-PATH-5). The fields are
+    /// settable, so they are checked here too.
     public var distance: (kilometres: Double, source: DistanceSource) {
         if let override = Self.plausibleDistance(distanceKmOverride) {
             return (override, .userOverride)
+        }
+        if let recorded = recordedTrack.flatMap({ Self.plausibleDistance($0.lengthKm) }),
+           recorded > 0 {
+            return (recorded, .recordedTrack)
         }
         if let stored = Self.plausibleDistance(storedPathLengthKm) {
             return (stored, .storedPath)
@@ -173,6 +192,9 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
     public var duration: Result<(minutes: Int, source: DurationSource), DurationUnavailable> {
         if let override = Self.plausibleDuration(durationMinutesOverride) {
             return .success((override, .userOverride))
+        }
+        if let minutes = recordedTrack?.minutes, Self.plausibleDuration(minutes) != nil {
+            return .success((minutes, .actualTimes))
         }
         let candidates: [(LocalDateTime?, LocalDateTime?, DurationSource)] = [
             (times.actualDeparture, times.actualArrival, .actualTimes),
@@ -234,9 +256,12 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
         return arrival.date > departure.date
     }
 
-    /// The arc to draw on the globe. A flight curves; anything else is a straight
-    /// stand-in until a real path exists.
+    /// The arc to draw on the globe. A recorded track is drawn as recorded; a flight
+    /// curves; anything else is a straight stand-in until a real path exists.
     public func pathForDisplay(segments: Int = 64) -> [Coordinate] {
+        if let recordedTrack {
+            return recordedTrack.points
+        }
         guard let from = origin.coordinate, let to = destination.coordinate else { return [] }
         return GreatCircle.arc(from: from, to: to, segments: segments)
     }
@@ -279,7 +304,8 @@ public struct JourneyLeg: Identifiable, Hashable, Sendable {
             operatorName: operatorName,
             serviceNumber: serviceNumber,
             vehicle: vehicle,
-            travelClass: travelClass
+            travelClass: travelClass,
+            activity: activity
         )
     }
 }
@@ -295,7 +321,7 @@ extension JourneyLeg: Codable {
         case distanceKmOverride, durationMinutesOverride, times, missedConnection
         case routeID, routeName, transitLineID, networkVersion
         case operatorName, serviceNumber, vehicle, registration
-        case travelClass, seat, rating, notes
+        case travelClass, seat, rating, notes, activity, recordedTrack
     }
 
     /// Fields added after the first export format default when absent, so a file
@@ -329,7 +355,12 @@ extension JourneyLeg: Codable {
             travelClass: container.decodeIfPresent(String.self, forKey: .travelClass),
             seat: container.decodeIfPresent(String.self, forKey: .seat),
             rating: container.decodeIfPresent(Int.self, forKey: .rating),
-            notes: container.decodeIfPresent(String.self, forKey: .notes)
+            notes: container.decodeIfPresent(String.self, forKey: .notes),
+            activity: container.decodeIfPresent(HumanActivity.self, forKey: .activity),
+            recordedTrack: try? container.decodeIfPresent(
+                RecordedTrack.self,
+                forKey: .recordedTrack
+            )
         )
     }
 
@@ -358,5 +389,7 @@ extension JourneyLeg: Codable {
         try container.encodeIfPresent(seat, forKey: .seat)
         try container.encodeIfPresent(rating, forKey: .rating)
         try container.encodeIfPresent(notes, forKey: .notes)
+        try container.encodeIfPresent(activity, forKey: .activity)
+        try container.encodeIfPresent(recordedTrack, forKey: .recordedTrack)
     }
 }

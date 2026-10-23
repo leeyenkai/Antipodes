@@ -25,6 +25,31 @@ Security, Data (place-database changes).
   in the globe's style menu draws every geotagged photo in the library as bubbles that
   part as you zoom in. A bubble opens its photos and logs a visit to the town they are
   nearest, dated from them. Locations are read on the device and never stored.
+- **Hikes, rides and cable cars follow the way you went** (R-PATH-1, R-PATH-2, R-PATH-7,
+  D-36): a human-powered leg says whether it was a hike, walk, run or ride, and follows
+  the marked trails or cycle routes of the Alps, Scandinavia, the UK and Ireland and New
+  Zealand; a cable-car leg follows its lifts, two in a row joined at their station. A
+  GPX file attached to a leg — or imported as new journeys, from Settings, the Trips menu
+  or a drop on the Mac window — or an Apple Health workout route on iPhone is stored on
+  the leg and beats every figure but your own, with its climb and highest point.
+- **Named routes take their real shape** (R-JLOG-3): the Glacier Express, the Bergen
+  Line, the Camino Francés and the other catalogue routes are drawn along the line they
+  run on, and a section is cut between the stations ridden.
+- **More city transit, drawn along its lines** (R-TRAN-1, R-TRAN-5, R-TRAN-6): about a
+  hundred metro, tram and light-rail systems — New York, Singapore, Sydney, Hong Kong,
+  Oslo, Stockholm, Munich and more — and the buses of London, Paris, Berlin, Rome, Tokyo,
+  Seoul, Singapore, Sydney, New York and Mexico City. Rides follow the line's shape
+  between their stops; the existing metro lines gain shapes too. The picker groups
+  systems by city and finds a line by its number.
+
+### Data
+
+- **The OpenStreetMap route pack** (D-36): `routes-osm.sqlite`, built by the new
+  `Tools/osmpack/` pipeline from Overpass answers and bundled beside the place database,
+  under the ODbL and credited in Settings. It shares no table with `places.sqlite`
+  (D-8), the build fails over its 120 MB budget, and the app works without it.
+  `scripts/fetch-osmpack.sh` fills its cache (hours) and `scripts/build-osmpack.sh`
+  builds it.
 
 ## [1.0.0] — 2026-10-23
 

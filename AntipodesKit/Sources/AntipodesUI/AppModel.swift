@@ -55,6 +55,9 @@ public struct AddRequest: Identifiable, Equatable {
 public final class AppModel {
     public let store: TravelLogStore
     public private(set) var places: PlaceDatabase?
+    /// The OpenStreetMap route pack (D-36): trails, lifts, route shapes and more city
+    /// transit. Optional — without it everything works as it did before the pack.
+    public private(set) var routePack: RoutePack?
     /// The transit systems the log rides, for the city transit stats (R-TRAN-2).
     public private(set) var transitNetwork = TransitNetwork.empty
     public private(set) var databaseInfo: PlaceDatabaseInfo?
@@ -105,6 +108,15 @@ public final class AppModel {
     /// found for; and the stops each transit ride passed, in order (R-TRAN-1).
     var measuredPaths: [UUID: [Coordinate]] = [:]
     var transitPaths: [UUID: [Coordinate]] = [:]
+    /// Catalogue routes drawn along their real shape (R-JLOG-3).
+    var routePaths: [UUID: [Coordinate]] = [:]
+    /// The drawn shape of each line the log rides, from the route pack (R-TRAN-1).
+    @ObservationIgnored var transitShapes: [Int64: [[Coordinate]]] = [:]
+    /// Catalogue route shapes, each read once.
+    @ObservationIgnored var routeShapes: [Int64: [[Coordinate]]] = [:]
+    /// Trail regions and the networks of those a leg has needed, and the lifts.
+    @ObservationIgnored var trailRegions: [TrailRegion]?
+    @ObservationIgnored var trailNetworks: [String: TrackNetwork] = [:]
     @ObservationIgnored var measuredEnds: [UUID: [Coordinate]] = [:]
     @ObservationIgnored var countriesAlong: [UUID: [String]] = [:]
     #if os(iOS)
@@ -188,7 +200,12 @@ public final class AppModel {
     public private(set) var filteredStatistics: TravelStatistics?
     public private(set) var filteredLog = TravelLog.empty
 
-    public init(store: TravelLogStore, placeDatabaseURL: URL?, bordersURL: URL? = nil) {
+    public init(
+        store: TravelLogStore,
+        placeDatabaseURL: URL?,
+        routePackURL: URL? = nil,
+        bordersURL: URL? = nil
+    ) {
         self.store = store
         self.bordersURL = bordersURL
         let loadedRules = CountingRulesStorage.load()
@@ -212,6 +229,8 @@ public final class AppModel {
         } else {
             placesError = Self.placesUnavailable(because: nil)
         }
+        // A missing or unreadable pack only means straight lines where shapes would be.
+        routePack = routePackURL.flatMap { try? RoutePack(path: $0.path(percentEncoded: false)) }
 
         reload()
     }
@@ -308,16 +327,16 @@ public final class AppModel {
         }
         // The networks of every system ridden, loaded once each.
         let lines = Set(log.allLegs.compactMap(\.transitLineID))
-        if !lines.isSubset(of: Set(transitNetwork.lines.keys)),
-           let systems = try? await places.transitSystems(ofLines: lines),
-           let network = try? await places.transitNetwork(systems: systems) {
-            transitNetwork = network
+        if !lines.isSubset(of: Set(transitNetwork.lines.keys)) {
+            transitNetwork = await transitNetwork(forLines: lines)
+            transitShapes = await transitShapes(forLines: lines)
             changed = true
         }
         if changed {
             recompute()
         }
         refreshTransitPaths()
+        await refreshRoutePaths()
         await refreshTracks()
     }
 

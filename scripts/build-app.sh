@@ -19,6 +19,16 @@ if [[ ! -f "$APP_RESOURCE_IMAGERY" ]]; then
     note "the satellite picture is missing — fetching and scaling it first"
     "$REPO_ROOT/scripts/fetch-imagery.sh"
 fi
+# The route pack is optional and its fetch takes hours, so it is built only from a
+# cache that is already there.
+if [[ ! -f "$APP_RESOURCE_PACK" ]]; then
+    if [[ -f "$OSMPACK_DIR/vendor/osm/manifest.json" ]]; then
+        note "the route pack is missing — building it from the cached OpenStreetMap data"
+        "$REPO_ROOT/scripts/build-osmpack.sh"
+    else
+        note "no route pack: trails, lifts and route shapes are left out (scripts/fetch-osmpack.sh)"
+    fi
+fi
 
 # The simulator takes an ad-hoc signature, which is what carries the app-group
 # entitlement the widgets read through. A device or Mac build needs a team, so

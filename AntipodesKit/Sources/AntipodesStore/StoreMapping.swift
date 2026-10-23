@@ -261,7 +261,12 @@ public extension StoredLeg {
             travelClass: travelClass,
             seat: seat,
             rating: rating,
-            notes: notes
+            notes: notes,
+            activity: activityRaw.flatMap(HumanActivity.init(rawValue:)),
+            recordedTrack: recordedTrackData.flatMap { try? JSONDecoder().decode(
+                RecordedTrack.self,
+                from: $0
+            ) }
         )
     }
 
@@ -298,6 +303,8 @@ public extension StoredLeg {
         seat = leg.seat
         rating = leg.rating
         notes = leg.notes
+        activityRaw = leg.activity?.rawValue
+        recordedTrackData = leg.recordedTrack.flatMap { try? JSONEncoder().encode($0) }
 
         let origin = PlaceColumns(leg.origin)
         originKindRaw = origin.kindRaw

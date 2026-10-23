@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   The iPhone and iPad app's entitlements: the app group it shares with the widget
-  extension, which reads the snapshot the app writes (R-SHARE-2).
+  extension, which reads the snapshot the app writes (R-SHARE-2), and HealthKit, to read
+  the routes of hikes and rides the user chooses to import (D-36). It reads only.
 
   The simulator honours this without a team. A device build needs a team set in
   Signing & Capabilities; with automatic signing Xcode then registers the group.
@@ -14,5 +15,9 @@
 	<array>
 		<string>group.com.leeyenkai.antipodes</string>
 	</array>
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<key>com.apple.developer.healthkit.access</key>
+	<array/>
 </dict>
 </plist>

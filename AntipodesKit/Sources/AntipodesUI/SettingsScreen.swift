@@ -22,6 +22,7 @@ struct SettingsScreen: View {
     @State private var isImportingBackup = false
     @State private var isImportingFlights = false
     @State private var isImportingPhotos = false
+    @State private var isImportingTracks = false
     /// A backup read and compared with the log, waiting for the user's yes.
     @State private var pendingBackup: BackupPreview?
 
@@ -130,6 +131,9 @@ struct SettingsScreen: View {
             }
             .sheet(isPresented: $isImportingPhotos) {
                 PhotoImportView()
+            }
+            .sheet(isPresented: $isImportingTracks) {
+                TrackImportView()
             }
             .sheet(isPresented: $isPickingHome) {
                 PlacePickerSheet(
@@ -258,13 +262,17 @@ struct SettingsScreen: View {
             Button("Find Visits in Photos…", systemImage: "photo.on.rectangle.angled") {
                 isImportingPhotos = true
             }
+            Button("Hikes and Rides (GPX or Health)…", systemImage: "figure.hiking") {
+                isImportingTracks = true
+            }
         } header: {
             Text("Import")
         } footer: {
             Text("""
             Flight lists from Flighty, myFlightradar24 or OpenFlights, and rail logs or any \
-            CSV or JSON list of journeys with date, from and to. Photos are read on this \
-            device for their date and place; nothing is uploaded or copied.
+            CSV or JSON list of journeys with date, from and to. Hikes and rides from GPX \
+            files or Apple Health keep the way you went. Photos and workouts are read on \
+            this device; nothing is uploaded or copied.
             """)
         }
     }
@@ -324,6 +332,13 @@ struct SettingsScreen: View {
                 University of Idaho, CC0.
                 """)
                 .font(.footnote)
+                if let pack = model.routePack {
+                    Text("""
+                    Trails, lifts, route shapes and city transit lines: \(pack.attribution). \
+                    Map of \(pack.snapshot).
+                    """)
+                    .font(.footnote)
+                }
                 ForEach(info.sources) { source in
                     NavigationLink {
                         SourceDetailView(source: source)
@@ -340,8 +355,9 @@ struct SettingsScreen: View {
                 Text("Where the data comes from")
             } footer: {
                 Text("""
-                Built from open data. No OpenStreetMap data is included: its licence puts \
-                share-alike terms on a database built from it, which would apply to this one.
+                Built from open data. OpenStreetMap's is kept in a file of its own, \
+                routes-osm.sqlite, under the Open Database License: its share-alike terms \
+                reach that file and nothing else.
                 """)
             }
         }

@@ -235,6 +235,7 @@
 				"$(SRCROOT)/App/Antipodes/Resources/borders-110m.antborders",
 				"$(SRCROOT)/App/Antipodes/Resources/borders-50m.antborders",
 				"$(SRCROOT)/App/Antipodes/Resources/earth-satellite.jpg",
+				"$(SRCROOT)/App/Antipodes/Resources/routes-osm.sqlite",
 			);
 			name = "Check Bundled Data";
 			outputFileListPaths = (
@@ -243,7 +244,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "# The place database, the country outlines and the satellite picture are build\n# products, not committed (.gitignore). An app built without them has empty search,\n# an unshaded globe or no satellite style, so a build without them fails here rather\n# than shipping that way.\nfor file in \"$SCRIPT_INPUT_FILE_0\" \"$SCRIPT_INPUT_FILE_1\" \"$SCRIPT_INPUT_FILE_2\" \"$SCRIPT_INPUT_FILE_3\"; do\n  if [ ! -s \"$file\" ]; then\n    echo \"error: $(basename \"$file\") is missing from App/Antipodes/Resources. Run scripts/build-placedb.sh, scripts/build-borders.sh and scripts/fetch-imagery.sh first.\"\n    exit 1\n  fi\ndone\n";
+			shellScript = "# The place database, the country outlines and the satellite picture are build\n# products, not committed (.gitignore). An app built without them has empty search,\n# an unshaded globe or no satellite style, so a build without them fails here rather\n# than shipping that way.\nfor file in \"$SCRIPT_INPUT_FILE_0\" \"$SCRIPT_INPUT_FILE_1\" \"$SCRIPT_INPUT_FILE_2\" \"$SCRIPT_INPUT_FILE_3\"; do\n  if [ ! -s \"$file\" ]; then\n    echo \"error: $(basename \"$file\") is missing from App/Antipodes/Resources. Run scripts/build-placedb.sh, scripts/build-borders.sh and scripts/fetch-imagery.sh first.\"\n    exit 1\n  fi\ndone\n# The OpenStreetMap route pack (D-36) is optional: without it the app draws trails,\n# lifts and catalogue routes as straight lines and has only the bundled metro systems.\nif [ ! -s \"$SCRIPT_INPUT_FILE_4\" ]; then\n  echo \"warning: routes-osm.sqlite is missing from App/Antipodes/Resources, so trails, lifts, route shapes and the extra city transit are left out. Run scripts/fetch-osmpack.sh and scripts/build-osmpack.sh to add them.\"\nfi\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -352,6 +353,7 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Lee Yen Kai";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Antipodes saves the share cards and Year in Review videos you choose to your photo library. It never reads them back.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Antipodes reads the routes of the hikes, walks, runs and rides you choose to import, so they are drawn and measured the way you went. Nothing is written to Health, uploaded or shared.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Antipodes shows the photos you link to your visits and trips, suggests the ones taken there, and can show on the globe where your photos were taken. It reads them on this device only: nothing is uploaded and no photo is copied.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_FILE = App/Antipodes/Info.plist;
@@ -387,6 +389,7 @@
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© 2026 Lee Yen Kai";
 				INFOPLIST_KEY_NSPhotoLibraryAddUsageDescription = "Antipodes saves the share cards and Year in Review videos you choose to your photo library. It never reads them back.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Antipodes reads the routes of the hikes, walks, runs and rides you choose to import, so they are drawn and measured the way you went. Nothing is written to Health, uploaded or shared.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Antipodes shows the photos you link to your visits and trips, suggests the ones taken there, and can show on the globe where your photos were taken. It reads them on this device only: nothing is uploaded and no photo is copied.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_FILE = App/Antipodes/Info.plist;

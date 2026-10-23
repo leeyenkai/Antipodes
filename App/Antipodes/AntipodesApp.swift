@@ -62,6 +62,7 @@ struct AntipodesApp: App {
             try AppModel(
                 store: TravelLogStore(),
                 placeDatabaseURL: Bundle.main.url(forResource: "places", withExtension: "sqlite"),
+                routePackURL: Bundle.main.url(forResource: "routes-osm", withExtension: "sqlite"),
                 bordersURL: Bundle.main.url(forResource: "borders-50m", withExtension: "antborders")
             )
         }

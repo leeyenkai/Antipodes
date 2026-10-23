@@ -301,9 +301,8 @@ struct JourneyEditor: View {
                 legs[index].leaveTransitLine()
                 legs[index].endpointChanged(route: legs[index].routeID.flatMap(model.route(id:)))
                 let draft = legs[index]
-                let networks = model.trackNetworks
                 Task {
-                    let measured = await LegDraft.measured(draft, along: networks)
+                    let measured = await LegDraft.measured(draft, model: model)
                     if let index = legs.firstIndex(where: { $0.id == draft.id }) {
                         legs[index].adoptMeasurement(measured, madeFrom: draft)
                     }

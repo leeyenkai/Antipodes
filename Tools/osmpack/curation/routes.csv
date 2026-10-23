@@ -1,0 +1,23 @@
+# The OpenStreetMap relations whose ways draw each catalogue route (R-JLOG-3, R-PATH-1).
+#
+# `route_id` is the id in Tools/placedb/curation/routes.csv. `relations` lists route
+# relations in travel order, space-separated; their ways are joined end to end, so a
+# long-distance trail split into stages is listed stage by stage. Where a service runs
+# both ways, the relation in the catalogue's direction is chosen. Identifiers only — no
+# OpenStreetMap data is copied here (SOURCES.md §2); the geometry is fetched into
+# vendor/ and lands only in routes-osm.sqlite (D-36).
+route_id,relations,note
+1,9531101,Vy F4 Oslo S to Bergen
+2,2163569 2163558 2163560 2163561 2163565 2163559,"Camino Francés stages 01, 03, 04, 06, 07, 08"
+3,18611527,Vy R45 Myrdal to Flåm
+4,14616807,Glacier Express Zermatt to St. Moritz
+5,1385121,Great Walk 07 Milford Track
+6,1828833,VIA Rail Canadian Toronto to Vancouver
+7,9802401,Nozomi Tokyo to Shin-Ōsaka on the Tōkaidō Shinkansen
+8,17275074,Train 002 Rossiya Moscow to Vladivostok
+9,20796926,Bernina Express Chur to Tirano
+10,3224918,West Highland Line Glasgow Queen Street to Mallaig
+11,8440320,Amtrak California Zephyr Chicago to Emeryville
+12,1148765,The Ghan Adelaide to Darwin
+13,3134294,Indian Pacific Sydney to Perth
+14,152884,Qinghai–Tibet Railway Xining West to Lhasa

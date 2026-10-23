@@ -80,6 +80,9 @@ struct TripsScreen: View {
                             ) {
                                 model.importRequest = .photos
                             }
+                            Button("Hikes and Rides…", systemImage: "figure.hiking") {
+                                model.importRequest = .tracks
+                            }
                         }
                         // With a sidebar, All Records is a destination of its own.
                         if !DeviceLayout.hasSidebar(sizeClass) {

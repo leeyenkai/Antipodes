@@ -99,6 +99,23 @@ public struct TransitNetwork: Hashable, Sendable {
         systems.isEmpty
     }
 
+    /// This network and another as one: the place database's systems and the route
+    /// pack's (D-36), whose ids never meet.
+    public func merged(with other: TransitNetwork) -> TransitNetwork {
+        var result = self
+        result.systems.merge(other.systems) { mine, _ in mine }
+        result.lines.merge(other.lines) { mine, _ in mine }
+        result.stops.merge(other.stops) { mine, _ in mine }
+        result.segmentsByLine.merge(other.segmentsByLine) { $0.union($1) }
+        return result
+    }
+
+    /// Which source an id is from. The route pack numbers OpenStreetMap's lines, stops
+    /// and systems from a trillion up, far above any Wikidata Q-number (D-36).
+    public static func isFromRoutePack(_ id: Int64) -> Bool {
+        id >= 1_000_000_000_000
+    }
+
     public func coordinate(of stop: Int64) -> Coordinate? {
         stops[stop]?.coordinate
     }

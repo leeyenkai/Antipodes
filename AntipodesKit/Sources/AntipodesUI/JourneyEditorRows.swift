@@ -27,12 +27,17 @@ struct LegDistanceRow: View {
         }
     }
 
+    private func mapName(_ kind: TrackKind?) -> String {
+        kind?.isFromRoutePack == true ? "OpenStreetMap's" : "Natural Earth's"
+    }
+
     private func sourceText(_ source: DistanceSource) -> String {
         switch source {
         case .userOverride: "Your own figure."
+        case .recordedTrack: "The track your device recorded."
         case .storedPath where leg.transitLineID != nil: "Along the line, stop to stop."
         case .storedPath where leg.isMeasuredAlongTrack:
-            "Along \(leg.mode.trackKind?.routeNoun ?? "the way"), on Natural Earth's map."
+            "Along \(leg.trackKind?.routeNoun ?? "the way"), on \(mapName(leg.trackKind)) map."
         case .storedPath: "The catalogue route's length\(leg.routeName.map { " (\($0))" } ?? "")."
         case .greatCircleExact: "Great-circle distance between the airports."
         case .greatCircleApproximate: leg.mode.pathSourceDescription

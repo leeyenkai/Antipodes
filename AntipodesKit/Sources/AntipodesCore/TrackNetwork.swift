@@ -40,7 +40,7 @@ public struct TrackPath: Hashable, Sendable {
 /// A network surface legs are measured along: railways, roads or ferry routes
 /// (R-PATH-2, R-PATH-5, D-30).
 ///
-/// Each end of a leg is joined to the nearest line within ``snapRadiusKm``, and the leg
+/// Each end of a leg is joined to the nearest line within ``TrackKind/snapRadiusKm``, and the leg
 /// takes the shortest way along the network between the two. A leg with an end too far
 /// from any track, or whose ends the network does not join, has no path and keeps its
 /// straight line, marked approximate (R-PATH-3).
@@ -56,8 +56,6 @@ public struct TrackNetwork: Sendable {
     private let cellStart: [Int32]
     private let segments: [SegmentRef]
 
-    /// How far an end may be from the nearest line: a city's centre to its station.
-    public static let snapRadiusKm = 25.0
     public static let empty = TrackNetwork(kind: .rail, version: "", nodes: [], edges: [])
 
     public var isEmpty: Bool {
@@ -173,7 +171,7 @@ public struct TrackNetwork: Sendable {
         let offKm: Double
     }
 
-    /// The nearest point of track within ``snapRadiusKm``.
+    /// The nearest point of track within its kind's ``TrackKind/snapRadiusKm``.
     func snap(_ coordinate: Coordinate) -> Snap? {
         var best: Snap?
         let row = Int(floor(coordinate.latitude))
@@ -189,7 +187,7 @@ public struct TrackNetwork: Sendable {
                     let end = edge.points[segment + 1]
                     let (point, fraction) = Self.closest(to: coordinate, on: start, end)
                     let off = GreatCircle.distanceKm(from: coordinate, to: point)
-                    guard off <= Self.snapRadiusKm, off < best?.offKm ?? .infinity else { continue }
+                    guard off <= kind.snapRadiusKm, off < best?.offKm ?? .infinity else { continue }
                     let from = edge.along[segment]
                     let to = edge.along[segment + 1]
                     best = Snap(
@@ -388,7 +386,7 @@ private struct MinHeap {
     }
 }
 
-private extension [Coordinate] {
+extension [Coordinate] {
     func removingRepeats() -> [Coordinate] {
         var result: [Coordinate] = []
         result.reserveCapacity(count)

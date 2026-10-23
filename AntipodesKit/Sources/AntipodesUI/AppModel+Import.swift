@@ -84,6 +84,13 @@ public extension AppModel {
         return legs.count
     }
 
+    /// Logs hikes and rides with their recorded tracks, one journey each, in one save
+    /// (R-PATH-1, D-36).
+    func importTracks(_ legs: [JourneyLeg]) throws {
+        defer { reload() }
+        try store.logJourneys(legs.map { [$0] })
+    }
+
     /// Logs the confirmed photo suggestions as visits (R-LOG-7), in one save.
     func importSuggestions(_ suggestions: [VisitSuggestion], tripID: UUID?) throws -> Int {
         defer { reload() }
@@ -118,6 +125,8 @@ public enum ImportRequest: String, Identifiable, Sendable {
     case journeys
     /// Visits suggested from the photo library (R-LOG-7).
     case photos
+    /// Hikes and rides with their tracks, from GPX files or Apple Health (D-36).
+    case tracks
 
     public var id: String {
         rawValue

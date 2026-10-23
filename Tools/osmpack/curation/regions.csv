@@ -1,0 +1,13 @@
+# The regions whose signed hiking and cycling routes are bundled as trail networks
+# (R-PATH-2, D-36). Bounds are degrees; each region is fetched in tiles of `tile_deg`,
+# and a tile Overpass cannot answer in time is split in four and asked again.
+#
+# Only ways that belong to a signed route relation are kept — route=hiking or foot for
+# the hiking network, bicycle or mtb for the cycling one — and local networks (lwn, lcn)
+# are left out, so the network is the marked long-distance and regional trails rather
+# than every path.
+id,name,south,west,north,east,tile_deg
+alps,The Alps,43.6,5.0,48.4,16.9,2
+scandinavia,Scandinavia,54.5,4.5,71.3,31.6,3
+britain-ireland,UK and Ireland,49.8,-10.7,60.9,1.8,2
+new-zealand,New Zealand,-47.4,166.3,-34.3,178.7,3

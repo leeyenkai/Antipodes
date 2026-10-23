@@ -101,6 +101,8 @@ public enum DistanceSource: String, Sendable, Codable, CaseIterable {
     case userOverride
     /// Measured along real track, road or sea geometry, or a catalogue route's length.
     case storedPath
+    /// The length of the track the user's own device recorded (D-36).
+    case recordedTrack
     /// Great-circle between the endpoints, and exact for a flight.
     case greatCircleExact
     /// Great-circle standing in for a surface path that has not been snapped yet.

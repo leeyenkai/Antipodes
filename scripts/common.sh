@@ -22,6 +22,11 @@ PLACEDB_MANIFEST="$PLACEDB_VENDOR/manifest.json"
 IMAGERY_VENDOR="$PLACEDB_VENDOR/bluemarble"
 IMAGERY_OUT="$BORDERS_OUT/earth-satellite.jpg"
 APP_RESOURCE_IMAGERY="$APP_RESOURCE_DIR/earth-satellite.jpg"
+# The OpenStreetMap route pack (D-36): its own pipeline, cache and build product, kept
+# apart from the place database because the ODbL's share-alike reaches only its file.
+OSMPACK_DIR="$REPO_ROOT/Tools/osmpack"
+OSMPACK_OUT="$OSMPACK_DIR/out/routes-osm.sqlite"
+APP_RESOURCE_PACK="$APP_RESOURCE_DIR/routes-osm.sqlite"
 
 # Build products are kept outside the repository on purpose.
 #

@@ -14,6 +14,9 @@ fi
 step "Testing the place-database pipeline"
 python3 -I -m unittest discover -s "$REPO_ROOT/Tools/placedb" -p 'test_*.py'
 
+step "Testing the route-pack pipeline"
+python3 -I -m unittest discover -s "$REPO_ROOT/Tools/osmpack" -p 'test_*.py'
+
 step "Testing AntipodesKit"
 note "scratch: $SCRATCH_PATH"
 mkdir -p "$SCRATCH_PATH"
