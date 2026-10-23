@@ -51,12 +51,14 @@ struct PolylineTests {
         let gondola = AerialLift(
             id: 1, kind: "gondola", name: "Plan de l'Aiguille", startName: "Chamonix",
             endName: "Plan",
-            lengthKm: 2.6, points: [Self.point(45.9170, 6.8700), Self.point(45.8990, 6.8810)]
+            lengthKm: 2.6, points: [Self.point(45.9170, 6.8700), Self.point(45.90165, 6.88482)]
         )
+        // About 20 m from the gondola's top, but across a 0.001° line — the real
+        // Plan de l'Aiguille, which rounding once left as two stations.
         let cableCar = AerialLift(
             id: 2, kind: "cable_car", name: "Aiguille du Midi", startName: "Plan",
             endName: "Aiguille du Midi",
-            lengthKm: 2.9, points: [Self.point(45.8992, 6.8812), Self.point(45.8790, 6.8870)]
+            lengthKm: 2.9, points: [Self.point(45.90146, 6.88488), Self.point(45.8790, 6.8870)]
         )
         let network = AerialLift.network([gondola, cableCar], version: "osm-test")
         #expect(network.nodes.count == 3)

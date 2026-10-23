@@ -38,7 +38,8 @@ Security, Data (place-database changes).
 - **More city transit, drawn along its lines** (R-TRAN-1, R-TRAN-5, R-TRAN-6): about a
   hundred metro, tram and light-rail systems — New York, Singapore, Sydney, Hong Kong,
   Oslo, Stockholm, Munich and more — and the buses of London, Paris, Berlin, Rome, Tokyo,
-  Seoul, Singapore, Sydney, New York and Mexico City. Rides follow the line's shape
+  Seoul, Singapore, Sydney, New York and Mexico City — one system a city, whoever runs
+  the route, with coaches left to the coach mode. Rides follow the line's shape
   between their stops; the existing metro lines gain shapes too. The picker groups
   systems by city and finds a line by its number.
 
@@ -47,7 +48,8 @@ Security, Data (place-database changes).
 - **The OpenStreetMap route pack** (D-36): `routes-osm.sqlite`, built by the new
   `Tools/osmpack/` pipeline from Overpass answers and bundled beside the place database,
   under the ODbL and credited in Settings. It shares no table with `places.sqlite`
-  (D-8), the build fails over its 120 MB budget, and the app works without it.
+  (D-8), the build fails over its 120 MB budget (it is 85 MB: 480,000 km of trail,
+  12,166 lifts, 263 transit systems with 6,558 lines), and the app works without it.
   `scripts/fetch-osmpack.sh` fills its cache (hours) and `scripts/build-osmpack.sh`
   builds it.
 

@@ -56,6 +56,9 @@ LIFT_SIMPLIFY_M = 5.0
 #: Shorter lifts are tows and nursery lifts, not rides anyone logs.
 MIN_LIFT_M = 150.0
 LIFT_KINDS = {"cable_car", "gondola", "chair_lift", "mixed_lift"}
+#: A bus route longer than this is a coach — Flixbus, National Express — not city
+#: transit, and is logged as a coach journey instead.
+MAX_BUS_ROUTE_KM = 120
 LICENCE = "ODbL-1.0"
 ATTRIBUTION = "© OpenStreetMap contributors, available under the Open Database License (ODbL)"
 
@@ -299,14 +302,21 @@ class Transit:
         if len(stops) < 2:
             return
         kind = osmpack.MODE_KIND[mode]
-        network = tags.get("network") or master_tags.get("network") or tags.get("operator") or city["name"]
+        if kind in ("bus", "trolleybus"):
+            if sum(osmpack.length_m(line) for line in lines) > MAX_BUS_ROUTE_KM * 1000:
+                return
+            # A city's buses are one system, whoever runs each route: a rider knows the
+            # number on the front, not the operator behind it.
+            kind = "bus"
+            network = f"{city['name']} buses"
+        else:
+            network = tags.get("network") or master_tags.get("network") or tags.get("operator") or city["name"]
         key = (city["slug"], f"{network}|{kind}")
         system = self.systems.get(key)
         if system is None:
-            label = network if kind.split()[0].lower() in network.lower() else f"{network} {kind.title()}"
             system = {
                 "id": osmpack.SYSTEM_BASE + len(self.systems) + 1,
-                "name": label,
+                "name": network,
                 "kind": kind,
                 "city": city["name"],
                 "country": city["country"],
@@ -355,6 +365,14 @@ class Transit:
         station = osmpack.merge_stations(self.stops.values())
         used_stops: set[int] = set()
         written_lines = 0
+        # A network running more than one kind in a city — a metro and a tram under one
+        # name — is told apart by its kind.
+        names = defaultdict(int)
+        for system in self.systems.values():
+            names[(system["city"], system["name"])] += 1
+        for system in self.systems.values():
+            if names[(system["city"], system["name"])] > 1:
+                system["name"] = f"{system['name']} ({system['kind']})"
         for system in self.systems.values():
             connection.execute(
                 "INSERT INTO transit_system VALUES (?, ?, ?, ?, ?, ?)",

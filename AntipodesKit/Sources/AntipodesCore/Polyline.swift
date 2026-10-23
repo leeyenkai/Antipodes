@@ -199,20 +199,34 @@ public struct AerialLift: Hashable, Sendable, Identifiable {
             .replacingOccurrences(of: " Car", with: " car")
     }
 
+    /// How close two lifts' stations must be to be one junction.
+    public static let stationMergeKm = 0.15
+
     /// Lifts as a network a cable-car leg is measured along (D-36): each lift an edge,
-    /// each station a junction, and stations within about a hundred metres of each other
-    /// one junction — the top of one gondola is where the next cable car leaves from.
+    /// each station a junction, and stations within ``stationMergeKm`` of each other one
+    /// junction — the top of one gondola is where the next cable car leaves from.
     public static func network(_ lifts: [AerialLift], version: String) -> TrackNetwork {
         var nodes: [Coordinate] = []
-        var nodeAt: [Int64: Int] = [:]
+        // Stations by a grid of about a kilometre, so a new one is compared only with
+        // those around it.
+        var nearby: [Int64: [Int]] = [:]
+        func cell(_ latitude: Int64, _ longitude: Int64) -> Int64 {
+            latitude * 1_000_000 + longitude
+        }
         func node(_ point: Coordinate) -> Int {
-            let key = Int64((point.latitude * 1000).rounded()) * 1_000_000
-                + Int64((point.longitude * 1000).rounded())
-            if let known = nodeAt[key] {
-                return known
+            let row = Int64((point.latitude * 100).rounded(.down))
+            let column = Int64((point.longitude * 100).rounded(.down))
+            for dRow in -1 ... 1 {
+                for dColumn in -1 ... 1 {
+                    for index in nearby[cell(row + Int64(dRow), column + Int64(dColumn))] ?? []
+                        where GreatCircle
+                        .distanceKm(from: nodes[index], to: point) <= stationMergeKm {
+                        return index
+                    }
+                }
             }
             nodes.append(point)
-            nodeAt[key] = nodes.count - 1
+            nearby[cell(row, column), default: []].append(nodes.count - 1)
             return nodes.count - 1
         }
         let edges = lifts.compactMap { lift -> TrackEdge? in
