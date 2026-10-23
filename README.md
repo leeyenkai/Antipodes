@@ -27,6 +27,11 @@
     <td><img src="docs/images/trip.jpg" width="240" alt="A trip to Rome, Florence and Venice with its map and figures"></td>
     <td><img src="docs/images/collections.jpg" width="240" alt="Collections: New 7 Wonders, Nordic capitals, European capitals"></td>
   </tr>
+  <tr>
+    <td><img src="docs/images/photos.jpg" width="240" alt="The globe showing where photos were taken, as numbered bubbles"></td>
+    <td><img src="docs/images/photo-card.jpg" width="240" alt="Reykjavík's card on the globe, with the photos linked to its visit"></td>
+    <td><img src="docs/images/transit.jpg" width="240" alt="City transit systems grouped by city, from Adelaide to Atlanta"></td>
+  </tr>
 </table>
 
 ## Features
