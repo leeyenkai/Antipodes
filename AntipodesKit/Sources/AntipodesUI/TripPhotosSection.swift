@@ -8,13 +8,14 @@ struct TripPhotosSection: View {
     @Environment(AppModel.self) private var model
     let trip: Trip
     let visits: [Visit]
+    /// The photo opened full screen; the trip's page presents `TripPhotoViewer`.
+    @Binding var viewing: PhotoViewerStart?
 
     @State private var picked: [PhotosPickerItem] = []
     @State private var suggestions: [PhotoReference] = []
-    @State private var viewing: PhotoViewerStart?
 
     private var photos: [PhotoReference] {
-        (trip.photos + visits.flatMap(\.photos)).normalised()
+        trip.allPhotos(with: visits)
     }
 
     var body: some View {
@@ -79,9 +80,6 @@ struct TripPhotosSection: View {
                 excluding: Set(photos.map(\.localIdentifier))
             )
         }
-        .sheet(item: $viewing) { start in
-            PhotoViewer(photos: photos, start: start.index, onRemove: unlink)
-        }
     }
 
     private var suggestionKey: String {
@@ -96,6 +94,26 @@ struct TripPhotosSection: View {
         model.updateTrip(edited)
         let added = Set(chosen.map(\.localIdentifier))
         suggestions.removeAll { added.contains($0.localIdentifier) }
+    }
+}
+
+extension Trip {
+    /// The trip's own photos and its visits', oldest first.
+    func allPhotos(with visits: [Visit]) -> [PhotoReference] {
+        (photos + visits.flatMap(\.photos)).normalised()
+    }
+}
+
+/// A trip's photos full screen, where removing one unlinks it from the trip or from the
+/// visit that holds it.
+struct TripPhotoViewer: View {
+    @Environment(AppModel.self) private var model
+    let trip: Trip
+    let visits: [Visit]
+    let start: Int
+
+    var body: some View {
+        PhotoViewer(photos: trip.allPhotos(with: visits), start: start, onRemove: unlink)
     }
 
     /// Unlinks a photo from whichever record holds it: the trip or one of its visits.

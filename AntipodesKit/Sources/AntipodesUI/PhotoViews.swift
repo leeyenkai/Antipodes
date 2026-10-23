@@ -76,10 +76,12 @@ struct LinkedPhotosSection: View {
     @Binding var photos: [PhotoReference]
     /// Where and when the record was, for suggestions; `nil` offers none.
     let around: (coordinate: Coordinate, date: FlexibleDate)?
+    /// The photo opened full screen. The form presents the viewer: a sheet hung on a
+    /// section inside a form can take the form's own sheet down with it.
+    @Binding var viewing: PhotoViewerStart?
 
     @State private var picked: [PhotosPickerItem] = []
     @State private var suggestions: [PhotoReference] = []
-    @State private var viewing: PhotoViewerStart?
 
     var body: some View {
         Section {
@@ -128,11 +130,6 @@ struct LinkedPhotosSection: View {
                 during: around.date,
                 excluding: Set(photos.map(\.localIdentifier))
             )
-        }
-        .sheet(item: $viewing) { start in
-            PhotoViewer(photos: photos, start: start.index) { removed in
-                photos.removeAll { $0.localIdentifier == removed.localIdentifier }
-            }
         }
     }
 

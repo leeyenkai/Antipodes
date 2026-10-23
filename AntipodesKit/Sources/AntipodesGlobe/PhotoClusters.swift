@@ -82,9 +82,19 @@ public struct PhotoClusters: Sendable {
     private struct Accumulator {
         var x = 0.0, y = 0.0, z = 0.0
         var anchor: Coordinate?
-        var ids: [String] = []
+        /// Each photo with its place in the input, which is newest first.
+        var members: [(order: Int, id: String)] = []
         var first: Date?
         var last: Date?
+
+        mutating func absorb(_ other: Accumulator) {
+            x += other.x
+            y += other.y
+            z += other.z
+            members += other.members
+            first = [first, other.first].compactMap(\.self).min()
+            last = [last, other.last].compactMap(\.self).max()
+        }
     }
 
     private static func group(
@@ -93,7 +103,7 @@ public struct PhotoClusters: Sendable {
         degrees: Double
     ) -> [PhotoCluster] {
         var cells: [Cell: Accumulator] = [:]
-        for photo in photos {
+        for (order, photo) in photos.enumerated() {
             let cell = Cell(
                 latitude: Int((photo.coordinate.latitude / degrees).rounded(.down)),
                 longitude: Int((photo.coordinate.longitude / degrees).rounded(.down))
@@ -104,18 +114,51 @@ public struct PhotoClusters: Sendable {
             sum.y += vector.y
             sum.z += vector.z
             sum.anchor = sum.anchor ?? photo.coordinate
-            sum.ids.append(photo.id)
+            sum.members.append((order, photo.id))
             if let taken = photo.takenAt {
                 sum.first = min(sum.first ?? taken, taken)
                 sum.last = max(sum.last ?? taken, taken)
             }
             cells[cell] = sum
         }
-        return cells.map { cell, sum in
+        // A grid cuts through places: photos either side of a cell's edge would be two
+        // bubbles on top of each other. A cell whose middle is close to a busier
+        // neighbour's joins it.
+        let joinKm = degrees * 111 * 0.5
+        var kept: [(cell: Cell, sum: Accumulator)] = []
+        var keptAt: [Cell: Int] = [:]
+        let busiestFirst = cells.sorted { a, b in
+            (a.value.members.count, b.key.latitude, b.key.longitude)
+                > (b.value.members.count, a.key.latitude, a.key.longitude)
+        }
+        for (cell, sum) in busiestFirst {
+            let here = mean(sum) ?? sum.anchor
+            var home: Int?
+            neighbours: for dLat in -1 ... 1 {
+                for dLon in -1 ... 1 {
+                    guard let index = keptAt[Cell(
+                        latitude: cell.latitude + dLat,
+                        longitude: cell.longitude + dLon
+                    )],
+                        let here, let there = mean(kept[index].sum) ?? kept[index].sum.anchor,
+                        GreatCircle.distanceKm(from: here, to: there) < joinKm else { continue }
+                    home = index
+                    break neighbours
+                }
+            }
+            if let home {
+                kept[home].sum.absorb(sum)
+                keptAt[cell] = home
+            } else {
+                keptAt[cell] = kept.count
+                kept.append((cell, sum))
+            }
+        }
+        return kept.map { cell, sum in
             PhotoCluster(
                 id: stableID(band: band, cell: cell),
                 coordinate: mean(sum) ?? sum.anchor ?? Coordinate(latitude: 0, longitude: 0),
-                photoIDs: sum.ids,
+                photoIDs: sum.members.sorted { $0.order < $1.order }.map(\.id),
                 first: sum.first,
                 last: sum.last
             )

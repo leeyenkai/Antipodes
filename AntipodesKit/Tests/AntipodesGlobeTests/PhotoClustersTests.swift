@@ -52,6 +52,13 @@ struct PhotoClustersTests {
         #expect(PhotoClusters.band(forZoom: 1000) == PhotoClusters.bandDegrees.count - 1)
     }
 
+    /// 63.99° and 64.01° N straddle a cell edge at every band; they are one place.
+    @Test("Photos either side of a cell's edge share a bubble")
+    func cellEdges() {
+        let clusters = PhotoClusters([Self.photo("a", 63.99, -21.0), Self.photo("b", 64.01, -21.0)])
+        #expect(clusters.levels.allSatisfy { $0.count == 1 })
+    }
+
     @Test("Photos either side of the date line stay apart")
     func dateLine() {
         let clusters = PhotoClusters([

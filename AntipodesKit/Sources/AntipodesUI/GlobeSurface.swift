@@ -184,14 +184,23 @@ struct GlobeSurface: View {
         photoClusters?.clusters(forZoom: camera.zoom) ?? []
     }
 
-    /// A pin wins over a photo bubble, and a bubble over an arc: the more specific thing
-    /// under the finger opens.
+    /// A tap inside a photo bubble opens it — it is drawn over the pins. Otherwise a pin
+    /// near the finger wins over a bubble near it, and a bubble over an arc: the more
+    /// specific thing under the finger opens.
     private func handleTap(at location: CGPoint, in size: CGSize) {
         let globe = OrthographicGlobe(
             camera: camera,
             size: GlobeSize(width: size.width, height: size.height)
         )
         let point = GlobePoint(x: location.x, y: location.y)
+        if let onSelectPhotos, let bubble = visibleClusters.cluster(
+            at: point,
+            globe: globe,
+            tolerance: 0
+        ) {
+            onSelectPhotos(bubble)
+            return
+        }
         let selection = scene.selection(at: point, globe: globe)
         if case .pin = selection {
             onSelect(selection)

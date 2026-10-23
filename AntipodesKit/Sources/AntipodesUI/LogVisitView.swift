@@ -23,6 +23,7 @@ struct VisitForm: View {
     @State private var rating: Int?
     @State private var notes: String
     @State private var photos: [PhotoReference]
+    @State private var viewingPhoto: PhotoViewerStart?
     @State private var isConfirmingDelete = false
     @State private var saved = false
     /// What the form held when it opened, so it knows whether there is anything to lose.
@@ -138,7 +139,8 @@ struct VisitForm: View {
 
             LinkedPhotosSection(
                 photos: $photos,
-                around: (existing?.place ?? place).coordinate.map { ($0, date) }
+                around: (existing?.place ?? place).coordinate.map { ($0, date) },
+                viewing: $viewingPhoto
             )
 
             if let existing {
@@ -167,6 +169,11 @@ struct VisitForm: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button(existing == nil ? "Save" : "Done", systemImage: "checkmark", action: save)
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .sheet(item: $viewingPhoto) { start in
+            PhotoViewer(photos: photos, start: start.index) { removed in
+                photos.removeAll { $0.localIdentifier == removed.localIdentifier }
             }
         }
         .guardingUnsavedEdits(fields != baseline && !saved, discard: onDone)

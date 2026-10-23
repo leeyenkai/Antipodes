@@ -11,6 +11,7 @@ struct TripDetailView: View {
     @State private var isEditing = false
     @State private var isAddingExisting = false
     @State private var tripToDelete: Trip?
+    @State private var viewingPhoto: PhotoViewerStart?
     /// The trip's own statistics, worked out off the main thread whenever the log's
     /// change, rather than twice on every redraw.
     @State private var stats: TravelStatistics?
@@ -56,7 +57,7 @@ struct TripDetailView: View {
                 }
             }
 
-            TripPhotosSection(trip: trip, visits: visits)
+            TripPhotosSection(trip: trip, visits: visits, viewing: $viewingPhoto)
 
             TripRecordsSections(visits: visits, journeys: journeys)
 
@@ -72,6 +73,9 @@ struct TripDetailView: View {
         }
         .sheet(isPresented: $isAddingExisting) {
             AddExistingToTripSheet(tripID: tripID)
+        }
+        .sheet(item: $viewingPhoto) { start in
+            TripPhotoViewer(trip: trip, visits: visits, start: start.index)
         }
         .deleteTripDialog(trip: $tripToDelete) { dismiss() }
         .task(id: model.statisticsRevision) {
