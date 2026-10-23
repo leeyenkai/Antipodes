@@ -32,8 +32,13 @@
 ## Features
 
 - **Every way you travel.** Places, flights, rail, coaches, ferries, road trips, hikes,
-  city transit and cable cars, with multi-leg journeys and connections. Rail and road
-  legs are measured along the real network, not as straight lines.
+  rides, city transit and cable cars, with multi-leg journeys and connections. Trains,
+  roads, trails, lifts and famous routes like the Glacier Express follow the real line,
+  not a straight one.
+- **City transit, line by line.** About a hundred metro, tram and light-rail systems and
+  the buses of ten cities, each ride drawn along its line between your stops.
+- **Your photos, on your travels.** Link photos to visits and trips (they stay in your
+  library) and see on the globe where every photo you've taken was.
 - **Fast to log.** Search a bundled offline database of cities, airports, stations and
   landmarks, and tap. No account, no typing coordinates.
 - **Statistics with substance.** Countries and continents, distance and time in the air,
@@ -42,7 +47,8 @@
 - **Trips, collections and badges.** Group journeys into trips, tick off the New 7
   Wonders or every US national park, and keep a wishlist that ticks itself off.
 - **Bring your history.** Import from Flighty, myFlightradar24, OpenFlights or a rail
-  log CSV, or find past trips in your photos, on the device.
+  log CSV, hikes and rides from GPX files or Apple Health, or find past trips in your
+  photos, all on the device.
 - **Share it.** Cards for a stat, a trip or a year, Year in Review, and Home and Lock
   Screen widgets.
 
@@ -72,6 +78,8 @@ bundles (a few hundred MB, cached in `Tools/placedb/vendor/`).
 | `scripts/test.sh` | The test suite, with no simulator and no network |
 | `scripts/lint.sh` | SwiftFormat and SwiftLint |
 | `scripts/build-placedb.sh` | Builds `places.sqlite` from the cached open data |
+| `scripts/fetch-osmpack.sh` | Downloads the OpenStreetMap data for the route pack (takes hours) |
+| `scripts/build-osmpack.sh` | Builds the optional route pack: trails, lifts, route shapes, more transit |
 
 ## Project layout
 
@@ -79,6 +87,7 @@ bundles (a few hundred MB, cached in `Tools/placedb/vendor/`).
 AntipodesKit/    Swift package with all the logic and UI, one module per concern
 App/             The thin app shell and the widgets extension
 Tools/placedb/   Python pipeline that builds the offline place database
+Tools/osmpack/   Python pipeline that builds the OpenStreetMap route pack
 docs/            The product specification
 scripts/         Build, test and lint helpers
 ```
@@ -97,6 +106,9 @@ The place database is built from open data: [Natural Earth](https://www.naturale
 (OGL v3.0) and [TerraClimate](https://www.climatologylab.org/terraclimate.html). The
 satellite globe uses NASA's
 [Blue Marble Next Generation](https://visibleearth.nasa.gov/collection/1484/blue-marble).
+Trails, lifts, route shapes and most city transit lines come from
+[OpenStreetMap](https://www.openstreetmap.org/copyright) (© OpenStreetMap contributors,
+ODbL), kept in a separate file, `routes-osm.sqlite`.
 Each source's licence and what it requires are set out in
 [Tools/placedb/SOURCES.md](Tools/placedb/SOURCES.md), and the app credits them in
 Settings.
@@ -104,4 +116,5 @@ Settings.
 ## Licence
 
 The code is released under the [MIT licence](LICENSE). The curated lists in
-`Tools/placedb/curation/` are CC0. The open data keeps its own licence, as above.
+`Tools/placedb/curation/` are CC0. The open data keeps its own licence, as above; the
+route pack is available under the Open Database License.

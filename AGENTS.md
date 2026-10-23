@@ -48,6 +48,9 @@ App/AntipodesWidgets/    WidgetKit extension. Imports AntipodesCore only (D-19).
 Antipodes.xcodeproj      Thin app project; depends on the local AntipodesKit package.
 Tools/placedb/           Python pipeline that builds the read-only places.sqlite
                          from open data. curation/ is tracked; vendor/ and out/ are not.
+Tools/osmpack/           Python pipeline that builds routes-osm.sqlite, the separate
+                         OpenStreetMap route pack (D-36): trails, lifts, route shapes,
+                         more city transit. Its own curation/, vendor/ and out/.
 docs/                    SPECIFICATION.md and any design notes.
   images/                The README's icon and screenshots (iPhone, 600 px wide).
 scripts/                 Repo-level build, test and lint helpers.
@@ -218,7 +221,7 @@ database is built from open data, and the licences differ:
 | Wikidata | CC0 | None | Yes — landmark facts, UNESCO status, UN membership, city transit lines and stops (D-29) |
 | TerraClimate (University of Idaho) | CC0 | None (cited anyway) | Yes — 1991–2020 monthly temperature normals and Köppen climate zones |
 | NASA Blue Marble | Public domain | Credit NASA; no endorsement implied | Yes — the satellite globe's picture (bundled, not in the database) |
-| OpenStreetMap / OpenRailwayMap | ODbL | Share-alike on a *derived database* | **No — excluded, see below** |
+| OpenStreetMap | ODbL | Share-alike on a *derived database* | **Only in `routes-osm.sqlite`** (D-36), never in `places.sqlite` — see below |
 | Trainline EU stations | ODbL | Same as OSM | **No — excluded** |
 | UNESCO World Heritage List | Prior written authorisation | Permission needed | **No — excluded; status comes from Wikidata** |
 | GTFS feeds | Varies per feed | Check each one individually | Not used — city transit comes from Wikidata (D-29) |
@@ -230,8 +233,12 @@ database is built from open data, and the licences differ:
   source.
 - **No OpenStreetMap-derived data goes into `places.sqlite`** (decision D-8). ODbL
   §4.4 would put share-alike on the whole file, including the CC BY and CC0 material in
-  it. If route geometry is wanted, it ships as a separate ODbL pack — read
-  `SOURCES.md` §2 before writing any code that touches OSM. This is settled, not open.
+  it. Route geometry lives in the separate pack, `routes-osm.sqlite`, built by
+  `Tools/osmpack/` (D-36) — read `SOURCES.md` §2 before writing any code that touches
+  OSM. The pack has its own budget (120 MB) and the build fails over it. The app must
+  keep working without the pack: every reader of it falls back. This is settled, not open.
+- **Photos are linked, never copied** (D-35): a record keeps a `PhotoReference`, and the
+  globe's photo layer keeps the library's locations in memory only.
 - Where a licence requires attribution, put the licence's own words in the source's
   `attribution` field. It is written into the database and rendered verbatim in
   Settings, so a new source cannot ship uncredited.

@@ -80,11 +80,12 @@ built, for when it is zoomed in). `scripts/fetch-placedb-sources.sh` already cac
 verifies both against the same pinned tag and digests. Nothing in the app fetches
 either: they are build inputs.
 
-## 2. The OpenStreetMap question — resolved: excluded
+## 2. The OpenStreetMap question — resolved: a pack of its own
 
 **Decision: no OpenStreetMap-derived data in `places.sqlite`, now or later.** Route
-geometry, if it is ever wanted, ships as a separate ODbL-licensed pack. This also rules
-out Trainline's stations dataset, which is ODbL too.
+geometry ships as a separate ODbL-licensed pack, `routes-osm.sqlite`, built by
+`Tools/osmpack/` and bundled beside the place database (decision D-36, 2026-10-23). This
+also rules out Trainline's stations dataset, which is ODbL too.
 
 ### The reasoning
 
@@ -125,22 +126,32 @@ modification to this data source must be published" — it is not a way around O
 the same obligation wearing a different name. The same goes for **OpenRailwayMap**,
 which is OSM data.
 
-**Ruled in, when the feature arrives.** A separate `routes-osm` pack, delivered through
-the R-DB-5 update channel, published under ODbL at a public URL, with the ODbL notice
-and attribution in Settings. Under §4.5(a) the app bundle is then a Collective
-Database and `places.sqlite` stays outside the share-alike scope. Three conditions
-attach to taking that route:
+**Ruled in, and now built.** A separate `routes-osm.sqlite` pack, under ODbL, with the
+ODbL notice and attribution in its `meta` table and in Settings. Under §4.5(a) the app
+bundle is then a Collective Database and `places.sqlite` stays outside the share-alike
+scope. The three conditions this file set for taking that route, and how D-36 meets them:
 
-- the pack is built by its own pipeline and shares no table with `places.sqlite`;
-- the derived database is actually published, not merely offered — share-alike is a
-  publication obligation, not an attribution one;
-- it is a deliberate decision at the time, recorded here, not a drift.
+- **The pack is built by its own pipeline and shares no table with `places.sqlite`.**
+  `Tools/osmpack/` has its own fetcher, cache (`vendor/osm/`), schema and build. It
+  reads `places.sqlite` only to learn which catalogue routes and Wikidata lines exist,
+  and writes nothing back; its curation holds identifiers and choices, not OSM data.
+- **The derived database is actually published, not merely offered.** The pack ships
+  whole inside the app, so everyone who has the app has the derivative database in full,
+  in a documented SQLite schema — more than ODbL §4.6 asks, which is an offer of the
+  database or of the means to rebuild it. When the app is distributed publicly, the same
+  file is also attached to the release, and the pipeline that rebuilds it is in the
+  repository.
+- **It is a deliberate decision, recorded here and as D-36**, made when the owner asked
+  for real trail, lift, route and transit shapes.
 
-**The consequence for v1.** Famous routes carry curated scalar facts only — length,
-typical duration, highest point — which are facts we state, not an extraction from
-anyone's database. Rail, ferry, road and trail **geometry does not ship**. §5.8 of the
-specification already puts surface-route geometry beyond M1, so nothing in the current
-milestone is blocked by this.
+R-DB-5's update channel is not needed for any of this: the pack arrives with the app,
+and a later pack replaces it with the next build.
+
+**What it holds.** Signed hiking and cycling routes in four regions as routable
+networks, the world's passenger aerial lifts, the catalogue routes' shapes, and the lines,
+stops and shapes of about a hundred rail transit systems and the buses of ten cities.
+Famous routes in `places.sqlite` still carry only curated scalar facts — length,
+typical duration, highest point — which are facts we state, not an extraction.
 
 It is worth being clear about *why* this is the decision, because the obligation itself
 is not objectionable: we would be content to publish a geometry pack under ODbL. What
@@ -156,7 +167,7 @@ it separate costs a file and keeps every option open.
 
 | Source | Would be used for | Finding | Status |
 |---|---|---|---|
-| OpenStreetMap / OpenRailwayMap | Railway, ferry, trail, aerialway geometry | ODbL 1.0 share-alike on a derived database — §2 above | **Excluded** from `places.sqlite`; separate pack only |
+| OpenStreetMap / OpenRailwayMap | Railway, ferry, trail, aerialway geometry | ODbL 1.0 share-alike on a derived database — §2 above | **Excluded** from `places.sqlite`; **in use** in the separate `routes-osm.sqlite` pack (D-36) |
 | Trainline EU open stations | European rail stations | ODbL, same analysis as OSM | **Excluded** |
 | UNESCO World Heritage List | UNESCO status on landmarks | No licence covers the List as data. The World Heritage Centre's FAQ states that republication of UNESCO/WHC data requires **prior written authorisation**, and the syndication terms add further conditions. Individual items on the site carry assorted CC licences, several non-commercial. | **Excluded.** UNESCO status comes from Wikidata's `P1435` instead (CC0), which needs no permission |
 | GTFS feeds (Mobility Database, Transitland) | Transit systems, lines, stops, shapes | Licence differs per feed; many are ODbL or CC BY-SA, some have no licence at all | **Not used.** City transit comes from Wikidata instead (D-29), which gives stations and links but no track shapes; a feed would be reviewed on its own if shapes are ever wanted |
