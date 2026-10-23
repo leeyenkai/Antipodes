@@ -26,7 +26,8 @@ public extension AppModel {
         date: FlexibleDate,
         tripID: UUID?,
         rating: Int? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        photos: [PhotoReference] = []
     ) throws {
         let trip = try tripID.flatMap { try store.trip(id: $0) }
         try store.logVisit(
@@ -35,7 +36,8 @@ public extension AppModel {
             date: date,
             trip: trip,
             rating: rating,
-            notes: notes?.trimmedOrNil
+            notes: notes?.trimmedOrNil,
+            photos: photos
         )
         reload()
     }

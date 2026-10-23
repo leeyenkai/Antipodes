@@ -9,17 +9,33 @@ public struct Trip: Identifiable, Hashable, Sendable, Codable {
     /// When the trip was created in the app. Only used to order trips that have nothing
     /// dated in them yet; it is not when the trip happened.
     public var createdAt: Date?
+    /// Photos linked to the trip as a whole (R-PHOTO-1). Its visits carry their own.
+    public var photos: [PhotoReference]
 
     public init(
         id: UUID = UUID(),
         name: String? = nil,
         notes: String? = nil,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        photos: [PhotoReference] = []
     ) {
         self.id = id
         self.name = name
         self.notes = notes
         self.createdAt = createdAt
+        self.photos = photos
+    }
+
+    /// Backups made before photos (format 3 and older) have no `photos` key.
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        try self.init(
+            id: container.decode(UUID.self, forKey: .id),
+            name: container.decodeIfPresent(String.self, forKey: .name),
+            notes: container.decodeIfPresent(String.self, forKey: .notes),
+            createdAt: container.decodeIfPresent(Date.self, forKey: .createdAt),
+            photos: container.decodeIfPresent([PhotoReference].self, forKey: .photos) ?? []
+        )
     }
 }
 
@@ -35,6 +51,8 @@ public struct Visit: Identifiable, Hashable, Sendable, Codable {
     public var notes: String?
     /// When it was logged, for ordering undated visits. Not when it happened.
     public var createdAt: Date?
+    /// Photos from the library linked to this visit (R-PHOTO-1).
+    public var photos: [PhotoReference]
 
     public init(
         id: UUID = UUID(),
@@ -44,7 +62,8 @@ public struct Visit: Identifiable, Hashable, Sendable, Codable {
         tripID: UUID? = nil,
         rating: Int? = nil,
         notes: String? = nil,
-        createdAt: Date? = nil
+        createdAt: Date? = nil,
+        photos: [PhotoReference] = []
     ) {
         self.id = id
         self.place = place
@@ -54,6 +73,7 @@ public struct Visit: Identifiable, Hashable, Sendable, Codable {
         self.rating = rating.map { min(5, max(1, $0)) }
         self.notes = notes
         self.createdAt = createdAt
+        self.photos = photos
     }
 
     /// Decoded through the initialiser, so a backup's rating is kept within one to five
@@ -68,7 +88,8 @@ public struct Visit: Identifiable, Hashable, Sendable, Codable {
             tripID: container.decodeIfPresent(UUID.self, forKey: .tripID),
             rating: container.decodeIfPresent(Int.self, forKey: .rating),
             notes: container.decodeIfPresent(String.self, forKey: .notes),
-            createdAt: container.decodeIfPresent(Date.self, forKey: .createdAt)
+            createdAt: container.decodeIfPresent(Date.self, forKey: .createdAt),
+            photos: container.decodeIfPresent([PhotoReference].self, forKey: .photos) ?? []
         )
     }
 }

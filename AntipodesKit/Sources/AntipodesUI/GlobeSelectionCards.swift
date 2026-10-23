@@ -11,10 +11,17 @@ struct GlobePlaceCard: View {
     let pin: GlobePin
     let close: () -> Void
 
+    @State private var viewing: PhotoViewerStart?
+
     var body: some View {
         List {
             Section {
                 PlaceHeader(place: pin.place)
+            }
+            if !photos.isEmpty {
+                Section("Photos") {
+                    PhotoStrip(photos: photos, side: 68) { viewing = PhotoViewerStart(index: $0) }
+                }
             }
             if visits.isEmpty {
                 // The last visit here was deleted from its own form, opened from this card.
@@ -66,6 +73,14 @@ struct GlobePlaceCard: View {
                 Button("Close", role: .cancel, action: close)
             }
         }
+        .sheet(item: $viewing) { start in
+            PhotoViewer(photos: photos, start: start.index)
+        }
+    }
+
+    /// The photos linked to every visit here, oldest first (R-PHOTO-3).
+    private var photos: [PhotoReference] {
+        visits.flatMap(\.photos).normalised()
     }
 
     /// Every visit to this place — the one tapped, and any other logged there, which

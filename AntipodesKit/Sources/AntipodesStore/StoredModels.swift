@@ -61,6 +61,8 @@ public final class StoredTrip {
     public var name: String?
     public var notes: String?
     public var createdAt: Date = Date()
+    /// The trip's linked photos, encoded by `PhotoReferenceCoding` (R-PHOTO-1, D-35).
+    public var photosData: Data?
 
     @Relationship(deleteRule: .cascade, inverse: \StoredVisit.trip)
     public var visits: [StoredVisit]? = []
@@ -104,6 +106,8 @@ public final class StoredVisit {
     public var rating: Int?
     public var notes: String?
     public var createdAt: Date = Date()
+    /// The visit's linked photos, encoded by `PhotoReferenceCoding` (R-PHOTO-1, D-35).
+    public var photosData: Data?
 
     public var trip: StoredTrip?
 

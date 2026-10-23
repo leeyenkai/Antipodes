@@ -20,6 +20,7 @@ public extension TravelLogStore {
         }
         for trip in log.trips where !existing.trips.contains(trip.id) {
             let stored = StoredTrip(identifier: trip.id, name: trip.name, notes: trip.notes)
+            stored.photosData = PhotoReferenceCoding.encode(trip.photos)
             if let created = trip.createdAt {
                 stored.createdAt = created
             }

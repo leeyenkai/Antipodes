@@ -242,15 +242,16 @@ struct GlobeTimelineBar: View {
     }
 }
 
-/// Standard or satellite (D-26), as a menu like a map's style picker.
+/// Standard or satellite (D-26), and the photo layer (R-PHOTO-4), as a menu like a
+/// map's style picker.
 struct GlobeStyleMenu: View {
     @Environment(AppModel.self) private var model
     @Environment(GlobeImageryStore.self) private var imagery: GlobeImageryStore?
 
     var body: some View {
         @Bindable var model = model
-        if imagery?.isAvailable ?? false {
-            Menu {
+        Menu {
+            if imagery?.isAvailable ?? false {
                 Picker("Globe Style", selection: $model.globeStyle) {
                     ForEach(GlobeStyle.allCases) { style in
                         Label(style.displayName, systemImage: style.symbolName).tag(style)
@@ -262,11 +263,12 @@ struct GlobeStyleMenu: View {
                         Text("Blue Marble imagery: NASA Earth Observatory")
                     }
                 }
-            } label: {
-                Label("Globe Style", systemImage: "map")
             }
-            .help("Standard or satellite globe")
+            PhotoLayerToggle()
+        } label: {
+            Label("Globe Style", systemImage: "map")
         }
+        .help("Globe style and photo layer")
     }
 }
 

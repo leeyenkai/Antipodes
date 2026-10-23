@@ -25,6 +25,10 @@ struct GlobeSurface: View {
     let onSelect: (GlobeSelection?) -> Void
     /// Touch and hold to drop a pin there (R-LOG-5). `nil` turns the gesture off.
     var onDropPin: ((Coordinate) -> Void)?
+    /// The photo layer at this zoom, and what a tap on a bubble does (R-PHOTO-4).
+    var photoClusters: PhotoClusters?
+    var selectedPhotoCluster: UUID?
+    var onSelectPhotos: ((PhotoCluster) -> Void)?
 
     @GestureState private var dragTranslation: CGSize = .zero
     @State private var gestureStartCamera: GlobeCamera?
@@ -41,7 +45,9 @@ struct GlobeSurface: View {
                 emphasised: emphasised,
                 palette: palette,
                 surface: surface,
-                isInteracting: dragTranslation != .zero || zoomStart != nil
+                isInteracting: dragTranslation != .zero || zoomStart != nil,
+                photoClusters: visibleClusters,
+                selectedPhotoCluster: selectedPhotoCluster
             )
             .contentShape(.rect)
             .gesture(rotation(in: proxy.size))
@@ -174,12 +180,29 @@ struct GlobeSurface: View {
             }
     }
 
+    private var visibleClusters: [PhotoCluster] {
+        photoClusters?.clusters(forZoom: camera.zoom) ?? []
+    }
+
+    /// A pin wins over a photo bubble, and a bubble over an arc: the more specific thing
+    /// under the finger opens.
     private func handleTap(at location: CGPoint, in size: CGSize) {
         let globe = OrthographicGlobe(
             camera: camera,
             size: GlobeSize(width: size.width, height: size.height)
         )
-        onSelect(scene.selection(at: GlobePoint(x: location.x, y: location.y), globe: globe))
+        let point = GlobePoint(x: location.x, y: location.y)
+        let selection = scene.selection(at: point, globe: globe)
+        if case .pin = selection {
+            onSelect(selection)
+        } else if let onSelectPhotos, let cluster = visibleClusters.cluster(
+            at: point,
+            globe: globe
+        ) {
+            onSelectPhotos(cluster)
+        } else {
+            onSelect(selection)
+        }
     }
 }
 

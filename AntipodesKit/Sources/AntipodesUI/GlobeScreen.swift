@@ -33,6 +33,8 @@ struct GlobeScreen: View {
     /// one sheet cannot open over another that is still leaving.
     @State private var queuedAdd: AddRequest?
     @State private var sharingGlobe = false
+    /// A bubble of the photo layer that was tapped (R-PHOTO-4).
+    @State private var photoCluster: PhotoCluster?
     /// What the scene was last built from.
     @State private var builtFrom: GlobeInputs?
 
@@ -78,6 +80,13 @@ struct GlobeScreen: View {
                 })
         }
         .sheet(isPresented: $sharingGlobe) { ShareCardSheet(card: .globe) }
+        .sheet(item: $photoCluster, onDismiss: openQueuedAdd) { cluster in
+            PhotoClusterCard(cluster: cluster) { request in
+                queuedAdd = request
+                photoCluster = nil
+            }
+        }
+        .photoLayerLoading()
         .inspector(isPresented: isInspecting) {
             if let selection {
                 GlobeSelectionInspector(selection: selection) { self.selection = nil }
@@ -144,7 +153,10 @@ struct GlobeScreen: View {
             selection: selection,
             palette: palette,
             onSelect: select,
-            onDropPin: { model.addRequest = AddRequest(start: .pin($0)) }
+            onDropPin: { model.addRequest = AddRequest(start: .pin($0)) },
+            photoClusters: model.showsPhotoLayer ? model.photos.clusters : nil,
+            selectedPhotoCluster: photoCluster?.id,
+            onSelectPhotos: { photoCluster = $0 }
         )
     }
 

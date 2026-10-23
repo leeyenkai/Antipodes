@@ -151,7 +151,8 @@ public extension StoredVisit {
             tripID: trip?.identifier,
             rating: rating,
             notes: notes,
-            createdAt: createdAt
+            createdAt: createdAt,
+            photos: PhotoReferenceCoding.decode(photosData)
         )
     }
 
@@ -163,6 +164,7 @@ public extension StoredVisit {
         dateCode = visit.date.exportString
         rating = visit.rating
         notes = visit.notes
+        photosData = PhotoReferenceCoding.encode(visit.photos)
         apply(place: visit.place)
     }
 
@@ -346,7 +348,13 @@ public extension StoredJourney {
 
 public extension StoredTrip {
     var asTrip: Trip {
-        Trip(id: identifier, name: name, notes: notes, createdAt: createdAt)
+        Trip(
+            id: identifier,
+            name: name,
+            notes: notes,
+            createdAt: createdAt,
+            photos: PhotoReferenceCoding.decode(photosData)
+        )
     }
 }
 

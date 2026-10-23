@@ -14,6 +14,18 @@ Security, Data (place-database changes).
 
 ## [Unreleased]
 
+### Added
+
+- **Photos on visits and trips** (R-PHOTO-1 to R-PHOTO-3, D-35): a visit's form and a
+  trip's page have a Photos section — pick from the library, or add the photos taken
+  there on those days with a tap — and the globe's card for a place shows its visits'
+  photos. Photos are linked, never copied: a backup (format 4) carries the links, and a
+  restore on another device signed in to the same iCloud Photos finds them again.
+- **Where your photos were taken, on the globe** (R-PHOTO-4, R-PHOTO-5): "Show Photos"
+  in the globe's style menu draws every geotagged photo in the library as bubbles that
+  part as you zoom in. A bubble opens its photos and logs a visit to the town they are
+  nearest, dated from them. Locations are read on the device and never stored.
+
 ## [1.0.0] — 2026-10-23
 
 The first release: the V1 scope is built (decision D-18). §13.1 of the spec records

@@ -32,6 +32,9 @@ struct GlobeCanvas: View {
     /// Off the main thread on screen, so dragging stays smooth; on the main thread for
     /// `ImageRenderer`, which needs the drawing finished when it returns.
     var rendersAsynchronously = true
+    /// Where the library's photos were taken, grouped for this zoom (R-PHOTO-4).
+    var photoClusters: [PhotoCluster] = []
+    var selectedPhotoCluster: UUID?
 
     var body: some View {
         Canvas(opaque: false, rendersAsynchronously: rendersAsynchronously) { context, size in
@@ -62,6 +65,7 @@ struct GlobeCanvas: View {
         drawArcs(in: &context, globe: globe)
         drawLimbShading(in: &context, globe: globe)
         drawPins(in: &context, globe: globe)
+        drawPhotoClusters(in: &context, globe: globe)
     }
 
     // MARK: - The sphere
@@ -456,6 +460,9 @@ struct GlobePalette: Sendable {
     var wishlistPin = Palette.wishlist
     var homePin = Color(red: 0.80, green: 0.92, blue: 0.95)
     var pinOutline = Color.black.opacity(0.5)
+    /// A photo bubble: paper-white, so it reads as a different thing from a pin.
+    var photoBubble = Color(red: 0.96, green: 0.95, blue: 0.92)
+    var photoBubbleText = Color(red: 0.08, green: 0.10, blue: 0.14)
 
     /// The same colour a mode has everywhere else in the app.
     func colour(for mode: TravelMode) -> Color {

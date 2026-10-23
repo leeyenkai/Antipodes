@@ -65,6 +65,7 @@ struct PreferencesStorage {
     private enum Key {
         static let appearance = "preferences.appearance"
         static let globeStyle = "preferences.globeStyle"
+        static let photoLayer = "preferences.globePhotoLayer"
         static let home = "preferences.home"
         static let onboarded = "preferences.hasCompletedOnboarding"
     }
@@ -93,6 +94,13 @@ struct PreferencesStorage {
         nonmutating set {
             defaults.set(newValue.rawValue, forKey: Key.globeStyle)
         }
+    }
+
+    /// Whether the globe shows where the library's photos were taken (R-PHOTO-4). Off
+    /// until the user turns it on: it needs access to the whole library.
+    var showsPhotoLayer: Bool {
+        get { defaults.bool(forKey: Key.photoLayer) }
+        nonmutating set { defaults.set(newValue, forKey: Key.photoLayer) }
     }
 
     var home: PlaceReference? {

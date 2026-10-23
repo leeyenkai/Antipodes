@@ -122,6 +122,7 @@ public final class TravelLogStore {
         for stored in rows {
             stored.name = trip.name?.trimmedOrNil
             stored.notes = trip.notes?.trimmedOrNil
+            stored.photosData = PhotoReferenceCoding.encode(trip.photos)
         }
         try saveOrRollBack()
     }
@@ -155,7 +156,8 @@ public final class TravelLogStore {
         date: FlexibleDate,
         trip: StoredTrip? = nil,
         rating: Int? = nil,
-        notes: String? = nil
+        notes: String? = nil,
+        photos: [PhotoReference] = []
     ) throws -> StoredVisit {
         let stored = StoredVisit()
         stored.apply(place: place)
@@ -163,6 +165,7 @@ public final class TravelLogStore {
         stored.dateCode = date.exportString
         stored.rating = rating
         stored.notes = notes
+        stored.photosData = PhotoReferenceCoding.encode(photos)
         stored.trip = trip
         context.insert(stored)
         try saveOrRollBack()

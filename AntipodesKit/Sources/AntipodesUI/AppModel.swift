@@ -63,6 +63,9 @@ public final class AppModel {
     public private(set) var placesError: String?
 
     public private(set) var log: TravelLog = .empty
+    /// The Photos library, for the photos linked to visits and trips and the globe's
+    /// photo layer (D-35).
+    let photos = PhotoLibrary()
     public private(set) var statistics: TravelStatistics
     /// Bumped each time `statistics` is replaced, so a view that derives something from
     /// the log — a trip's own numbers — knows when to work it out again.
@@ -129,6 +132,11 @@ public final class AppModel {
         didSet { preferences.globeStyle = globeStyle }
     }
 
+    /// The globe's photo layer (R-PHOTO-4), remembered between launches.
+    public var showsPhotoLayer: Bool {
+        didSet { preferences.showsPhotoLayer = showsPhotoLayer }
+    }
+
     /// Where the user lives: left out of "days away" and photo suggestions, and the
     /// point the antipode is measured from.
     public var home: PlaceReference? {
@@ -187,6 +195,7 @@ public final class AppModel {
         rules = loadedRules
         appearance = preferences.appearance
         globeStyle = preferences.globeStyle
+        showsPhotoLayer = preferences.showsPhotoLayer
         home = preferences.home
         hasCompletedOnboarding = preferences.hasCompletedOnboarding
         statistics = StatisticsEngine.compute(

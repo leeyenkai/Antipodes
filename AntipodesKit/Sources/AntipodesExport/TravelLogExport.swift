@@ -238,7 +238,7 @@ public enum TravelLogExport {
     }
 
     /// The format version this build writes, and the newest it reads.
-    public static let currentFormatVersion = 3
+    public static let currentFormatVersion = 4
 
     /// ISO 8601, as version 3 writes; or seconds since 2001, as versions 1 and 2 did.
     static func decodeDate(_ decoder: any Decoder) throws -> Date {
@@ -275,7 +275,9 @@ public enum TravelLogExport {
         /// Bumped whenever the shape changes. Version 2 added leg times, routes, the
         /// wishlist, time zones and short codes; every addition is optional on import, so
         /// a version 1 file still reads. Version 3 writes timestamps as ISO 8601 text;
-        /// the older numbers still read.
+        /// the older numbers still read. Version 4 adds the photos linked to visits and
+        /// trips (D-35) — references to the library, never the pictures — and the tracks
+        /// recorded on legs; both are optional, so a version 3 file reads as before.
         var formatVersion = TravelLogExport.currentFormatVersion
         var application = "Antipodes"
         var exportedAt: String

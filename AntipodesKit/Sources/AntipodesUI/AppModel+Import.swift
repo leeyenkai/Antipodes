@@ -19,7 +19,8 @@ public extension AppModel {
 
     /// Restores a backup the user has already seen the preview of.
     func importBackup(_ preview: BackupPreview) throws -> ImportCounts {
-        let counts = try store.merge(preview.log)
+        // Linked photos follow the backup to another device by their iCloud identity.
+        let counts = try store.merge(photos.reconcile(preview.log))
         reload()
         return counts
     }

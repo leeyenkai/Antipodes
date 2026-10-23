@@ -22,6 +22,7 @@ struct VisitForm: View {
     @State private var newTripName: String?
     @State private var rating: Int?
     @State private var notes: String
+    @State private var photos: [PhotoReference]
     @State private var isConfirmingDelete = false
     @State private var saved = false
     /// What the form held when it opened, so it knows whether there is anything to lose.
@@ -35,6 +36,7 @@ struct VisitForm: View {
         var tripID: UUID?
         var rating: Int?
         var notes: String
+        var photos: [PhotoReference]
     }
 
     private var fields: Fields {
@@ -44,7 +46,8 @@ struct VisitForm: View {
             date: date,
             tripID: tripID,
             rating: rating,
-            notes: notes
+            notes: notes,
+            photos: photos
         )
     }
 
@@ -67,13 +70,15 @@ struct VisitForm: View {
         _tripID = State(initialValue: existing?.tripID ?? tripID)
         _rating = State(initialValue: existing?.rating)
         _notes = State(initialValue: existing?.notes ?? "")
+        _photos = State(initialValue: existing?.photos ?? [])
         _baseline = State(initialValue: Fields(
             name: existing?.place.name ?? place.name,
             visitType: visitType,
             date: date,
             tripID: existing?.tripID ?? tripID,
             rating: existing?.rating,
-            notes: existing?.notes ?? ""
+            notes: existing?.notes ?? "",
+            photos: existing?.photos ?? []
         ))
     }
 
@@ -130,6 +135,11 @@ struct VisitForm: View {
                 TextField("What do you want to remember?", text: $notes, axis: .vertical)
                     .lineLimit(2 ... 8)
             }
+
+            LinkedPhotosSection(
+                photos: $photos,
+                around: (existing?.place ?? place).coordinate.map { ($0, date) }
+            )
 
             if let existing {
                 Section {
@@ -207,6 +217,7 @@ struct VisitForm: View {
             visit.tripID = tripID
             visit.rating = rating
             visit.notes = notes.trimmedOrNil
+            visit.photos = photos
             // A failed save keeps the form open with the edits in it; the app-wide
             // alert says what went wrong.
             guard model.updateVisit(visit) else { return }
@@ -221,7 +232,8 @@ struct VisitForm: View {
                 date: date,
                 tripID: tripID,
                 rating: rating,
-                notes: notes
+                notes: notes,
+                photos: photos
             )
             saved = true
             onDone()

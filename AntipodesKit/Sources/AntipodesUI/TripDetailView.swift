@@ -56,6 +56,8 @@ struct TripDetailView: View {
                 }
             }
 
+            TripPhotosSection(trip: trip, visits: visits)
+
             TripRecordsSections(visits: visits, journeys: journeys)
 
             TripStatsSection(stats: tripStats)

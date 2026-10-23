@@ -262,6 +262,8 @@ private struct CompanionGlobe: View {
     @State private var scene = GlobeScene.empty
     @State private var hasFramed = false
     @State private var framedFocus: GlobeFocus?
+    @State private var photoCluster: PhotoCluster?
+    @State private var queuedAdd: AddRequest?
 
     var body: some View {
         ZStack {
@@ -271,7 +273,10 @@ private struct CompanionGlobe: View {
                 camera: $camera,
                 selection: nil,
                 emphasised: emphasised,
-                onSelect: select
+                onSelect: select,
+                photoClusters: model.showsPhotoLayer ? model.photos.clusters : nil,
+                selectedPhotoCluster: photoCluster?.id,
+                onSelectPhotos: { photoCluster = $0 }
             )
             // Under the status bar and the home indicator, so a close-up fills the
             // pane, but not under the list column, so the globe centres in what shows.
@@ -289,6 +294,13 @@ private struct CompanionGlobe: View {
             .padding(.bottom, 16)
         }
         .environment(\.colorScheme, .dark)
+        .sheet(item: $photoCluster, onDismiss: openQueuedAdd) { cluster in
+            PhotoClusterCard(cluster: cluster) { request in
+                queuedAdd = request
+                photoCluster = nil
+            }
+        }
+        .photoLayerLoading()
         .onChange(of: Inputs(
             log: model.log,
             rules: model.rules,
@@ -307,6 +319,13 @@ private struct CompanionGlobe: View {
         }
     }
 
+    private func openQueuedAdd() {
+        if let queuedAdd {
+            model.addRequest = queuedAdd
+            self.queuedAdd = nil
+        }
+    }
+
     private var caption: some View {
         HStack(spacing: 12) {
             Text(title)
@@ -316,6 +335,9 @@ private struct CompanionGlobe: View {
                 .labelStyle(.iconOnly)
                 .buttonStyle(.plain)
                 .accessibilityLabel("Frame \(title)")
+            GlobeStyleMenu()
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)

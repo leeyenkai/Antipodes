@@ -73,6 +73,11 @@ enum Format {
         value.formatted(.number.notation(.compactName).precision(.significantDigits(2)))
     }
 
+    /// "7", "640", "1.2K": exact below a thousand, where a rounded count would look wrong.
+    static func compactCount(_ count: Int) -> String {
+        count < 1000 ? count.formatted() : compact(Double(count))
+    }
+
     /// "1.43×", for how many times a distance would go round the Earth.
     static func multiple(_ value: Double) -> String {
         "\(value.formatted(.number.precision(.fractionLength(2))))×"
